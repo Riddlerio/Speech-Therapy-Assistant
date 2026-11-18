@@ -7,8 +7,7 @@
 """
 import re
 
-from ...speech.g2p import SimpleKoreanG2P
-from ...speech.normalization import normalize
+from ...speech.pipeline import SimpleKoreanG2P, normalize
 from ..prompt.prompt_builder import HoyaDialogueContext
 from ..schemas import ProviderOutput
 

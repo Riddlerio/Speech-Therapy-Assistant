@@ -140,6 +140,11 @@ def test_rejected_observation_is_excluded_from_verified_metric(api):
     therapist = auth(client)
     timeline = client.get(f"/api/sessions/{started['sessionId']}/timeline").json()
     observation = timeline["observations"][0]
+    # 같은 관찰에 확인 뒤 거절을 내리면 마지막 결정(거절)만 지표에 반영되어야 한다.
+    assert client.post(f"/api/observations/{observation['id']}/decision", headers=therapist,
+                       json={"action": "confirm"}).status_code == 200
+    summary = client.get(f"/api/sessions/{started['sessionId']}/clinical-summary").json()
+    assert summary["rounds"][0]["verifiedN"] == 1
     assert client.post(f"/api/observations/{observation['id']}/decision", headers=therapist,
                        json={"action": "reject", "note": "잡음"}).status_code == 200
     summary = client.get(f"/api/sessions/{started['sessionId']}/clinical-summary").json()

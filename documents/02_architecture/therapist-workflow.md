@@ -120,7 +120,7 @@ LLM 입력은 이미 비식별 구조화 context이며, 켜기 전에 기관의 
 ```
 
 - 보내지 않는 정보: 아동 이름, child id, play code, 계정 정보, 원음성, 다른 아동의 자료, transcript, 치료사 메모, 우선 단어, 제외 단어.
-- 임상 근거는 정리된 짧은 문장 7개(`backend/app/therapist_planning/clinical_context.py`)를 system 지시에 넣는다. vector DB는 쓰지 않는다.
+- 임상 근거는 정리된 짧은 문장 7개(`backend/app/therapist_planning/summary.py`의 `CLINICAL_CONTEXT`)를 system 지시에 넣는다. vector DB는 쓰지 않는다.
 
 ### Summary AI 출력
 

@@ -15,7 +15,7 @@ Phase 0 감사 결과다(`origin/main` 6ee9c54). 여기 적은 항목은 이번 
 | 5 | legacy `AIRecommendation`(R1–R5), `ActivityRecommendation`, 치료사 회기 계획 | 추천 흐름이 차례로 추가됨 | 셋 다 동작. legacy는 치료사 화면의 "고급 정보"에 있음 | legacy 추천은 미검증·DEMO 자료로 만들어지는데, 수락하면 목표 버전이 바뀜. 그러면 작성 중인 계획 초안의 승인이 막힘(409). "다음 단계" 출처가 셋 | Phase 1 완료(DEMO 연습 추천 차단·출처 표시·과거 행은 거절만), 통합 판단은 Phase 7 |
 | 6 | `ActivityRecommendation.assignedActivity`와 회기 계획 | 계획 실행(TherapyRun)이 아직 없음 | 아동 지도의 "치료사 배정 활동"이 `collection_json.assignedActivity`에 의존함 | 역할이 겹침. 없애면 Phase 7 전까지 기능 공백 | Phase 7에서 통합 판단 |
 | 7 | `/api/children/{id}/progress`와 `SessionTrendChart` | legacy 지표 | 치료사 "고급 정보"에 있음 | AI 추정값과 DEMO가 섞임 | Phase 1 완료(회기 출처 표시, 계산 동일). 정리는 Phase 7 |
-| 8 | `GameType`(`monster_tower`, `magic_beam`; `enums.py`, `src/shared/levels.ts`)과 `GameKind`(V2 4종) | legacy 게임 enum | 둘 다 사용. PlaySession에 `monster_tower`를 `monster_adventure`로 바꾸는 대응이 있음 | 혼동 | Phase 5. PlaySession의 대응은 2026-10-04 삭제. 프런트 `GameType`은 `PlayItem` 형식에만 남음 |
+| 8 | `GameType`(`monster_tower`, `magic_beam`; `enums.py`, `src/shared/types.ts`)과 `GameKind`(V2 4종) | legacy 게임 enum | 둘 다 사용. PlaySession에 `monster_tower`를 `monster_adventure`로 바꾸는 대응이 있음 | 혼동 | Phase 5. PlaySession의 대응은 2026-10-04 삭제. 프런트 `GameType`은 `PlayItem` 형식에만 남음 |
 | 9 | 규칙 사본: 음질(`audio_quality.py`, `audioQuality.ts`), 빔(`pipeline.py`, `evaluation.py`), 종료 유예(`rounds.py`, `vad.ts`) | 손으로 옮겨 적음 | 모두 사용 | **음질 규칙은 이미 어긋남** | heuristic을 정리하는 Phase에서 처리 |
 | 10 | `TherapistRule`·`TherapistFeedback` | 치료사 교정 기능 | legacy 분석·정책·계획과 호야 `allowed_cue`에 영향. V2 라운드 판정(`evaluate_round`)은 규칙을 쓰지 않는다(2026-10-04 확인) | `params.variant`에 transcript가 저장되는데 보존 기간 삭제 대상이 아님 | 유지. 보존 범위는 Phase 6 |
 

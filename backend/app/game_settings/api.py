@@ -9,8 +9,7 @@ from ..adventure.service import serialize_child
 from ..auth import owned_child, require_therapist
 from ..db import get_db
 from ..models import Therapist
-from .schemas import GameSettingsInput
-from .service import game_settings, update_game_settings
+from .service import GameSettingsInput, game_settings, update_game_settings
 
 router = APIRouter(prefix="/api/therapist/children", tags=["game-settings"])
 

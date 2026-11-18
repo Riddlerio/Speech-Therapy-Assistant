@@ -4,7 +4,7 @@ from math import isfinite
 
 from pydantic import ValidationError
 
-from ..game_settings.schemas import DaeguCrossingRhythm
+from ..game_settings.service import DaeguCrossingRhythm
 from ..games.evaluation import ONSET_FRICATION_MS, ONSET_MIN_SNR_DB, VOICED_AFTER_FRICATION_MS
 from ..pronunciation.audio_quality import assess_audio_quality
 

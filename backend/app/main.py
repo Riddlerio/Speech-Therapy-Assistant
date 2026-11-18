@@ -46,8 +46,7 @@ from .games.round_rewards import round_reward
 from .games import crossing
 from .game_settings.api import router as game_settings_router
 from .game_settings.service import rhythm_snapshot
-# clinical_eligible은 여기서 쓰지 않아도 테스트가 app.main.clinical_eligible로 부르므로 함께 가져온다.
-from .serializers import clinical_eligible, current_goal, legacy_recommendation_allowed  # noqa: F401
+from .serializers import current_goal, legacy_recommendation_allowed
 
 
 @asynccontextmanager

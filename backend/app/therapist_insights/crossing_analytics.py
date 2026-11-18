@@ -5,7 +5,7 @@ from collections import defaultdict
 from pydantic import ValidationError
 from sqlalchemy import select
 
-from ..game_settings.schemas import DaeguCrossingRhythm
+from ..game_settings.service import DaeguCrossingRhythm
 from ..games.evaluation import ONSET_FRICATION_MS, ONSET_MIN_SNR_DB, VOICED_AFTER_FRICATION_MS
 from ..games.crossing import is_probe_observation
 from ..models import ClinicalObservation, TrainingSession

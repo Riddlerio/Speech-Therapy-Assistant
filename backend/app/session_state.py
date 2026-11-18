@@ -10,7 +10,7 @@ from fastapi import HTTPException
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictFloat, StrictInt, StrictStr, ValidationError, field_validator, model_validator
 
 from .games.rounds import GAME_ROUNDS
-from .game_settings.schemas import DaeguCrossingRhythm
+from .game_settings.service import DaeguCrossingRhythm
 
 
 INVALID_STATE = "세션 상태를 확인할 수 없습니다"

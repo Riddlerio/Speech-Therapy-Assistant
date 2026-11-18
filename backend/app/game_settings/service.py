@@ -1,12 +1,47 @@
-"""아동별 게임 설정을 DB에서 읽고 저장한다(설정이 없으면 기본값).
-game_settings/api.py와 main.py의 게임 시작 처리가 부른다. 임상 판정과는 관계없는 화면 설정이다.
+"""아동별 게임 설정(대구 횡단보도 시작 BPM 76~100·기본 84, 빨라지기 허용)의 입력 형식·DB 표(child_game_settings)와 읽기·저장 함수.
+설정 API·회기 상태 박자 검사·게임 시작 처리가 함께 쓴다. 임상 판정과는 관계없는 화면 설정이며, 기존 아동·회기 표를 바꾸지 않고 새 표만 추가한다.
 """
 
-from datetime import timezone
+from datetime import datetime, timezone
 
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt
+from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Integer
+from sqlalchemy.orm import Mapped, mapped_column
+
+from ..db import Base
 from ..models import AuditEvent, Therapist, now
-from .models import ChildGameSettings
-from .schemas import DEFAULT_ALLOW_FASTER, DEFAULT_START_BPM
+
+
+MIN_START_BPM = 76
+MAX_START_BPM = 100
+DEFAULT_START_BPM = 84
+DEFAULT_ALLOW_FASTER = True
+
+
+class DaeguCrossingRhythm(BaseModel):
+    """대구 횡단보도 게임의 박자 설정 형식(시작 BPM과 빨라지기 허용 여부). 모르는 키는 거절한다."""
+    model_config = ConfigDict(extra="forbid", strict=True)
+    startBpm: StrictInt = Field(ge=MIN_START_BPM, le=MAX_START_BPM)
+    allowFaster: StrictBool
+
+
+class GameSettingsInput(BaseModel):
+    """게임 설정 저장 요청 본문 형식. 지금은 대구 횡단보도 박자 설정 하나만 담는다."""
+    model_config = ConfigDict(extra="forbid", strict=True)
+    daeguCrossing: DaeguCrossingRhythm
+
+
+class ChildGameSettings(Base):
+    """아동별 대구 횡단보도 게임 박자 설정(시작 BPM, 빨라지기 허용)과 마지막 수정자. 새 표만 추가하며 기존 아동·회기 표의 열과 의미는 유지한다."""
+    __tablename__ = "child_game_settings"
+    __table_args__ = (CheckConstraint(f"start_bpm >= {MIN_START_BPM} AND start_bpm <= {MAX_START_BPM}",
+                                     name="ck_game_settings_start_bpm"),)
+
+    child_id: Mapped[str] = mapped_column(ForeignKey("children.id"), primary_key=True)
+    start_bpm: Mapped[int] = mapped_column(Integer, default=DEFAULT_START_BPM)
+    allow_faster: Mapped[bool] = mapped_column(Boolean, default=DEFAULT_ALLOW_FASTER)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    updated_by: Mapped[str] = mapped_column(ForeignKey("therapists.id"))
 
 
 def rhythm_snapshot(db, child_id):

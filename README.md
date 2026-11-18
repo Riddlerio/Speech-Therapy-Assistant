@@ -63,6 +63,8 @@
 │  ├─ app/therapist_api.py    치료사용 API (아동·회기·관찰·추천)
 │  ├─ app/serializers.py      DB 행 → API 응답 변환 공용 함수
 │  ├─ app/games/              게임 라운드 정의·판정·건너기 진행
+│  ├─ app/speech/pipeline.py  인식 문장 정규화 → 음소 변환 → 정렬 → 점수 (한 파일)
+│  ├─ app/game_settings/      아동별 박자 설정 (api + service)
 │  ├─ app/hoya/               두두 대화 (정책·LLM 제공자·검증)
 │  ├─ app/therapist_insights/ 치료사 읽기 전용 분석
 │  ├─ app/therapist_planning/ 다음 회기 계획 (LangGraph)
@@ -151,7 +153,7 @@ backend\.venv\Scripts\python.exe -m pytest backend/tests -q -p no:cacheprovider 
 backend\.venv\Scripts\python.exe backend/scripts/smoke_api.py http://127.0.0.1:8000
 ```
 
-현재 결과: 프런트 47개 파일 342개 테스트, 백엔드 583개 테스트 통과. 자동 테스트는 코드 회귀 검사이며 임상 정확도를 뜻하지 않습니다. [CI](.github/workflows/ci.yml)는 PR과 `main` push에 같은 검사를 실행합니다.
+현재 결과: 프런트 46개 파일 333개 테스트, 백엔드 583개 테스트 통과. 자동 테스트는 코드 회귀 검사이며 임상 정확도를 뜻하지 않습니다. [CI](.github/workflows/ci.yml)는 PR과 `main` push에 같은 검사를 실행합니다.
 
 **아직 하지 않은 것:** 최신 버전의 실제 휴대폰·마이크 전체 리허설, 아동 음성 정확도·임상 평가, 운영 환경 준비(브랜치 보호·DB 마이그레이션). 우선순위는 [로드맵](documents/01_overview/ROADMAP.md)에 있습니다.
 

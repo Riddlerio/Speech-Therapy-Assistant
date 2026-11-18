@@ -50,7 +50,7 @@ Phase 0 감사에서 찾은, 코드에 고정된 행동·임상·제품 기준�
 | 빔 목표 기본 1500ms | `speech/pipeline.py` | 빔 목표 | UNKNOWN |
 | 키보드 입력: run ≥ 0.8 × 목표 | `speech/pipeline.py`의 `analyze` | DEMO 통과 | UNKNOWN |
 | run ≥ 0.8 × 목표이고 frication ≥ 0.6 × active | `speech/pipeline.py`, `games/evaluation.py`(중복) | 마찰음 통과 | UNKNOWN |
-| 유사 음소 비용 0.5, 목표 음소 가중치 ×3 | `speech/alignment.py`, `speech/pipeline.py` | 점수 | UNKNOWN |
+| 유사 음소 비용 0.5, 목표 음소 가중치 ×3 | `speech/pipeline.py` | 점수 | UNKNOWN |
 | 합격 점수: accuracy 85, balanced 75, speed 70 | `speech/pipeline.py` | 단어 성공 | UNKNOWN(치료사가 `pass_threshold`로 덮어쓸 수 있음) |
 
 ## 4. 5라운드 엔진(V2)
@@ -141,7 +141,7 @@ Phase 0 감사에서 찾은, 코드에 고정된 행동·임상·제품 기준�
 |---|---|---|---|
 | 카드 1장 = 4박 한 마디. 1~3박에 '똑'(90ms), 4박에 카드 착지 | `src/game/crossing/rhythm.ts`의 `bar` | 말할 때 알리기 | PRODUCT_HEURISTIC |
 | 대상별 빠른 설정(치료사가 눌러 값만 채우고 저장은 따로): 기능적 조음음운장애 84·켬, 발달지연·지적장애 76·켬, 아동기 말실행증·말더듬·마비말장애 76·끔 | `shared/daegu_crossing_rationale.json`의 `presets`, `src/therapist/GameSettingsPanel.tsx` | 치료사 설정 도움 | PRODUCT_HEURISTIC(근거 문서 2절의 권장. 임상 검증 아님) |
-| 시작 84BPM. 치료사 설정 76~100(기본 84, 빨라지기 켬) | `rhythm.ts`의 `DEFAULT_RHYTHM`·`BPM`, `backend/app/game_settings/schemas.py` | 빠르기 | PRODUCT_HEURISTIC(느리게 시작하는 원리는 DTTC·ReST, 값 자체의 근거는 없음) |
+| 시작 84BPM. 치료사 설정 76~100(기본 84, 빨라지기 켬) | `rhythm.ts`의 `DEFAULT_RHYTHM`·`BPM`, `backend/app/game_settings/service.py` | 빠르기 | PRODUCT_HEURISTIC(느리게 시작하는 원리는 DTTC·ReST, 값 자체의 근거는 없음) |
 | 최근 8번 중 7번 성공이면 +4BPM(최대 100, 빨라지기 끄면 시작값), 연속 2번 성공이 아니면 −4BPM(최소 72). 바뀌면 기록을 비움 | `rhythm.ts`의 `nextBpm` | 빠르기 맞춤 | PRODUCT_HEURISTIC |
 | 마이크 열림 = 3박 '똑' + 여운 160ms + 출력 지연(최대 400ms). 착지보다 늦지 않음 | `rhythm.ts`의 `bar` | 박 소리가 마이크에 잡히지 않게 | TECHNICAL_LIMIT |
 | 듣기 창 = 착지 + 4박(말이 시작됐으면 최대 4초) | `rhythm.ts`의 `WINDOW_BEATS` | 대답 시간 | PRODUCT_HEURISTIC |

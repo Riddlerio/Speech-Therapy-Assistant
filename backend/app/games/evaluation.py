@@ -5,8 +5,7 @@
 from ..pronunciation.audio_quality import assess_audio_quality
 from .rounds import RE_ONSET_PAUSE_MS
 from ..speech.pipeline import AnalysisResult, acoustic_number, analyze
-from ..speech.g2p import SimpleKoreanG2P
-from ..speech.normalization import normalize
+from ..speech.pipeline import SimpleKoreanG2P, normalize
 
 
 # 대구대 건너기 음향 근사 기준(2026-10-05 성인 1명 PC 마이크 실측 2회, 정답 확인 포함).
@@ -29,7 +28,7 @@ def _result(result: str, tags=()) -> AnalysisResult:
 
 def evaluate_round(round_def, item: dict, transcript: str | None, acoustic: dict, goal, rules=()) -> AnalysisResult:
     """라운드 규칙(rule)에 따라 발화를 판정한다. 단어 규칙은 음소 정렬 분석(speech/pipeline.py)을 쓰고, 소리 지속·박자·시작 마찰 규칙은 음향 수치를 기준값과 비교한다.
-    마이크 입력의 음질이 나쁘거나 측정값이 빠지면 틀림 대신 uncertain으로 보류해 치료사가 확인하게 한다.
+    마이크 입력의 음질이 나쁘거나, 시작 마찰(ONSET_FRICATION) 규칙의 시작 마찰·뒤 유성 측정값이 빠지면 틀림 대신 uncertain으로 보류해 치료사가 확인하게 한다.
     """
     if round_def.rule in {"TARGET_WORD", "CONVERSATION"} and (not transcript or not transcript.strip()):
         return _result("no_speech")
