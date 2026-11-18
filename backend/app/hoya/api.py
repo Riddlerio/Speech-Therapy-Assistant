@@ -1,4 +1,5 @@
-"""호야와 대화하기 API. 기존 쿠키 인증·CSRF·Origin 검사를 그대로 쓰고, 아동은 자기 대화만 쓴다.
+"""호야와 대화하기 API(대화 시작·조회·턴 보내기·끝내기). 기존 쿠키 인증·CSRF·Origin 검사를 그대로 쓰고, 아동은 자기 대화만 쓴다.
+흐름: 아동 발화 → 음성 근거(evidence) → 대화 정책(policy) → 제공자 응답(service) → 저장 → 게임 전환 판단(transitions).
 
 turn 요청은 멱등이다. 브라우저가 발화 1회마다 clientRequestId를 만들고, 서버는 제공자 호출 전에
 turn을 PROCESSING으로 예약한다. 같은 요청 ID의 재시도는 저장된 결과(또는 처리 중 202)를 받고
@@ -31,11 +32,16 @@ policy = HoyaConversationPolicy()
 
 
 def dialogue_service() -> HoyaDialogueService:
-    """요청마다 현재 설정으로 제공자를 고른다. 테스트는 이 의존성을 바꿔 가짜 제공자를 쓴다."""
+    """요청마다 현재 설정으로 제공자를 골라 대화 서비스를 만든다.
+    FastAPI 의존성이라 테스트는 이 의존성을 바꿔 가짜 제공자를 쓴다.
+    """
     return HoyaDialogueService(*select_provider(settings))
 
 
 def _owned(db: Session, session_id: str, account: Account) -> HoyaChatSession:
+    """대화 세션이 로그인한 아동의 것인지 확인하고 돌려준다.
+    다른 아동의 대화는 있는지도 알려 주지 않도록 없을 때와 똑같이 404를 낸다.
+    """
     session = db.get(HoyaChatSession, session_id)
     # 다른 아동의 대화는 있는지도 알려 주지 않는다.
     if session is None or session.child_id != account.child_id:
@@ -44,11 +50,17 @@ def _owned(db: Session, session_id: str, account: Account) -> HoyaChatSession:
 
 
 def _turns(db: Session, session_id: str) -> list[HoyaChatTurn]:
+    """대화 세션의 모든 turn을 순서대로 가져온다.
+    화면 응답·문맥 만들기·순서 검사에서 공통으로 쓴다.
+    """
     return list(db.scalars(select(HoyaChatTurn).where(HoyaChatTurn.session_id == session_id)
                            .order_by(HoyaChatTurn.turn_index)).all())
 
 
 def _public(session: HoyaChatSession, turns: list[HoyaChatTurn]) -> dict:
+    """아동 화면에 보낼 대화 세션 정보(상태, 완료 턴 수, 다음 턴 번호, 시작 인사, 마지막 호야 말 등)를 만든다.
+    대화 시작·조회·끝내기 API 응답에 쓴다.
+    """
     done = [turn for turn in turns if turn.status == "COMPLETED"]
     return {"sessionId": session.id, "mode": session.mode, "status": session.status, "turnCount": len(done),
             "nextTurnIndex": (turns[-1].turn_index if turns else 0) + 1, "maxTurns": settings.hoya_chat_max_turns,
@@ -57,11 +69,17 @@ def _public(session: HoyaChatSession, turns: list[HoyaChatTurn]) -> dict:
 
 
 def _next_activity(session: HoyaChatSession, turn_index: int) -> str | None:
+    """이 턴이 게임 전환이 처음 정해진 턴 이후라면 다음 활동(대구대 건너기)을 돌려준다.
+    한 번 전환이 정해지면 이후 응답에서도 같은 안내를 유지하려고 쓴다.
+    """
     first = session.summary_json.get("nextActivityFromTurnIndex")
     return NEXT_ACTIVITY if isinstance(first, int) and turn_index >= first else None
 
 
 def _completed(session: HoyaChatSession, turn: HoyaChatTurn) -> dict:
+    """끝난 turn을 아동 화면용 응답(호야 문장, 다음 턴 번호, 대화 끝 여부, 다음 활동)으로 만든다.
+    근거·전략·제공자·횟수 같은 내부 정보는 아동 화면에 보내지 않는다.
+    """
     # 아동 화면에는 전환 신호 하나만 더한다. 근거·전략·제공자·횟수는 보내지 않는다.
     return {"status": "COMPLETED", "turnIndex": turn.turn_index, "clientRequestId": turn.client_request_id,
             "text": turn.hoya_text or "", "nextTurnIndex": turn.turn_index + 1, "sessionComplete": turn.session_complete,
@@ -69,12 +87,17 @@ def _completed(session: HoyaChatSession, turn: HoyaChatTurn) -> dict:
 
 
 def _processing(turn: HoyaChatTurn) -> JSONResponse:
-    """원래 요청이 아직 제공자를 기다리는 중이다. 새로 호출하지 않고 잠시 뒤 같은 요청으로 다시 묻게 한다."""
+    """원래 요청이 아직 제공자를 기다리는 중이라는 202 응답을 만든다.
+    새로 호출하지 않고 잠시 뒤(500ms) 같은 요청으로 다시 묻게 한다.
+    """
     return JSONResponse(status_code=202, content={"status": "PROCESSING", "turnIndex": turn.turn_index,
                                                   "clientRequestId": turn.client_request_id, "retryAfterMs": 500})
 
 
 def _stale(turn: HoyaChatTurn) -> bool:
+    """PROCESSING turn이 제한 시간보다 오래 멈춰 있는지 판단한다.
+    제공자 호출은 timeout으로 끝나므로 그보다 충분히 오래 걸렸으면 서버가 중단된 것으로 보고 복구한다.
+    """
     # 제공자 호출은 timeout으로 끝나므로, 그보다 충분히 오래 PROCESSING이면 서버가 중단된 것으로 본다.
     limit = max(settings.hoya_chat_stale_sec, settings.hoya_chat_timeout_sec + 5)
     updated = (turn.updated_at or turn.created_at).replace(tzinfo=None)
@@ -82,6 +105,9 @@ def _stale(turn: HoyaChatTurn) -> bool:
 
 
 def _context(db: Session, session: HoyaChatSession, turn: HoyaChatTurn) -> HoyaDialogueContext:
+    """제공자에게 넘길 대화 문맥(목표, 전략·근거, 목표 어휘, 허용 단서, 아동 발화, 최근 대화)을 만든다.
+    첫 turn에는 이름 없는 기본 인사를 넣어, 별명 같은 식별 정보가 제공자에게 가지 않게 한다.
+    """
     goal = db.get(TrainingGoal, session.goal_id)
     child = db.get(Child, session.child_id)
     rules = db.scalars(select(TherapistRule).where(TherapistRule.child_id == child.id, TherapistRule.active == True)).all()
@@ -105,7 +131,9 @@ def _context(db: Session, session: HoyaChatSession, turn: HoyaChatTurn) -> HoyaD
 
 
 def _finish(db: Session, session: HoyaChatSession, turn: HoyaChatTurn, reply: HoyaDialogueResponse) -> dict:
-    """PROCESSING인 예약만 COMPLETED로 바꾼다. 이미 다른 요청이 끝냈으면 그 결과를 그대로 쓴다."""
+    """PROCESSING인 예약만 COMPLETED로 바꾸고 호야 응답을 저장한다. 이미 다른 요청이 끝냈으면 그 결과를 그대로 쓴다.
+    게임 전환이 정해지면 전환 문구로 바꾸고, 최대 턴에 닿으면 서버가 대화를 끝낸다.
+    """
     db.refresh(session)
     final = turn.turn_index >= settings.hoya_chat_max_turns
     finished = now()
@@ -135,6 +163,9 @@ def _finish(db: Session, session: HoyaChatSession, turn: HoyaChatTurn, reply: Ho
 
 @router.post("/sessions")
 def start_chat(body: HoyaChatStartInput, db: Session = Depends(get_db), account: Account = Depends(require_student)):
+    """새 호야 대화를 시작한다. 보호자 동의와 활성 목표가 있어야 하며, 진행 중이던 이전 대화는 중단 처리한다.
+    아동 화면에서 "호야와 대화하기"를 열 때 호출한다.
+    """
     child = db.get(Child, account.child_id)
     if not child.guardian_consent_at:
         raise HTTPException(403, "보호자 동의가 필요합니다")
@@ -153,13 +184,17 @@ def start_chat(body: HoyaChatStartInput, db: Session = Depends(get_db), account:
 
 @router.get("/sessions/{session_id}")
 def chat_detail(session_id: str, db: Session = Depends(get_db), account: Account = Depends(require_student)):
+    """아동 자신의 대화 세션 상태를 돌려준다.
+    화면을 새로 고치거나 다시 들어왔을 때 이어서 대화하려고 호출한다.
+    """
     session = _owned(db, session_id, account)
     return _public(session, _turns(db, session.id))
 
 
 def request_fingerprint(body: HoyaChatTurnInput) -> str:
     """검증된 요청 내용의 canonical JSON SHA-256. 원본 HTTP 본문이 아니라 검증 뒤 값을 쓰므로 key 순서·공백과 무관하다.
-    아동·계정 id, play code, 이름, 비밀 값은 넣지 않는다(요청 본문에 없다)."""
+    아동·계정 id, play code, 이름, 비밀 값은 넣지 않는다(요청 본문에 없다). 같은 요청 ID 재시도가 정말 같은 내용인지 비교하는 데 쓴다.
+    """
     canonical = {"turnIndex": body.turn_index, "transcript": body.transcript, "alternatives": body.alternatives,
                  "recognizer": body.recognizer, "acoustic": body.acoustic.model_dump(by_alias=True, exclude_none=True)}
     text = json.dumps(canonical, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
@@ -167,6 +202,9 @@ def request_fingerprint(body: HoyaChatTurnInput) -> str:
 
 
 def _same_request(turn: HoyaChatTurn, body: HoyaChatTurnInput, transcript: str | None) -> bool:
+    """저장된 turn과 새 요청이 같은 발화인지 비교한다. 지문(fingerprint)이 있으면 지문으로, 없으면 번호와 문장으로 비교한다.
+    같은 요청 ID로 다른 내용이 오는 것을 막으려고 쓴다.
+    """
     if turn.turn_index != body.turn_index:
         return False
     if turn.request_fingerprint is not None:
@@ -177,7 +215,9 @@ def _same_request(turn: HoyaChatTurn, body: HoyaChatTurnInput, transcript: str |
 
 def _existing(db: Session, session: HoyaChatSession, turn: HoyaChatTurn, body: HoyaChatTurnInput,
               transcript: str | None, service: HoyaDialogueService):
-    """같은 요청 ID의 재시도. 제공자를 다시 부르지 않는다."""
+    """같은 요청 ID의 재시도를 처리한다. 제공자를 다시 부르지 않는다.
+    끝났으면 저장된 결과를, 처리 중이면 202를, 오래 멈췄으면 DEMO 응답으로 마무리한 결과를 돌려준다.
+    """
     # 요청 ID는 발화 1회에만 쓴다. 내용이 다른 요청에 같은 ID가 오면 섞지 않고 거부한다.
     if not _same_request(turn, body, transcript):
         raise HTTPException(409, "REQUEST_ID_REUSED")
@@ -190,6 +230,9 @@ def _existing(db: Session, session: HoyaChatSession, turn: HoyaChatTurn, body: H
 
 
 def _by_request(db: Session, session: HoyaChatSession, request_id: str) -> HoyaChatTurn | None:
+    """대화 세션에서 같은 clientRequestId로 저장된 turn을 찾는다.
+    재시도 요청인지 확인할 때 쓴다.
+    """
     return db.scalar(select(HoyaChatTurn).where(HoyaChatTurn.session_id == session.id,
                                                 HoyaChatTurn.client_request_id == request_id))
 
@@ -197,6 +240,9 @@ def _by_request(db: Session, session: HoyaChatSession, request_id: str) -> HoyaC
 @router.post("/sessions/{session_id}/turns")
 async def chat_turn(session_id: str, body: HoyaChatTurnInput, db: Session = Depends(get_db),
                     account: Account = Depends(require_student), service: HoyaDialogueService = Depends(dialogue_service)):
+    """아동 발화 한 번을 받아 근거를 정하고, 정책으로 전략을 고르고, turn을 예약한 뒤 제공자 응답을 저장해 돌려준다.
+    아동 화면이 발화마다 호출한다. 순서가 어긋나거나 이전 turn이 처리 중이면 409로 거절해 중복 호출·비용을 막는다.
+    """
     session = _owned(db, session_id, account)
     transcript = body.transcript.strip() if body.transcript else None
     found = _by_request(db, session, body.client_request_id)
@@ -246,7 +292,9 @@ async def chat_turn(session_id: str, body: HoyaChatTurnInput, db: Session = Depe
 
 @router.post("/sessions/{session_id}/complete")
 def complete_chat(session_id: str, db: Session = Depends(get_db), account: Account = Depends(require_student)):
-    """대화 끝내기. 이미 끝난 대화에 다시 불러도 같은 결과다."""
+    """대화를 끝낸다. 이미 끝난 대화에 다시 불러도 같은 결과다.
+    아동 화면에서 대화를 마치거나 게임으로 넘어갈 때 호출한다.
+    """
     session = _owned(db, session_id, account)
     if session.status == "active":
         session.status, session.ended_at = "completed", now()

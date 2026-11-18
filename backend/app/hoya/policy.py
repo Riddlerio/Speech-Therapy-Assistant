@@ -1,4 +1,6 @@
-"""호야 대화 전략을 정하는 결정적 정책. LLM은 여기서 정한 전략을 문장으로 표현만 한다."""
+"""호야가 이번 차례에 어떤 대화 전략을 쓸지 정하는 결정적(규칙 기반) 정책.
+LLM은 여기서 정한 전략을 문장으로 표현만 하므로, 치료 방향은 서버 규칙이 쥔다.
+"""
 from .schemas import SpeechEvidence, Strategy
 from .transitions import EASY_QUESTION_NO_SPEECH_TURNS, consecutive_no_speech
 
@@ -9,15 +11,22 @@ CHAT_ALLOWED_CUES = {"auditory_model"}
 
 
 def allowed_cue(goal, rules=()) -> str | None:
-    """기존 모험 정책과 같이 CUE_OVERRIDE 규칙이 목표의 preferred_cue보다 우선한다."""
+    """대화에서 쓸 수 있는 치료사 허용 단서를 돌려준다(없으면 None). 기존 모험 정책과 같이 CUE_OVERRIDE 규칙이 목표의 preferred_cue보다 우선한다.
+    음성 대화로 줄 수 있는 단서는 청각 모델(auditory_model)뿐이라 그 밖의 단서는 None이 된다.
+    """
     override = next((rule for rule in rules if rule.rule_type == "CUE_OVERRIDE" and rule.active), None)
     cue = (override.params.get("cue") if override else None) or goal.preferred_cue
     return cue if cue in CHAT_ALLOWED_CUES else None
 
 
 class HoyaConversationPolicy:
+    """이번 발화 근거와 이전 근거, 허용 단서를 보고 호야의 대화 전략을 고르는 정책 클래스.
+    호야 대화 턴 API가 응답을 만들기 전에 사용한다.
+    """
     def decide(self, evidence: SpeechEvidence, previous: list[SpeechEvidence], cue: str | None) -> Strategy:
-        """previous는 이번 발화 이전의 근거(오래된 것부터)다."""
+        """근거에 따라 전략을 고른다: 무발화는 기다리기·쉽게 하기, 목표 관찰은 이어 가기, 불확실이 반복되면 쉽게 하기, 목표 미관찰이 이어지고 허용 단서가 있으면 단서 주기.
+        previous는 이번 발화 이전의 근거(오래된 것부터)다. 아동 실패로 몰아가지 않도록 쉬운 전략으로 기운다.
+        """
         last = previous[-1] if previous else None
         if evidence == "NO_SPEECH":
             # 세 번째 무발화에는 그림 고르기로 쉽게 바꾼다. 다음 무발화의 게임 안내는 API가 맡는다.

@@ -8,7 +8,8 @@ import {
 import type { HoyaAction } from '../control/speechGameSignal'
 import { emblemTexture } from './duduEmblem'
 import { speakingLevel } from '../speech/duduClips'
-import { createPerkClock, prefersReducedMotion } from './duduPerk'
+import { createPerkClock } from './duduPerk'
+import { prefersReducedMotion } from '../shared/useReducedMotion'
 
 /*
  * 두두 절차형 3D 시제품. 원래 정면 도안(정체성 기준)과 2026-10-03에 받은 정면·측면·후면 조형 도면을

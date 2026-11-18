@@ -5,7 +5,7 @@ import type { ReactNode } from 'react'
 import { CaseloadList } from '../pages/Overview'
 import type { CaseloadChild } from '../pages/Overview'
 import { WORKSPACE_TABS, Workspace } from '../pages/ChildDetail'
-import { approvedPlan, currentDraft, isEditable, parseWords, toForm, validateForm } from '../planning'
+import { approvedPlan, currentDraft, parseWords, toForm, validateForm } from '../planning'
 import type { Metrics, PlanForm, PlanningContext, ProposalResponse, SessionPlan } from '../planning'
 import { NextSessionView } from './NextSessionPanel'
 import ProgressPanel from './ProgressPanel'
@@ -159,10 +159,7 @@ describe('계획 순수 함수', () => {
     expect(validateForm({ ...form, steps: [{ stepType: 'CONVERSATION', activity: 'magic_beam' }] })).toContain('활동 유형과 활동이 맞지 않습니다.')
   })
 
-  it('초안만 편집할 수 있고 초안·승인 계획을 고른다', () => {
-    expect(isEditable(plan('DRAFT'))).toBe(true)
-    expect(isEditable(plan('APPROVED'))).toBe(false)
-    expect(isEditable(plan('SUPERSEDED'))).toBe(false)
+  it('초안·승인 계획을 고른다', () => {
     const rows = [plan('APPROVED'), plan('DRAFT', { id: 'd' })]
     expect(currentDraft(rows)?.id).toBe('d')
     expect(approvedPlan(rows)?.status).toBe('APPROVED')

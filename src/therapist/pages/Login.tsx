@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { demoLogin, login } from '../../api/therapist'
-import { setToken } from '../auth'
+import { setToken } from '../../api/auth'
 import { useDemoMode } from '../../shared/useDemoMode'
 
 export default function Login() {

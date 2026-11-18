@@ -1,4 +1,6 @@
-"""치료사 전용 대화 기록. 게임의 임상 성공률과 합산하지 않는다."""
+"""치료사 전용 호야 대화 기록 요약을 만든다.
+대화 근거는 발음 정오가 아니므로 게임의 임상 성공률과 합산하지 않는다.
+"""
 from collections import Counter, defaultdict
 
 from sqlalchemy import func, or_, select
@@ -16,6 +18,9 @@ LIMITATION = (
 
 
 def conversation_insights(db, child):
+    """아동의 최근 대화 세션 최대 10개에 대해 완료 턴 수와 근거별(목표 관찰·불확실·무발화) 개수를 센다. 완료 턴 없이 끝난 빈 대화는 개수만 따로 알려 준다.
+    치료사 화면의 대화 기록 API가 부르며, 해석 한계 문구(limitation)를 함께 돌려준다.
+    """
     has_completed_turn = select(HoyaChatTurn.id).where(
         HoyaChatTurn.session_id == HoyaChatSession.id,
         HoyaChatTurn.status == "COMPLETED",

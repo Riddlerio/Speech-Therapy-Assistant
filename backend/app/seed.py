@@ -1,3 +1,5 @@
+"""DEMO 모드용 샘플 치료사·아동·계정과 과거 회기 기록을 만든다.
+시연할 때 빈 화면 대신 실제 분석 경로로 만든 이력을 보여 주려고 둔다."""
 from datetime import timedelta
 from types import SimpleNamespace
 import secrets
@@ -23,6 +25,8 @@ SHORT_ACOUSTIC = {**GOOD_ACOUSTIC, "durationMs": 400, "voicedMs": 300, "activeMs
 
 
 def seed(db):
+    """DEMO용 치료사·샘플 아동·계정·목표를 만들고 실제 활동 경로로 과거 회기를 채운다.
+    치료사 자료가 이미 있으면 빠진 쿠키 계정만 보충하며, 시작 때 seed_demo_data가 켜져 있으면 실행된다."""
     if db.scalar(select(Therapist.id).limit(1)):
         # 명시적 DEMO 모드에서 기존 MVP DB를 재사용할 때 새 쿠키 계정을 보충한다.
         therapist = db.scalar(select(Therapist).where(Therapist.username == "demo"))
@@ -56,10 +60,13 @@ def seed(db):
     db.commit()
 
     # 앱 초기화 후 실제 5라운드 활동 경로를 호출한다. 점수와 판단은 분석 파이프라인에서만 계산한다.
-    from .main import activity_utterance, complete, create_goal, start_activity
+    from .main import activity_utterance, complete, start_activity
+    from .serializers import create_goal
     from .schemas import CompleteInput, StartActivityInput, UtteranceInput
 
     def run(child, days_ago, game, struggle):
+        """샘플 아동 한 명의 활동 하나를 실제 라우트 함수로 끝까지 진행하고 날짜를 과거로 옮긴다.
+        점수·판단을 직접 만들지 않고 분석 파이프라인이 계산하게 하려고 쓴다."""
         account = SimpleNamespace(child_id=child.id)  # 서버 내부 seed 호출. 소유권 검사는 같은 아동으로 통과한다.
         started = start_activity(StartActivityInput(game=game, mode="demo"), db=db, account=account)
         session_id = started["sessionId"]

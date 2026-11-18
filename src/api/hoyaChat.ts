@@ -1,4 +1,5 @@
 import { api } from './client'
+import { getToken } from './auth'
 import { TurnRejectedError, type ChatReply, type TurnRequest } from '../child/hoyaChatController'
 
 export interface HoyaChatSession { sessionId: string; mode: 'real' | 'demo'; status: string; turnCount: number; nextTurnIndex: number; maxTurns: number; openingText: string; lastHoyaText: string | null
@@ -42,7 +43,7 @@ export async function sendHoyaTurn(sessionId: string, request: TurnRequest, opti
   for (;;) {
     let response: Response | null = null
     try {
-      const csrf = (typeof sessionStorage === 'undefined' ? null : sessionStorage.getItem('speechHero.csrf')) || ''
+      const csrf = getToken()
       response = await fetcher(`/api/hoya/chat/sessions/${sessionId}/turns`, { method: 'POST', body, credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json', ...(csrf ? { 'X-CSRF-Token': csrf } : {}) } })
     } catch { response = null }

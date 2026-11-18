@@ -1,7 +1,5 @@
-"""이전 개발 DB의 hoya_chat_turns를 현재 구조로 옮긴다.
-
-`Base.metadata.create_all()`은 이미 있는 표에 열을 추가하지 않는다. 이 표는 main에 없던 새 표이므로
-정식 migration 도구 없이 SQLite에서 자료를 보존하며 옮긴다.
+"""이전 개발 DB의 hoya_chat_turns 표를 현재 구조로 옮긴다(SQLite 전용, 자료 보존).
+`Base.metadata.create_all()`은 이미 있는 표에 열을 추가하지 않는다. 이 표는 main에 없던 새 표이므로 정식 migration 도구 없이 옮긴다.
 
 - 표 없음: create_all이 만든다. 여기서는 아무것도 하지 않는다.
 - PR #4 초기 구조(client_request_id 없음, provider NOT NULL): 이름 변경 → 새 표 → 복사 → 이전 표 삭제.
@@ -19,7 +17,9 @@ _ADDED_NULLABLE = {"request_fingerprint": "VARCHAR(64)"}
 
 
 def upgrade_hoya_chat_schema(engine) -> bool:
-    """구조를 바꿨으면 True. 이미 현재 구조이거나 표가 없으면 아무것도 하지 않는다."""
+    """표 구조를 확인해 필요하면 옮기거나 빠진 열을 추가한다. 구조를 바꿨으면 True를 돌려준다.
+    이미 현재 구조이거나 표가 없거나 SQLite가 아니면 아무것도 하지 않는다. 서버 시작 때 main.py가 부른다.
+    """
     if engine.dialect.name != "sqlite":
         return False
     inspector = inspect(engine)

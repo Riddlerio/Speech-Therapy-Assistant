@@ -1,8 +1,10 @@
+"""치료사 회기 계획 form과 요약 AI 출력의 schema.
+계획 입력 검증 규칙(단계 순서·단어 중복·활동 유형)을 라우트 밖 한곳에 둔다."""
 from typing import Literal
 
-from pydantic import ConfigDict, Field, field_validator, model_validator
+from pydantic import Field, field_validator, model_validator
 
-from ..schemas_base import ApiModel
+from ..schemas_base import ApiModel, StrictApiModel
 
 StartLevel = Literal["phoneme", "syllable", "word", "short_sentence"]
 TargetLevel = Literal["syllable", "word", "short_sentence"]
@@ -11,16 +13,16 @@ STEP_ACTIVITIES = {"CONVERSATION": {"hoya_conversation"}, "GAME": GAME_ACTIVITIE
 LEVELS = ("phoneme", "syllable", "word", "short_sentence")
 
 
-class StrictModel(ApiModel):
-    model_config = ConfigDict(alias_generator=ApiModel.model_config["alias_generator"], populate_by_name=True, extra="forbid")
-
-
-class StepParameters(StrictModel):
+class StepParameters(StrictApiModel):
+    """계획 단계 하나의 반복 횟수·시간 매개변수.
+    StepInput 안에서 쓰며 범위를 벗어난 값은 거부한다."""
     trials: int | None = Field(default=None, ge=1, le=60)
     duration_min: int | None = Field(default=None, ge=1, le=15)
 
 
-class StepInput(StrictModel):
+class StepInput(StrictApiModel):
+    """회기 계획의 단계 하나(대화·게임·연습 중 무엇을 할지).
+    SessionPlanInput.steps의 항목이며 활동이 단계 유형과 맞는지 검사한다."""
     step_type: Literal["CONVERSATION", "GAME", "PRACTICE"]
     activity: Literal["hoya_conversation", "magic_beam", "sky_climb", "monster_adventure", "conversation_quest"]
     target_level: StartLevel | None = None
@@ -28,12 +30,16 @@ class StepInput(StrictModel):
 
     @model_validator(mode="after")
     def activity_matches_type(self):
+        """활동이 단계 유형에서 허용된 것인지 확인한다.
+        예: CONVERSATION 단계에 게임 활동이 들어오는 것을 막는다."""
         if self.activity not in STEP_ACTIVITIES[self.step_type]:
             raise ValueError("활동 유형과 활동이 맞지 않습니다")
         return self
 
 
 def _clean_words(values: list[str]) -> list[str]:
+    """단어 목록의 앞뒤 공백을 지우고 중복을 빼며 1–20자인지 검사한다.
+    우선 단어·제외 단어 검증에서 함께 쓴다."""
     words = []
     for value in values:
         word = value.strip()
@@ -44,8 +50,9 @@ def _clean_words(values: list[str]) -> list[str]:
     return words
 
 
-class SessionPlanInput(StrictModel):
-    """치료사가 작성하는 구조화 form. 자유 입력은 therapist_note 하나뿐이다."""
+class SessionPlanInput(StrictApiModel):
+    """치료사가 작성하는 구조화 회기 계획 form.
+    자유 입력은 therapist_note 하나뿐이며 단계·단어 규칙을 함께 검사한다."""
     target_phoneme: Literal["ㅅ", "ㅈ", "ㄹ"]
     word_position: Literal["initial", "medial", "final"]
     start_level: StartLevel
@@ -62,10 +69,14 @@ class SessionPlanInput(StrictModel):
     @field_validator("priority_targets", "excluded_words")
     @classmethod
     def clean_words(cls, values: list[str]) -> list[str]:
+        """우선 단어·제외 단어 목록을 _clean_words로 정리한다.
+        두 필드에 같은 규칙을 적용하려고 둔다."""
         return _clean_words(values)
 
     @model_validator(mode="after")
     def levels_in_order(self):
+        """시작≤목표 단계, 우선·제외 단어 겹침 없음, 각 단계≤목표 단계를 확인한다.
+        필드 여러 개를 함께 봐야 하는 규칙이라 모델 검증으로 둔다."""
         if LEVELS.index(self.start_level) > LEVELS.index(self.target_level):
             raise ValueError("시작 단계가 목표 단계보다 높습니다")
         if set(self.priority_targets) & set(self.excluded_words):

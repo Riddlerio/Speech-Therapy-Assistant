@@ -1,4 +1,6 @@
-"""결정적 다음 회기 제안. LLM이 치료 계획을 만들지 않는다. 목표(TrainingGoal)는 바꾸지 않는다."""
+"""지표를 보고 다음 한 회기 계획 초안(시작 단계, 게임, 활동 순서)을 규칙으로 만든다.
+LLM이 치료 계획을 만들지 않으며 목표(TrainingGoal)도 바꾸지 않는다. 최종 결정은 치료사가 한다.
+"""
 from .evidence import MIN_EVALUABLE
 
 START_LEVELS = ("phoneme", "syllable", "word", "short_sentence")
@@ -9,10 +11,16 @@ GAMES = ("sky_climb", "monster_adventure", "conversation_quest")
 
 
 def _level_row(metrics: dict, level: str) -> dict | None:
+    """지표의 단계별 통계(byLevel)에서 원하는 단계의 행을 찾는다. 없으면 None.
+    목표 단계의 성공률을 보고 시작 단계를 정할 때 쓴다.
+    """
     return next((row for row in metrics["byLevel"] if row["level"] == level), None)
 
 
 def propose_plan(goal: dict, metrics: dict, activity_hint: str | None) -> dict:
+    """근거가 부족하면 유지, 목표 단계 성공률이 50% 미만이면 한 단계 낮게 시작, 80% 이상이면 다음 단계 검토 안내를 이유(rationale)와 함께 만든다.
+    대화 → 게임 → 대화 3단계 계획 양식을 채워 돌려주며, 녹음 확인·검토 대기 안내도 덧붙인다. 계획 그래프의 제안 단계가 부른다.
+    """
     target = goal["level"] if goal["level"] in TARGET_LEVELS else "word"
     minimum = goal["minLevel"] if goal["minLevel"] in START_LEVELS else "phoneme"
     start = target

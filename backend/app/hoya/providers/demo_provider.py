@@ -1,4 +1,5 @@
-"""LLM 없이 쓰는 결정적 두두 대화. Conversation Quest의 DEMO_RULES(quest_reply)와 별개다.
+"""LLM 없이 규칙만으로 두두(호야)의 대화 응답을 만드는 결정적 제공자. Conversation Quest의 DEMO_RULES(quest_reply)와 별개다.
+외부 LLM이 꺼져 있거나 실패했을 때도 대화가 이어지게 하려고 있다.
 
 아동 말의 주제에 먼저 반응하고, 전략에 맞춰 목표 음소가 나올 만한 질문 하나를 붙인다.
 /ㅅ/ 대화(2026-10-06): "오늘 뭐 하고 놀았어?"로 시작해, 아이가 말한 주제에서 /ㅅ/ 낱말이 나오기 쉬운 질문을 한다.
@@ -16,7 +17,9 @@ OPENING = f"안녕~ 만나서 반가워! 나는 두두야. {FIRST_QUESTION}"
 
 
 def opening_text(hero_name: str) -> str:
-    """등록한 별명만 시작 인사에 넣는다. 제공자에게 별명을 전달하지 않는다. 부르는 말은 받침에 따라 아/야."""
+    """아동 별명을 넣은 두두의 시작 인사를 만든다. 부르는 말은 받침에 따라 아/야를 붙인다.
+    등록한 별명만 시작 인사에 넣고, 제공자(LLM)에게는 별명을 전달하지 않는다.
+    """
     return f"안녕~ 만나서 반가워! {hero_name}{'아' if _has_final(hero_name) else '야'}. 나는 두두야. {FIRST_QUESTION}"
 
 
@@ -73,33 +76,49 @@ _SENTENCE = re.compile(r"[^.!?]+[.!?]+|[^.!?]+$")
 
 
 def _has_final(word: str) -> bool:
+    """한글 낱말의 마지막 글자에 받침이 있는지 판단한다.
+    "사과가/사자가", "아/야", "을/를" 같은 조사를 자연스럽게 고르려고 쓴다.
+    """
     code = ord(word[-1]) - 0xAC00
     return 0 <= code < 11172 and code % 28 != 0
 
 
 def _sentences(text: str) -> list[str]:
+    """문장을 마침표·느낌표·물음표 기준으로 나눈다(화면 duduClips.ts의 splitSentences와 같은 규칙).
+    최근에 한 질문을 찾거나 돕는 말인지 판단할 때 문장 단위로 비교하려고 쓴다.
+    """
     return [part.strip() for part in _SENTENCE.findall(text) if part.strip()]
 
 
 def _has_target(text: str, phoneme: str) -> bool:
+    """문장에 목표 음소가 들어 있는지 음소 변환(G2P)으로 확인한다.
+    서버가 대화 근거를 정하는 규칙(games/evaluation.py의 CONVERSATION)과 같으며 발음 정확도가 아니다.
+    """
     # 서버가 대화 근거를 정하는 규칙(games/evaluation.py의 CONVERSATION)과 같다. 발음 정확도가 아니다.
     return any(phone.symbol == phoneme for phone in SimpleKoreanG2P().to_phonemes(normalize(text) or ""))
 
 
 def _previous_child(recent_turns: list[dict]) -> str | None:
-    """바로 앞 turn에 아동이 한 말. 첫 turn이거나 앞 turn이 무발화였으면(두두 말만 남음) None."""
+    """바로 앞 turn에 아동이 한 말을 돌려준다. 첫 turn이거나 앞 turn이 무발화였으면(두두 말만 남음) None.
+    목표 음소가 두 번 연달아 안 나왔는지 판단할 때 쓴다.
+    """
     if len(recent_turns) >= 2 and recent_turns[-1].get("speaker") == "hoya" and recent_turns[-2].get("speaker") == "child":
         return recent_turns[-2].get("text") or None
     return None
 
 
 def _is_help(text: str) -> bool:
+    """두두의 말에 돕는 문장(고르기 "…가 좋아?", 빈칸 "…?", 먼저 들려주기 "너도 말해 볼래?")이 들어 있는지 판단한다.
+    돕는 말이 몇 번 이어졌는지 세어 단서를 조금씩 늘리려고 쓴다.
+    """
     # 고르기("…가 좋아, …가 좋아?")·빈칸("…?")·먼저 들려주기("너도 말해 볼래?") 문장이 든 말
     return any(part.endswith(("…?", "좋아?")) or part == "너도 말해 볼래?" for part in _sentences(text))
 
 
 def _helped_word(text: str, words: list[str]) -> str | None:
-    """돕는 말에서 도운 낱말. 빈칸 문장은 그 답, 고르기·먼저 들려주기는 처음 나온 낱말."""
+    """돕는 말에서 도운 낱말을 찾는다. 빈칸 문장은 그 답, 고르기·먼저 들려주기는 처음 나온 낱말이다.
+    이어서 도울 때 같은 낱말로 단서를 단계적으로 늘리려고 쓴다.
+    """
     answer = next((word for word, cloze in S_CLOZE.items() if cloze in text), None)
     if answer:
         return answer if answer in words else None
@@ -108,6 +127,9 @@ def _helped_word(text: str, words: list[str]) -> str | None:
 
 
 def _topic(transcript: str | None):
+    """아동 문장에서 주제 단어(학교, 축구, 놀이터 등)를 찾아 그 주제의 반응 문장과 음소별 질문을 돌려준다. 없으면 일반 반응을 쓴다.
+    아이가 말한 이야기에 먼저 반응해 대화가 자연스럽게 이어지게 하려고 있다.
+    """
     text = transcript or ""
     for keys, ack, questions in TOPICS:
         key = next((key for key in keys if key in text), None)
@@ -118,6 +140,9 @@ def _topic(transcript: str | None):
 
 
 def _choice(lexicon: list[str], first: str) -> tuple[str, list[str]]:
+    """목표 어휘에서 낱말 두 개로 "사과가 좋아, 수박이 좋아?" 같은 고르기 질문을 만든다(하나뿐이면 한 개로).
+    치료사의 우선·제외 낱말 목록 안에서만 고르며, 쉬운 질문이나 돕기 단계에서 쓴다.
+    """
     # 기본 데모는 사과/수박을 고른다. 치료사의 우선·제외 낱말 목록을 넘어가지는 않는다.
     others = [word for word in lexicon if word != first]
     second = "수박" if first == "사과" and "수박" in others else (others[0] if others else None)
@@ -127,6 +152,9 @@ def _choice(lexicon: list[str], first: str) -> tuple[str, list[str]]:
 
 
 def _elicited_s_reply(context: HoyaDialogueContext, ack: str, topic_question: str | None) -> ProviderOutput:
+    """/ㅅ/ 목표(음절·낱말 단계) 전용 응답을 만든다. 평소에는 주제·이어 가는 질문 중 최근에 하지 않은 것을 고르고, 도와야 할 때는 고르기 → 빈칸 → 먼저 들려주기 순서로 단서를 늘린다.
+    첫 3턴에는 서버가 허용한 먼저 들려주기만 쓰고, 불확실한 인식 문장은 되풀이하지 않는다.
+    """
     lexicon, strategy, turn = context.target_lexicon, context.strategy, context.turn_index
     dudu = [item.get("text") or "" for item in context.recent_turns if item.get("speaker") == "hoya"]
     last = _sentences(dudu[-1]) if dudu else []
@@ -178,13 +206,22 @@ def _elicited_s_reply(context: HoyaDialogueContext, ack: str, topic_question: st
 
 
 class DemoProvider:
+    """LLM 없이 응답을 만드는 기본 제공자. HoyaDialogueProvider와 같은 모양(name, model, reply)을 가진다.
+    hoya/service.py가 외부 제공자가 없거나 실패했을 때 대체용으로 쓴다.
+    """
     name = "DEMO"
     model = None
 
     async def reply(self, context: HoyaDialogueContext) -> ProviderOutput:
+        """비동기 인터페이스를 맞추기 위한 메서드로, reply_sync 결과를 그대로 돌려준다.
+        외부 제공자와 같은 방식(await)으로 부를 수 있게 하려고 있다.
+        """
         return self.reply_sync(context)
 
     def reply_sync(self, context: HoyaDialogueContext) -> ProviderOutput:
+        """서버가 정한 전략에 맞춰 응답 문장과 목표 낱말을 만든다(기다리기, 쉽게 고르기, 주제 반응 + 질문, 허용 단서).
+        /ㅅ/ 음절·낱말 목표는 _elicited_s_reply로 넘긴다. 불확실할 때는 인식 문장을 믿지 않고 일반 반응을 쓴다.
+        """
         phoneme = context.target_phoneme
         lexicon = context.target_lexicon
         word = lexicon[(context.turn_index - 1) % len(lexicon)] if lexicon else None

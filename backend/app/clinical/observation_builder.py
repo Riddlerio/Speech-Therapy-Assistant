@@ -1,8 +1,15 @@
+"""아동 발화 하나의 판정 결과를 치료사가 확인할 임상 관찰(ClinicalObservation) 행으로 만든다.
+흐름: 아동 화면 → 발화 API → 판정 → (여기) 관찰 → 치료사 확인. main.py의 5라운드 발화 제출 처리가 부른다.
+"""
+
 from ..models import ClinicalObservation
 from ..pronunciation.audio_quality import assess_audio_quality
 
 
 def build_observation(session, utterance, goal, analysis, acoustic: dict, state: dict) -> ClinicalObservation:
+    """음질 등급, AI 확신도, 라운드·단서·독립성, 근거(음향·목표 문장·확인 낱말 여부)와 출처 표시를 채운 관찰 객체를 만든다.
+    DEMO 모드나 음질이 좋지 않으면 확신도를 낮추고, 각 값이 측정값인지 AI 추정인지 provenance에 적어 치료사가 판단하게 한다.
+    """
     quality = (assess_audio_quality(acoustic.get("noiseFloorDb"), acoustic.get("meanRmsDb"),
                                     acoustic.get("durationMs"), acoustic.get("clippingRatio"),
                                     acoustic.get("snrDb"))["level"] if session.mode == "real" else "UNKNOWN")

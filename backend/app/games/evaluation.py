@@ -1,3 +1,7 @@
+"""5라운드 게임에서 아동 발화 하나가 라운드 목표를 달성했는지 판정한다(success·retry·uncertain·no_speech 등).
+흐름: 아동 화면 → 발화 API → (여기) 판정 → 관찰 → 치료사 확인. main.py의 발화 제출과 호야 대화 근거(hoya/evidence.py)가 부른다.
+"""
+
 from ..pronunciation.audio_quality import assess_audio_quality
 from .rounds import RE_ONSET_PAUSE_MS
 from ..speech.pipeline import AnalysisResult, acoustic_number, analyze
@@ -6,7 +10,7 @@ from ..speech.normalization import normalize
 
 
 # 대구대 건너기 음향 근사 기준(2026-10-05 성인 1명 PC 마이크 실측 2회, 정답 확인 포함).
-# 근거: docs/handoff/MIC_MEASUREMENT_2026-10-05.md. 임상적으로 검증된 발음 정확도 기준이 아니다.
+# 근거: documents/05_demo/MIC_MEASUREMENT_2026-10-05.md. 임상적으로 검증된 발음 정확도 기준이 아니다.
 # - 바른 '사' 시작 마찰 60~99ms, '차·자' 39~59ms. 2026-10-05에는 70ms(20ms 프레임 4개)였으나, 2026-10-06 사용자 아이폰 시험에서
 #   바르게 말한 '사과'가 자주 '다시'가 되어 60ms(3프레임)로 한 칸 내렸다. 3프레임짜리 짧은 '차·자'가 가끔 통과할 수 있어 치료사가 확인한다.
 # - 잡음보다 15dB 미만으로 작은 소리는 판단하지 않는다(틀림이 아니라 불확실). 화면 crossingFlow.ONSET_RULE과 같은 값.
@@ -16,11 +20,17 @@ ONSET_MIN_SNR_DB = 15
 
 
 def _result(result: str, tags=()) -> AnalysisResult:
+    """판정 결과 문자열과 태그로 점수 0짜리 AnalysisResult를 만든다.
+    음향 기준 게임처럼 문장 정렬 점수가 없는 판정 결과를 같은 형식으로 돌려주기 위한 도우미다.
+    """
     return AnalysisResult(0, result, "unknown" if result in {"uncertain", "no_speech", "target_observed", "not_target_attempt"} else "correct" if result == "success" else "omitted",
                           None, list(tags), [], [], [])
 
 
 def evaluate_round(round_def, item: dict, transcript: str | None, acoustic: dict, goal, rules=()) -> AnalysisResult:
+    """라운드 규칙(rule)에 따라 발화를 판정한다. 단어 규칙은 음소 정렬 분석(speech/pipeline.py)을 쓰고, 소리 지속·박자·시작 마찰 규칙은 음향 수치를 기준값과 비교한다.
+    마이크 입력의 음질이 나쁘거나 측정값이 빠지면 틀림 대신 uncertain으로 보류해 치료사가 확인하게 한다.
+    """
     if round_def.rule in {"TARGET_WORD", "CONVERSATION"} and (not transcript or not transcript.strip()):
         return _result("no_speech")
     if acoustic.get("source") == "microphone":

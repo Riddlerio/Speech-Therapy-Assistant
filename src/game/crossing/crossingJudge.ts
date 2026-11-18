@@ -1,17 +1,15 @@
 import { api } from '../../api/client'
 import { nextCrossingLap, sendActivityUtterance, startActivity, startCrossingProbes, type ActivityItem, type ActivityResponse, type ActivityRound, type ActivityStart, type CrossingProbeProgress as ProbeProgress } from '../../api/activities'
 import type { Acoustic } from '../../shared/types'
-import { CrossingProbeProgress, CrossingProgress, ITEMS_PER_ROUND, MAX_QUIET, MAX_TRIES, judgeOnset, previewPlan, previewProbePlan, resultFromEvents, type CrossingItem, type CrossingResult } from './crossingFlow'
-import { DEFAULT_RHYTHM, rhythmSetting, type RhythmSetting } from './rhythm'
+import { ITEMS_PER_ROUND, MAX_QUIET, MAX_TRIES, resultFromEvents, type CrossingItem, type CrossingResult } from './crossingFlow'
+import { rhythmSetting, type RhythmSetting } from './rhythm'
 
 /*
- * '대구대 건너기'의 판정·진행 공급자. 실제 화면은 서버(server)만 쓴다: 두두가 점프하는 것은 서버 결과를 따른다.
- * preview는 개발 검토 화면에서 서버 없이 장면을 확인할 때만 쓰고 화면에 '미리보기'로 표시한다.
+ * '대구대 건너기'의 판정·진행 공급자. 서버가 판정한다: 두두가 점프하는 것은 서버 결과를 따른다.
  */
 export type CrossingTurn = { result: CrossingResult; next: CrossingItem | null; complete: boolean; probe?: false }
   | { next: CrossingItem | null; complete: boolean; probe: true }
 export interface CrossingJudge {
-  readonly kind: 'server' | 'preview'
   /** rhythm: 치료사가 정한 박자(시작·이어받기 응답의 선택 필드). 없으면 기본값(84BPM, 빨라지기 허용). */
   start(): Promise<{ first: CrossingItem; heroName: string; rhythm: RhythmSetting }>
   submit(item: CrossingItem, attempt: { transcript: string | null; acoustic: Acoustic }): Promise<CrossingTurn>
@@ -20,29 +18,6 @@ export interface CrossingJudge {
   /** 마지막 연습 판 뒤 새 낱말 확인. 낱말이 없으면 first=null이다. */
   startProbes(): Promise<{ first: CrossingItem | null; total: number }>
   finish(elapsedSec: number): Promise<void>
-}
-
-export function previewJudge(level: 'syllable' | 'word' = 'syllable', heroName = '두두친구'): CrossingJudge {
-  const plan = previewPlan(level)
-  let progress = new CrossingProgress(plan)
-  let probes: CrossingProbeProgress | null = null
-  return {
-    kind: 'preview',
-    start: async () => ({ first: plan[0], heroName, rhythm: DEFAULT_RHYTHM }),
-    submit: async (_item, attempt) => {
-      const result = judgeOnset(attempt.acoustic)
-      if (probes) return probes.record(result)
-      const { next } = progress.record(result)
-      return { result, next, complete: next === null }
-    },
-    nextLap: async () => { progress = new CrossingProgress(plan); return { first: plan[0] } },
-    startProbes: async () => {
-      const items = previewProbePlan()
-      probes = new CrossingProbeProgress(items)
-      return { first: probes.current, total: items.length }
-    },
-    finish: async () => undefined,
-  }
 }
 
 /** 서버가 아직 줄 번호를 주지 않으면(구버전 응답) 화면에서 센다. 새 줄 여부는 결과와 시도 수로 정한다. */
@@ -54,7 +29,7 @@ export function serverJudge(mode: 'real' | 'demo'): CrossingJudge {
   let activityItem: ActivityItem | null = null
   let stripe = 1, tries = 0, quiet = 0
   let probing = false
-  // 서버가 돌려준 시도 번호를 그대로 다음 요청에 쓴다(계약: src/api/daeguCrossing.ts).
+  // 서버가 돌려준 시도 번호를 그대로 다음 요청에 쓴다(계약: src/api/activities.ts).
   let attemptIndex = 1
   const toItem = (item: ActivityItem, currentRound: ActivityRound, extra: Extra = {}): CrossingItem => ({
     itemId: item.itemId, text: item.displayText, level: item.level === 'word' ? 'word' : 'syllable',
@@ -64,7 +39,6 @@ export function serverJudge(mode: 'real' | 'demo'): CrossingJudge {
     ...(probing ? { probe: true, probeIndex: extra.probeIndex } : {}),
   })
   return {
-    kind: 'server',
     async start() {
       session = await startActivity('daegu_crossing', mode)
       round = session.currentRound

@@ -14,7 +14,7 @@ export const saveGoal = (id: string, goal: Record<string, unknown>, token: strin
 export const decision = (id: string, body: Record<string, unknown>, token: string) => api<any>(`/recommendations/${id}/decision`, { method: 'POST', body: JSON.stringify(body) }, token)
 export const feedback = (id: string, body: Record<string, unknown>, token: string) => api<any>(`/utterances/${id}/feedback`, { method: 'POST', body: JSON.stringify(body) }, token)
 
-// 회기 계획(docs/therapist-workflow.md 6절). 경로 이름은 계약에 고정되어 있다.
+// 회기 계획(documents/02_architecture/therapist-workflow.md 6절). 경로 이름은 계약에 고정되어 있다.
 export const planningContext = (childId: string) => api<PlanningContext>(`/children/${childId}/planning-context`)
 export const sessionPlanProposal = (childId: string) => api<ProposalResponse>(`/children/${childId}/session-plan-proposal`, { method: 'POST' })
 export const sessionPlans = (childId: string) => api<SessionPlan[]>(`/children/${childId}/session-plans`)

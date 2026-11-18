@@ -1,4 +1,5 @@
-"""저장된 대구대 관찰을 설명한다. 자동 결과·치료사 결정·임상 통계는 바꾸지 않는다."""
+"""저장된 대구대 건너기 관찰을 치료사가 읽을 문장과 요약 수치로 설명한다.
+자동 결과·치료사 결정·임상 통계는 바꾸지 않고 읽기만 한다."""
 from math import isfinite
 
 from pydantic import ValidationError
@@ -9,12 +10,15 @@ from ..pronunciation.audio_quality import assess_audio_quality
 
 
 def _number(acoustic, key):
+    """음향 요약에서 유한한 숫자 값만 꺼내고 그 밖에는 None을 돌려준다.
+    저장된 JSON에 문자열·NaN·bool이 섞여도 설명·분석이 깨지지 않게 한다(crossing_analytics도 함께 쓴다)."""
     value = acoustic.get(key)
     return value if type(value) in (int, float) and isfinite(value) else None
 
 
 def automatic_evidence(row, source):
-    """판정 상수는 평가 모듈에서 가져오며 저장된 ai_result를 다시 판정하지 않는다."""
+    """관찰 한 건의 자동 판정 근거(바람 소리·뒤 모음·보류 이유)를 문장 목록으로 만든다.
+    치료사 검토 화면용이며, 판정 상수는 평가 모듈에서 가져오고 저장된 ai_result를 다시 판정하지 않는다."""
     stored = (row.evidence or {}).get("acoustic")
     acoustic = stored if isinstance(stored, dict) else {}
     messages = []
@@ -69,7 +73,8 @@ def automatic_evidence(row, source):
 
 
 def crossing_summary(rows, session):
-    """검토 진행은 DEMO도 세되 임상 성공률과 섞지 않는다. 박자는 해당 회기 저장값만 읽는다."""
+    """한 회기의 건너기 시도·보류·검토·판 수·새 낱말 확인 수를 요약한다.
+    검토 진행은 DEMO도 세되 임상 성공률과 섞지 않는다. 박자는 해당 회기 저장값만 읽는다."""
     probes = [row for row in rows if row["activity"] == "daegu_crossing" and row.get("isProbe")]
     observations = [row for row in rows if row["activity"] == "daegu_crossing" and not row.get("isProbe")]
     stored = (session.runtime_state or {}).get("rhythm")
@@ -92,7 +97,8 @@ def crossing_summary(rows, session):
 
 
 def _completed_laps(state):
-    """끝까지 건넌 판 수. 마지막 판을 도중에 멈췄으면 그 판은 세지 않는다(시도 수에는 들어 있다)."""
+    """회기 상태에서 끝까지 건넌 판 수를 센다.
+    마지막 판을 도중에 멈췄으면 그 판은 세지 않는다(시도 수에는 들어 있다)."""
     lap = state.get("lap", 1)
     if type(lap) is not int or lap < 1:
         lap = 1

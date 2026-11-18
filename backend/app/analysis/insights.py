@@ -1,3 +1,7 @@
+"""회기가 끝난 뒤 치료사에게 보여 줄 짧은 관찰 문장(인사이트) 목록을 만든다.
+main.py의 회기 완료 처리가 경과 지표를 계산한 다음 이 문장을 회기에 저장한다.
+"""
+
 from collections import Counter
 
 from sqlalchemy import select
@@ -6,6 +10,9 @@ from ..models import ProgressMetric, SpeechAnalysis, TrainingSession, Utterance
 
 
 def generate_insights(db, session, goal, metric) -> list[str]:
+    """재시도 수, 가장 낮은 점수 문항, 직전 회기 대비 첫 시도 성공률 변화(15%p 이상), 자주 나온 대치 유형을 문장으로 만든다.
+    마지막 줄에 "ASR 기반 근사 분석이며 임상 판단을 대체하지 않는다"는 안내를 항상 붙인다. 회기 완료 때 부른다.
+    """
     rows = db.execute(select(Utterance, SpeechAnalysis).join(SpeechAnalysis, SpeechAnalysis.utterance_id == Utterance.id).where(Utterance.session_id == session.id)).all()
     words = [(u.item_text, a.final_score) for u, a in rows if u.game != "magic_beam" and a.final_result == "retry"]
     lines = [f"/{goal.target_phoneme}/ 목표 재시도 {metric.retries}회 관찰"]

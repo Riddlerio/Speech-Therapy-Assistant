@@ -1,7 +1,6 @@
-"""요약 AI: 서버가 계산한 값을 치료사가 읽기 쉬운 문장으로 옮긴다. 계산·진단·결정은 하지 않는다.
-
+"""요약 AI: 서버가 계산한 지표와 계획 제안을 치료사가 읽기 쉬운 문장으로 옮긴다. 계산·진단·결정은 하지 않는다.
 LLM이 꺼져 있거나 실패하거나 검증을 통과하지 못하면 결정적 템플릿 요약을 쓴다.
-key·프롬프트·출력 본문은 로그에 남기지 않는다.
+key·프롬프트·출력 본문은 로그에 남기지 않는다. 계획 그래프의 요약·검증 단계(graph.py)가 부른다.
 """
 import json
 import logging
@@ -62,7 +61,9 @@ INSTRUCTIONS = """당신은 언어치료사의 회기 기록 정리를 돕는 �
 
 
 def build_context(goal: dict, metrics: dict, proposal: dict) -> dict:
-    """LLM에 보내는 최소 구조화 context. 이름·id·play code·transcript·메모·단어 목록은 넣지 않는다."""
+    """LLM에 보내는 최소 구조화 context(목표, 확인된 지표, 단계별·단서·추세 요약, 근거 충분 여부, 계획 제안)를 한국어 이름표로 만든다.
+    이름·id·play code·transcript·메모·단어 목록은 넣지 않는다. 검증 단계도 같은 context로 숫자를 대조한다.
+    """
     def level(value):
         return LEVEL_LABELS.get(value, value)
 
@@ -91,7 +92,9 @@ def build_context(goal: dict, metrics: dict, proposal: dict) -> dict:
 
 
 def _cue_summary(counts: dict) -> dict:
-    """단서 종류를 화면 이름으로 바꾼다. 같은 이름(그림 단서)으로 묶이는 종류는 더한다."""
+    """단서 종류 코드를 화면 이름으로 바꾼다. 같은 이름(그림 단서)으로 묶이는 종류는 개수를 더한다.
+    LLM이 영문 코드 대신 치료사 화면과 같은 이름을 쓰게 하려고 있다.
+    """
     summary = {}
     for cue, count in counts.items():
         label = CUE_TYPE_LABELS.get(cue, cue)
@@ -100,6 +103,9 @@ def _cue_summary(counts: dict) -> dict:
 
 
 def template_summary(metrics: dict, proposal: dict) -> SummaryOutput:
+    """LLM 없이 지표 숫자로 정해진 형식의 요약(관찰 요약, 근거 항목, 다음 회기 제안, 한계)을 만든다.
+    LLM이 꺼져 있거나 실패·검증 실패했을 때 대신 쓰는 안전한 기본 요약이다.
+    """
     sessions = metrics["window"]["realSessionN"]
     text = (f"최근 실제 회기 {sessions}개에서 치료사가 확인한 관찰은 {metrics['verifiedN']}건이고, "
             f"그중 평가 가능한 시도는 {metrics['evaluableN']}건입니다.")
@@ -120,7 +126,9 @@ def template_summary(metrics: dict, proposal: dict) -> SummaryOutput:
 
 
 def llm_summary(context: dict, client=None) -> SummaryOutput | None:
-    """설정된 경우에만 OpenAI를 한 번 부른다. 재시도·도구 호출은 없다. 실패하면 None."""
+    """설정된 경우에만 OpenAI를 한 번 불러 구조화된 요약을 받는다. 재시도·도구 호출은 없다. 실패하면 None.
+    요약 설정이 꺼져 있거나 key·모델이 없으면 바로 None을 돌려준다(테스트는 client를 직접 넘길 수 있다).
+    """
     key = settings.openai_api_key.get_secret_value()
     model = settings.therapist_summary_model
     if client is None:
@@ -144,6 +152,9 @@ def llm_summary(context: dict, client=None) -> SummaryOutput | None:
 
 
 def _numbers(text: str) -> set[str]:
+    """문장에 나온 숫자 문자열 집합을 만든다. "50.0"은 "50"으로도 넣는다.
+    요약 문장의 숫자가 입력 자료에 있는 숫자인지 대조하려고 쓴다.
+    """
     values = set()
     for raw in NUMBER.findall(text):
         values.add(raw)
@@ -153,7 +164,9 @@ def _numbers(text: str) -> set[str]:
 
 
 def validate_summary(summary: SummaryOutput | None, context: dict) -> str | None:
-    """통과하면 None, 아니면 거부 사유. 금지 표현과 입력에 없는 숫자를 막는다."""
+    """LLM 요약을 검사해 통과하면 None, 아니면 거부 사유를 돌려준다.
+    모양·길이, 금지 표현(진단·판정 등), 영문 키·코드 노출, 입력에 없는 숫자, 비율이 아닌 값을 %로 쓴 경우를 막는다.
+    """
     if summary is None:
         return "NO_OUTPUT"
     texts = [summary.observation_summary, summary.next_session_suggestion, *summary.evidence_points, *summary.limitations]
@@ -178,7 +191,9 @@ def validate_summary(summary: SummaryOutput | None, context: dict) -> str | None
 
 
 def _internal_names(value) -> set[str]:
-    """입력 JSON의 키와 영문 코드 값. 치료사가 읽는 문장에 그대로 나오면 안 된다."""
+    """입력 JSON의 키와 영문 코드 값을 모두 모은다.
+    치료사가 읽는 요약 문장에 내부 이름이 그대로 나오는지 검사하는 데 쓴다.
+    """
     if isinstance(value, dict):
         return set(value) | {name for item in value.values() for name in _internal_names(item)}
     if isinstance(value, list):
@@ -187,6 +202,9 @@ def _internal_names(value) -> set[str]:
 
 
 def _rate_values(context: dict):
+    """context에 들어 있는 비율 값(전체·단계별·추세 성공률, 재시도 비율)을 차례로 내놓는다.
+    요약 문장의 % 숫자가 실제 비율 값과만 짝지어졌는지 확인할 때 쓴다.
+    """
     summary = context["recentVerifiedSummary"]
     yield from (summary["successRate"], summary["retryRate"])
     yield from (row["successRate"] for row in context["levelSummary"])
@@ -194,5 +212,7 @@ def _rate_values(context: dict):
 
 
 def finalize(summary: SummaryOutput, fallback: SummaryOutput) -> SummaryOutput:
-    """다음 회기 제안 문장은 항상 서버 규칙의 설명을 쓴다. LLM이 새 활동·치료법을 제안하지 못하게 한다."""
+    """검증을 통과한 LLM 요약에서 다음 회기 제안 문장만 서버 규칙의 설명(템플릿)으로 바꿔 끼운다.
+    LLM이 새 활동·치료법을 제안하지 못하게 하려고 있다.
+    """
     return summary.model_copy(update={"next_session_suggestion": fallback.next_session_suggestion})

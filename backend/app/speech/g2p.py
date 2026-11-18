@@ -1,3 +1,7 @@
+"""한글 문장을 소리 나는 대로의 음소 목록으로 바꾸는 간단한 G2P(Grapheme-to-Phoneme) 변환기.
+목표 문장과 인식 문장을 같은 음소 단위로 비교하기 위해 판정 파이프라인·대화 근거가 쓴다.
+"""
+
 from dataclasses import dataclass
 
 
@@ -11,13 +15,18 @@ CLUSTERS = {"ㄳ": ("ㄱ", "ㅅ"), "ㄵ": ("ㄴ", "ㅈ"), "ㄺ": ("ㄹ", "ㄱ"),
 
 @dataclass(frozen=True)
 class Phone:
+    """음소 하나. 음절 안 자리(I 초성·M 중성·F 종성), 기호, 몇 번째 음절인지를 담는다."""
     slot: str
     symbol: str
     syllable_index: int
 
 
 class SimpleKoreanG2P:
+    """간단한 한국어 발음 변환기. 연음, 종성 대표음, 경음화 같은 기본 규칙만 적용한다."""
     def to_phonemes(self, text: str) -> list[Phone]:
+        """문장을 음절로 나누고 연음·종성 중화·경음화를 적용한 뒤 Phone 목록으로 돌려준다. 한글이 아닌 글자는 건너뛴다.
+        "사과"처럼 쓰인 글자가 아니라 실제 발음에 가까운 음소로 비교하려고 쓴다.
+        """
         syllables = []
         for char in text:
             code = ord(char) - 0xAC00

@@ -3,7 +3,7 @@ import './analytics.css'
 
 /**
  * 대구대 건너기 설계 근거(치료사용): 왜 /ㅅ/와 이 낱말인지, 누구를 위한 연습인지, 무슨 연습인지.
- * 내용은 shared/daegu_crossing_rationale.json 그대로다(출처: docs/clinical/DAEGU_CROSSING_RATIONALE_2026-10-05.md).
+ * 내용은 shared/daegu_crossing_rationale.json 그대로다(출처: documents/03_clinical/DAEGU_CROSSING_RATIONALE_2026-10-05.md).
  * 조절 값(시작 박자·빨라지기)의 빠른 설정 버튼은 바로 아래 '대구대 건너기 설정'에 있다.
  */
 export default function CrossingRationalePanel({ level }: { level?: string }) {

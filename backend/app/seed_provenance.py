@@ -1,4 +1,5 @@
-"""Phase 1 수정 전에 잘못 표시된 seed 출처 행 수리. 기본은 미리 보기이고 `apply_repair`만 DB를 바꾼다.
+"""Phase 1 수정 전에 잘못 표시된 seed(샘플) 출처 행을 찾아 고친다. 기본은 미리 보기이고 `apply_repair`만 DB를 바꾼다.
+샘플 데이터가 실제 임상 집계에 섞이지 않게 하려고 있으며, backend/scripts의 audit·repair 스크립트가 부른다.
 
 수정 전 코드는 seed(샘플) 아동의 회기를 is_seed=False로 저장할 수 있었다(PRODUCT_REALITY_MATRIX 1절).
 - 그런 게임 회기·대화 회기를 is_seed=True로 고친다. 임상 근거·계획·추천 집계는 회기 표시로 판단하므로 자동으로 빠진다.
@@ -17,7 +18,9 @@ REPAIR_ACTION = "SEED_PROVENANCE_REPAIR"
 
 
 def plan_repair(db: Session) -> dict:
-    """바꿀 행만 찾는다. DB는 바꾸지 않는다. 예전 스키마 DB에 없는 표는 건너뛰고 missingTables에 적는다."""
+    """고쳐야 할 회기·대화·관찰 행만 찾아 목록으로 돌려준다. DB는 바꾸지 않는다.
+    예전 스키마 DB에 없는 표는 건너뛰고 missingTables에 적는다. 미리 보기와 apply_repair가 함께 쓴다.
+    """
     tables = set(inspect(db.get_bind()).get_table_names())
     missing = sorted({"children", "training_sessions", "hoya_chat_sessions", "clinical_observations"} - tables)
     seed_children = select(Child.id).where(Child.is_seed.is_(True))
@@ -33,6 +36,9 @@ def plan_repair(db: Session) -> dict:
 
 
 def summary(plan: dict) -> dict:
+    """plan_repair 결과를 사람이 읽기 쉬운 개수 요약(회기 수, 상태 변경별 개수 등)으로 바꾼다.
+    repair 스크립트의 미리 보기 출력과 감사 기록(AuditEvent)에 쓴다.
+    """
     states = {}
     for _row_id, old, new in plan["observations"]:
         states[f"{old}->{new}"] = states.get(f"{old}->{new}", 0) + 1
@@ -41,7 +47,9 @@ def summary(plan: dict) -> dict:
 
 
 def apply_repair(db: Session) -> dict:
-    """한 트랜잭션 안에서 부른다. 다시 실행해도 바뀔 것이 없으면 아무것도 하지 않는다(멱등)."""
+    """plan_repair가 찾은 행을 실제로 고치고 감사 기록을 남긴다. 한 트랜잭션 안에서 부른다.
+    다시 실행해도 바뀔 것이 없으면 아무것도 하지 않는다(멱등). repair 스크립트의 --apply가 부른다.
+    """
     plan = plan_repair(db)
     counts = summary(plan)
     if not (plan["trainingSessions"] or plan["chatSessions"]):

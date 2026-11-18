@@ -1,3 +1,7 @@
+"""아동 화면(브라우저)이 녹음에서 측정해 보낸 음향 요약값의 형식과 허용 범위를 정의한다.
+판정에 쓰기 전에 서버가 값의 범위·모순을 다시 확인해, 잘못되거나 조작된 수치를 막으려고 있다.
+"""
+
 from typing import Literal
 
 from pydantic import ConfigDict, Field, StrictFloat, StrictInt, model_validator
@@ -9,6 +13,7 @@ Number = StrictInt | StrictFloat
 
 
 class AcousticSummary(ApiModel):
+    """발화 하나의 음향 측정값(길이, 발성·마찰 구간, 음량·잡음 dB, 쉼, 시작 마찰 등)과 입력 출처(키보드 DEMO·마이크). 모르는 키와 NaN·무한대는 거절한다."""
     model_config = ConfigDict(alias_generator=ApiModel.model_config["alias_generator"], populate_by_name=True,
                               extra="forbid", allow_inf_nan=False)
 
@@ -38,6 +43,9 @@ class AcousticSummary(ApiModel):
 
     @model_validator(mode="after")
     def check_durations(self):
+        """값들 사이의 모순을 검사한다(지속 구간 범위, 최장 발성이 전체 길이보다 지나치게 긴지, 마찰 구간이 활동 구간보다 지나치게 긴지).
+        개별 범위 검사만으로는 잡히지 않는 이상한 조합을 요청 단계에서 거절한다.
+        """
         if self.sustain_segments_ms is not None and any(value < 0 or value > 60000 for value in self.sustain_segments_ms):
             raise ValueError("sustainSegmentsMs 범위가 올바르지 않습니다")
         if self.best_run_ms is not None and self.duration_ms is not None and self.best_run_ms > self.duration_ms + 200:

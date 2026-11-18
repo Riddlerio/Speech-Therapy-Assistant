@@ -3,7 +3,7 @@ import type { Acoustic } from '../../shared/types'
 /*
  * '대구대 건너기' 진행 규칙(2026-10-05 데모 설계안 2절, 같은 날 사용자 피드백으로 20줄 → 10줄).
  * 실제 판정·진행은 서버가 정하고 화면은 그 결과만 따른다. 두두는 서버가 성공이라고 할 때마다 한 줄씩 건넌다.
- * 여기의 미리보기 진행·근사 판정은 개발 검토 화면(서버 없이)에서만 쓴다. 같은 규칙은 docs/ARCHITECTURE.md의 'API 약속'에 있다.
+ * 같은 규칙은 documents/02_architecture/ARCHITECTURE.md의 'API 약속'에 있다.
  */
 export type CrossingResult = 'success' | 'retry' | 'uncertain' | 'no_speech'
 export interface CrossingItem {
@@ -23,8 +23,6 @@ export const MAX_TRIES = 3
 export const MAX_QUIET = 3
 /** 한 회기에서 건널 수 있는 판 수(서버 games/crossing.py MAX_LAPS와 같음). 판은 같은 회기 안에서 이어진다. */
 export const MAX_LAPS = 3
-export const MAX_PROBE_WORDS = 3
-export const MAX_PROBE_ATTEMPTS = 2
 export const PROBE_THANKS = '들려줘서 고마워!'
 /** 판마다 하늘과 빛이 아침(1판) → 점심(2판) → 저녁(3판)으로 바뀐다(반복해도 새로워 보이게). */
 export type TimeOfDay = 'morning' | 'noon' | 'evening'
@@ -39,7 +37,7 @@ export const ROUND_TITLES = ['두두 따라 건너기', '혼자 건너기', '모
 
 const SYLLABLES = ['사', '소', '수', '시']
 
-/** 목표 /ㅅ/의 미리보기 계획(5라운드 × 2줄). 낱말 단계면 1~3라운드도 낱말이다. 서버 사양과 같다. */
+/** 목표 /ㅅ/의 계획 사본(5라운드 × 2줄). 낱말 단계면 1~3라운드도 낱말이다. 화면은 쓰지 않고, 두두 음성 파일·설계 근거 검사가 서버 구성과 맞추는 데 쓴다. */
 export function previewPlan(level: 'syllable' | 'word' = 'syllable'): CrossingItem[] {
   const word = level === 'word'
   // 서버(backend/app/games/crossing.py build_stages)와 같은 구성. 설계 근거는 shared/daegu_crossing_rationale.json.
@@ -57,50 +55,8 @@ export function previewPlan(level: 'syllable' | 'word' = 'syllable'): CrossingIt
 }
 
 /**
- * 줄 진행(서버 규칙과 같음): 성공이면 다음 줄, 다시는 시도를 하나 쓰고 3번이면 다음 줄,
- * 불확실·무발화는 시도를 쓰지 않고 같은 줄을 다시 내며 3번 연속이면 다음 줄.
- */
-export class CrossingProgress {
-  private index = 0
-  private tries = 0
-  private quiet = 0
-  constructor(private readonly items: readonly CrossingItem[]) {}
-  get current(): CrossingItem | null { return this.items[this.index] ?? null }
-  get triesLeft(): number { return MAX_TRIES - this.tries }
-  record(result: CrossingResult): { advanced: boolean; next: CrossingItem | null } {
-    if (result === 'success') return this.advance()
-    if (result === 'retry') { this.quiet = 0; return ++this.tries >= MAX_TRIES ? this.advance() : { advanced: false, next: this.current } }
-    return ++this.quiet >= MAX_QUIET ? this.advance() : { advanced: false, next: this.current }
-  }
-  private advance() { this.index++; this.tries = 0; this.quiet = 0; return { advanced: true, next: this.current } }
-}
-
-/** 개발 미리보기 전용. 실제 확인 낱말은 서버가 은행에서 연습·제외 낱말을 뺀 뒤 정한다. */
-export function previewProbePlan(words: readonly string[] = ['사자', '사탕', '소풍']): CrossingItem[] {
-  return words.slice(0, MAX_PROBE_WORDS).map((text, index) => ({
-    itemId: `preview-probe-${index + 1}`, text, level: 'word', roundIndex: 5, itemIndexInRound: 2,
-    stripeIndex: STRIPES, modelCue: false, probe: true, probeIndex: index + 1,
-  }))
-}
-
-/** 확인은 정오를 내보내지 않는다. 불확실·무발화만 같은 카드를 한 번 더 듣고 넘어간다. */
-export class CrossingProbeProgress {
-  private index = 0
-  private attempts = 0
-  constructor(private readonly items: readonly CrossingItem[]) {}
-  get current(): CrossingItem | null { return this.items[this.index] ?? null }
-  record(result: CrossingResult): { next: CrossingItem | null; complete: boolean; probe: true } {
-    this.attempts++
-    if ((result !== 'uncertain' && result !== 'no_speech') || this.attempts >= MAX_PROBE_ATTEMPTS) {
-      this.index++; this.attempts = 0
-    }
-    return { next: this.current, complete: this.current === null, probe: true }
-  }
-}
-
-/**
  * 음향 근사 판정(ONSET_FRICATION): 소리 시작의 마찰 구간과 그 뒤 유성 구간(모음)이 기준 이상이면 성공. 정확한 발음 평가가 아니다.
- * 기준값(2026-10-05 사용자 실측 31개, docs/handoff/MIC_MEASUREMENT_2026-10-05.md):
+ * 기준값(2026-10-05 사용자 실측 31개, documents/05_demo/MIC_MEASUREMENT_2026-10-05.md):
  * - 시작 마찰 60ms 이상(20ms 프레임 3개). 2026-10-05에 70ms로 올렸다가, 2026-10-06 사용자 아이폰 시험에서 바르게 말한 '사과'가
  *   자주 '다시'가 되어 한 칸 내렸다(사용자 요청 '아주 살짝'). 3프레임짜리 짧은 'ㅊ·ㅈ'이 가끔 통과할 수 있어 치료사가 확인한다.
  * - 마찰 뒤 모음 80ms 이상. 바람 소리만 길게 낸 것('스~~')은 '사'가 아니다.

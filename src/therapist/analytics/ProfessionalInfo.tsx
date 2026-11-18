@@ -18,7 +18,7 @@ export const LEVEL_UP = RATIONALE.adjustable.find(entry => entry.name === '목�
 
 /**
  * 전문 정보: /ㅅ/ 발달 시기·오류 유형(근거 문서 출처), 단서, 다음 회기 제안(서버 계산), 가정 연습·회기 기록 초안.
- * 문구는 shared/daegu_crossing_rationale.json에서 온다(근거: docs/clinical/DAEGU_CROSSING_RATIONALE_2026-10-05.md).
+ * 문구는 shared/daegu_crossing_rationale.json에서 온다(근거: documents/03_clinical/DAEGU_CROSSING_RATIONALE_2026-10-05.md).
  */
 export default function ProfessionalInfo({ data, goal, session, proposal, onLoadProposal }: {
   data: CrossingAnalytics; goal: CrossingGoal | null; session: CrossingSession | null

@@ -1,6 +1,9 @@
+"""치료사가 확인한 최근 실제 관찰로 다음에 해 볼 활동 하나를 규칙 기반으로 제안한다.
+제안은 치료사가 수락·수정·거절해야 반영되며 자료가 없으면 제안하지 않는다."""
 from sqlalchemy import select
 
-from ..models import ClinicalObservation, ClinicalVerification, TrainingSession
+from ..models import ClinicalObservation, TrainingSession
+from ..therapist_planning.evidence import latest_decisions
 
 
 PURPOSES = {
@@ -12,6 +15,8 @@ PURPOSES = {
 
 
 def propose_activity(db, child_id: str) -> dict | None:
+    """아동의 최근 확인 관찰 10건으로 활동·임상 목적·이유·근거·신뢰도를 고른다.
+    치료사가 활동 제안을 요청할 때 쓰며, 확인된 실제 자료가 없으면 None을 돌려준다."""
     rows = db.scalars(select(ClinicalObservation).join(
         TrainingSession, TrainingSession.id == ClinicalObservation.session_id
     ).where(
@@ -23,12 +28,12 @@ def propose_activity(db, child_id: str) -> dict | None:
     if not rows:
         return None
     verified = []
+    decisions = latest_decisions(db, rows)
     for row in rows:
         session = db.get(TrainingSession, row.session_id)
         if session is None or session.mode != "real" or session.is_seed:
             continue
-        decision = db.scalar(select(ClinicalVerification).where(ClinicalVerification.observation_id == row.id)
-                             .order_by(ClinicalVerification.created_at.desc(), ClinicalVerification.id.desc()))
+        decision = decisions.get(row.id)
         if decision is None or decision.action not in {"confirm", "correct"}:
             continue
         result = decision.correction.get("result") if decision.action == "correct" else row.ai_result

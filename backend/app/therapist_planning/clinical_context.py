@@ -1,5 +1,4 @@
-"""요약 AI에 넣는 작은 임상 근거 묶음. 출처: docs/references/SPEECH_HERO_EVIDENCE_SOURCES.md.
-
+"""요약 AI에 넣는 작은 임상 근거 문장 묶음(CLINICAL_CONTEXT). 출처: documents/03_clinical/SPEECH_HERO_EVIDENCE_SOURCES.md.
 vector DB 대신 정리된 짧은 문장만 넣어 토큰을 아낀다. 괄호 안은 문서의 절 번호다.
 """
 

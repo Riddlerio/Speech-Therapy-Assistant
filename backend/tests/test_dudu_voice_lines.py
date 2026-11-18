@@ -2,7 +2,7 @@
 
 아이 화면은 문장이 하나라도 목록에 없으면 그 말 전체를 브라우저 음성으로 말한다(목소리가 섞이지 않게).
 대본·전환 문구를 바꾸면 이 테스트가 깨지므로, 새 문장을 VOLI '하람'으로 만들어 목록에 더한다
-(docs/handoff/DUDU_VOICE_VOLI_2026-10-05.md 5절).
+(documents/07_assets_production/DUDU_VOICE_VOLI_2026-10-05.md 5절).
 """
 import itertools
 import json
