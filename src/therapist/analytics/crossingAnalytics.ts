@@ -10,13 +10,13 @@ import { hasFinalConsonant } from '../../child/koreanText'
 import RATIONALE from '../../../shared/daegu_crossing_rationale.json'
 import { formatDate, formatDateTime } from '../formatTime'
 
-export interface ProbeMetrics { reviewedN: number; confirmedSuccessN: number; confirmedRate: number | null }
+interface ProbeMetrics { reviewedN: number; confirmedSuccessN: number; confirmedRate: number | null }
 /** 새 확인 값은 선택 필드로 받아 과거 응답도 그대로 읽는다. */
 export type CrossingSession = ApiCrossingAnalytics['sessions'][number] & { probe?: ProbeMetrics }
 export type CrossingAnalytics = Omit<ApiCrossingAnalytics, 'sessions'> & { sessions: CrossingSession[] }
 export const childCrossingAnalyticsWithProbe = (childId: string): Promise<CrossingAnalytics> => childCrossingAnalytics(childId)
-export type CrossingSource = CrossingSession['source']
-export type CrossingLevel = 'syllable' | 'word'
+type CrossingSource = CrossingSession['source']
+type CrossingLevel = 'syllable' | 'word'
 /** 목표에서 쓰는 값만(목표 단계·제외 낱말·단서). */
 export interface CrossingGoal { level: string; excluded_words: string[]; preferred_cue: string }
 
@@ -32,7 +32,6 @@ export const REASONS = [
   { key: 'noVowel', label: '모음 없음', suspect: "'스~'만 내고 못 이음" },
   { key: 'ok', label: '기준 충족', suspect: '바람 소리·모음 기준 이상' },
 ] as const
-export type ReasonKey = typeof REASONS[number]['key']
 
 export const percent = (rate: number | null | undefined) => rate == null ? '자료 없음' : `${Math.round(rate * 100)}%`
 export const isReal = (session: CrossingSession) => session.source === 'REAL'
@@ -60,8 +59,6 @@ export function levelTotals(sessions: CrossingSession[]): Record<CrossingLevel, 
   }
   return totals
 }
-
-export const reasonTotal = (session: CrossingSession) => REASONS.reduce((sum, reason) => sum + session.autoReasons[reason.key], 0)
 
 const rhythmText = (session: CrossingSession) => session.rhythm
   ? `시작 박자 ${session.rhythm.startBpm}BPM, 잘하면 빨라지기 ${session.rhythm.allowFaster ? '켬' : '끔'}`

@@ -1,10 +1,10 @@
-/** 치료사 회기 계획 타입과 순수 함수. 계약은 docs/therapist-workflow.md 6절이다. */
+/** 치료사 회기 계획 타입과 순수 함수. 계약은 documents/02_architecture/therapist-workflow.md 6절이다. */
 
-export type StartLevel = 'phoneme' | 'syllable' | 'word' | 'short_sentence'
-export type TargetLevel = 'syllable' | 'word' | 'short_sentence'
+type StartLevel = 'phoneme' | 'syllable' | 'word' | 'short_sentence'
+type TargetLevel = 'syllable' | 'word' | 'short_sentence'
 export type StepType = 'CONVERSATION' | 'GAME' | 'PRACTICE'
 export type Activity = 'hoya_conversation' | 'magic_beam' | 'sky_climb' | 'monster_adventure' | 'conversation_quest'
-export type PlanStatus = 'DRAFT' | 'APPROVED' | 'SUPERSEDED' | 'CANCELLED'
+type PlanStatus = 'DRAFT' | 'APPROVED' | 'SUPERSEDED' | 'CANCELLED'
 
 export interface PlanStep { stepType: StepType; activity: Activity; targetLevel?: StartLevel | null; parameters?: { trials?: number; durationMin?: number } }
 
@@ -21,7 +21,7 @@ export interface SessionPlan extends PlanForm {
   evidenceSnapshot: Record<string, unknown>; recommendationSnapshot: Record<string, unknown>
 }
 
-export interface LevelStats { level: string; verifiedN: number; evaluableN: number; successN: number; retryN: number; successRate: number | null; uncertainN: number; noSpeechN: number; targetObservedN: number }
+interface LevelStats { level: string; verifiedN: number; evaluableN: number; successN: number; retryN: number; successRate: number | null; uncertainN: number; noSpeechN: number; targetObservedN: number }
 
 export interface Metrics extends Omit<LevelStats, 'level'> {
   window: { realSessionN: number; maxSessions: number }; totalObservedN: number; poorAudioN: number
@@ -31,7 +31,7 @@ export interface Metrics extends Omit<LevelStats, 'level'> {
   sufficient: boolean
 }
 
-export interface GoalView { goalId: string; version: number; targetPhoneme: string; wordPosition: string; level: string; minLevel: string; sessionDurationMin: number; repetitionTarget: number; preferredCue: string; priorityTargets: string[]; excludedWords: string[] }
+interface GoalView { goalId: string; version: number; targetPhoneme: string; wordPosition: string; level: string; minLevel: string; sessionDurationMin: number; repetitionTarget: number; preferredCue: string; priorityTargets: string[]; excludedWords: string[] }
 
 export interface PlanningContext {
   child: { childCode: string; alias: string; ageBand: string }; currentGoal: GoalView; metrics: Metrics
@@ -39,7 +39,7 @@ export interface PlanningContext {
   recentRealSessions: Metrics['trend']; latestPlan: { id: string; status: PlanStatus; revision: number } | null
 }
 
-export interface Summary { observationSummary: string; evidencePoints: string[]; nextSessionSuggestion: string; limitations: string[]; source: 'LLM' | 'TEMPLATE' }
+interface Summary { observationSummary: string; evidencePoints: string[]; nextSessionSuggestion: string; limitations: string[]; source: 'LLM' | 'TEMPLATE' }
 
 export interface ProposalResponse {
   status: 'READY' | 'INSUFFICIENT_DATA'; summary: Summary; metrics: Metrics; goal: GoalView
@@ -54,7 +54,7 @@ export const STEP_LABELS: Record<StepType, string> = { CONVERSATION: '대화', G
 export const STATUS_LABELS: Record<PlanStatus, string> = { DRAFT: '초안', APPROVED: '승인됨', SUPERSEDED: '새 계획으로 대체됨', CANCELLED: '취소됨' }
 export const START_LEVELS: StartLevel[] = ['phoneme', 'syllable', 'word', 'short_sentence']
 export const TARGET_LEVELS: TargetLevel[] = ['syllable', 'word', 'short_sentence']
-export const STEP_ACTIVITIES: Record<StepType, Activity[]> = {
+const STEP_ACTIVITIES: Record<StepType, Activity[]> = {
   CONVERSATION: ['hoya_conversation'],
   GAME: ['magic_beam', 'sky_climb', 'monster_adventure', 'conversation_quest'],
   PRACTICE: ['magic_beam', 'sky_climb', 'monster_adventure', 'conversation_quest'],
@@ -72,7 +72,6 @@ export function toForm(source: PlanForm): PlanForm {
     steps: form.steps.map(step => ({ stepType: step.stepType, activity: step.activity, targetLevel: step.targetLevel ?? null, parameters: { ...(step.parameters || {}) } })) }
 }
 
-export const isEditable = (plan: Pick<SessionPlan, 'status'> | null | undefined) => !plan || plan.status === 'DRAFT'
 
 export const parseWords = (text: string) => [...new Set(text.split(',').map(word => word.trim()).filter(Boolean))]
 

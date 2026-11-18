@@ -1,3 +1,7 @@
+"""회기 지표를 규칙(R1~R5)에 대어 보고 다음 목표 변경 추천(AIRecommendation)을 만든다.
+기존 모험 회기 완료 때 main.py가 부르며, 추천은 치료사가 수락·거절하기 전까지 적용되지 않는다.
+"""
+
 from collections import defaultdict
 
 from sqlalchemy import select
@@ -7,12 +11,18 @@ from ..models import AIRecommendation, ProgressMetric, SpeechAnalysis, TrainingG
 
 
 def _source(session) -> str:
+    """회기의 출처를 seed(시연 샘플)·clinical(실제 마이크)·practice(DEMO 연습) 중 하나로 분류한다.
+    과거 회기와 비교할 때 출처가 같은 회기끼리만 비교하려고 쓴다.
+    """
     if session.is_seed:
         return "seed"
     return "clinical" if session.mode == "real" else "practice"
 
 
 def recommend(db, session, goal, metric):
+    """재시도 비율·단계 하향(R1 단계 낮추기), 연속 높은 첫 시도 성공률(R2 단계 올리기), 낮은 점수 단어(R3 우선 항목), 잦은 힌트(R4 단서 변경), 그 밖(R5 유지) 규칙으로 추천을 최대 2개 만든다.
+    최근 같은 단계·같은 출처 회기 수로 확신도(low·medium·high)를 정하고, 추천은 치료사 화면에서 결정을 기다린다.
+    """
     retry_rate = metric.retries / max(1, metric.attempts)
     previous = db.execute(select(TrainingSession, ProgressMetric, TrainingGoal).join(ProgressMetric, ProgressMetric.session_id == TrainingSession.id).join(TrainingGoal, TrainingGoal.id == TrainingSession.goal_id).where(TrainingSession.child_id == session.child_id, TrainingSession.status == "completed", ProgressMetric.level == "all").order_by(TrainingSession.started_at.desc()).limit(3)).all()
     # 비교할 과거 회기는 이번 회기와 출처(임상·seed 시연·DEMO 연습)가 같은 것만 쓴다. 조회 범위(최근 3회)와 기준값은 그대로다.

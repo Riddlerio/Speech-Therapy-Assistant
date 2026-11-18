@@ -1,6 +1,6 @@
 /*
  * 두두 목소리 파일(VOLI 베이직 보이스 '하람', 무료 플랜, 2026-10-05 생성, 16kHz 모노 WAV).
- * 무료 플랜 조건: 비상업적 사용, 출처 표기 필수(VOICE_CREDIT을 화면에 보인다). 자세한 내용: docs/handoff/DUDU_VOICE_VOLI_2026-10-05.md
+ * 무료 플랜 조건: 비상업적 사용, 출처 표기 필수(VOICE_CREDIT을 화면에 보인다). 자세한 내용: documents/07_assets_production/DUDU_VOICE_VOLI_2026-10-05.md
  * 문장(마침표·느낌표·물음표 단위)이 모두 목록에 있으면 파일을 이어 재생하고, 하나라도 없으면 브라우저 음성으로 말한다.
  * 목록은 shared/dudu_voice_lines.json에 있고, 백엔드 테스트가 DEMO 대화 대본의 모든 문장이 목록에 있는지 확인한다.
  */

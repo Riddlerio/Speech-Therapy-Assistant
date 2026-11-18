@@ -1,4 +1,6 @@
-"""명시적으로 만든 로컬 DEMO 리허설 DB의 계정과 오늘 기록만 관리한다."""
+"""명시적으로 만든 로컬 DEMO 리허설 DB의 전용 계정과 "오늘" 기록만 만들고 지운다.
+시연 전 연습을 반복하려고 있으며 backend/scripts/demo_rehearsal.py가 부른다. 실제 아동 자료가 있는 DB는 건드리지 않는다.
+"""
 from datetime import datetime, time, timedelta, timezone
 from pathlib import Path
 import secrets
@@ -22,10 +24,15 @@ SEOUL = timezone(timedelta(hours=9), "Asia/Seoul")
 
 
 class DemoSafetyError(ValueError):
-    """DEMO 전용임을 증명할 수 없으면 쓰기를 거부한다."""
+    """DEMO 전용임을 증명할 수 없으면 쓰기를 거부할 때 던지는 오류.
+    실수로 실제 DB를 바꾸지 않도록 모든 안전 검사가 이 오류로 멈춘다.
+    """
 
 
 def local_database_path(value: str | Path) -> Path:
+    """입력값이 로컬 SQLite 파일 경로(.db·.sqlite·.sqlite3)인지 확인하고 절대 경로로 돌려준다.
+    네트워크 경로·DB URL·대체 스트림을 막아, 리허설 스크립트가 엉뚱한 DB를 열지 않게 한다.
+    """
     raw = str(value)
     if raw.startswith(("//", "\\\\")) or "://" in raw:
         raise DemoSafetyError("네트워크·DB URL 대신 로컬 SQLite 파일 경로를 지정하세요.")
@@ -38,6 +45,9 @@ def local_database_path(value: str | Path) -> Path:
 
 
 def _require_demo(db: Session, demo_enabled: bool) -> None:
+    """DEMO 모드가 켜져 있고 연결된 DB가 이미 있는 로컬 SQLite 파일인지 확인한다.
+    provision·reset 같은 쓰기 작업을 시작하기 전에 가장 먼저 부르는 안전 검사다.
+    """
     if not demo_enabled:
         raise DemoSafetyError("SEED_DEMO_DATA=true에서만 DEMO 리허설 자료를 변경할 수 있습니다.")
     bind = db.get_bind()
@@ -48,6 +58,9 @@ def _require_demo(db: Session, demo_enabled: bool) -> None:
 
 
 def _identity(db: Session) -> Child:
+    """provision 기록(AuditEvent)으로 전용 DEMO 아동을 찾고, 아동·치료사·계정 소유 관계가 모두 맞는지 확인한다.
+    전용 표시가 하나라도 어긋나면 초기화를 거부해 다른 아동 기록을 지우지 않게 한다.
+    """
     markers = db.scalars(select(AuditEvent).where(AuditEvent.action == PROVISION_ACTION)).all()
     if len(markers) != 1 or markers[0].result != PROVISION_RESULT:
         raise DemoSafetyError("전용 provision 기록이 없는 DB는 초기화할 수 없습니다.")
@@ -68,7 +81,9 @@ def _identity(db: Session) -> Child:
 
 
 def provision_demo_child(db: Session, *, demo_enabled: bool) -> dict:
-    """새 전용 DB 초기화 과정에서 호출한다. 기존 seed를 변경하거나 기존 목표를 덮어쓰지 않는다."""
+    """새 전용 DB 초기화 과정에서 시연용 치료사·아동·계정·목표를 만든다. 이미 만들었으면 기존 정보를 돌려준다.
+    기존 seed를 변경하거나 기존 목표를 덮어쓰지 않으며, 실제 기록이 섞인 DB는 DEMO DB로 만들지 않는다.
+    """
     _require_demo(db, demo_enabled)
     if db.scalar(select(AuditEvent.id).where(AuditEvent.action == PROVISION_ACTION)):
         child = _identity(db)
@@ -111,6 +126,9 @@ def provision_demo_child(db: Session, *, demo_enabled: bool) -> dict:
 
 
 def _protect_references(db, child, session_ids, utterance_ids, observation_ids):
+    """지울 회기·발화·관찰을 다른 아동·다른 회기·임상 검증 기록·추천·피드백이 참조하는지 검사한다.
+    reset_today가 삭제 전에 불러, 보존해야 할 자료의 근거 연결이 끊어지면 초기화를 거부한다.
+    """
     # 다른 날짜·아동의 기록이 비정상적으로 같은 발화를 가리키더라도 함께 지우지 않는다.
     for model in (ClinicalObservation, ProgressMetric, RoundMaterialReward, ActivityLease):
         if db.scalar(select(model).where(model.session_id.in_(session_ids), model.child_id != child.id).limit(1)):
@@ -142,8 +160,7 @@ def _protect_references(db, child, session_ids, utterance_ids, observation_ids):
 
 
 def reset_today(engine, *, demo_enabled: bool, current_time: datetime | None = None, include_mic: bool = False) -> dict:
-    """한국시간 오늘 시작한 전용 아동의 seed·DEMO 회기만 한 트랜잭션에서 지운다.
-
+    """한국시간 오늘 시작한 전용 아동의 seed·DEMO 회기만 한 트랜잭션에서 지우고 삭제 개수를 돌려준다.
     include_mic=True면 같은 전용 seed 아동의 오늘 마이크(real 모드) 회기도 지운다. 시연은 마이크로 하므로 리허설을
     반복할 때 쓴다. 전용 DB·전용 아동·seed·오늘·임상 검증 전 기록이라는 나머지 제한은 그대로다.
     """

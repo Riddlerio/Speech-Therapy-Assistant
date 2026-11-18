@@ -1,4 +1,4 @@
-from app.speech.g2p import SimpleKoreanG2P
+from app.speech.pipeline import SimpleKoreanG2P
 from app.training.rewards import award
 
 

@@ -5,12 +5,12 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js'
 import type { HoyaAction } from '../control/speechGameSignal'
 import { DuduModel } from './DuduModel'
-import { DUDU_GLB_URL, ONE_SHOT, pickClip } from './duduClips'
 import { attachDuduFace, faceState, type FaceState } from './duduFace'
 import { speakingLevel } from '../speech/duduClips'
-import { createGrounding, limitRootDrift, softenClip } from './duduMotion'
+import { createGrounding, DUDU_GLB_URL, limitRootDrift, ONE_SHOT, pickClip, softenClip } from './duduMotion'
 import { attachDuduTail, swayDuduTail } from './duduTail'
-import { applyHeadPerk, createPerkClock, findHeadBone, prefersReducedMotion } from './duduPerk'
+import { applyHeadPerk, createPerkClock, findHeadBone } from './duduPerk'
+import { prefersReducedMotion } from '../shared/useReducedMotion'
 
 /*
  * 두두 캐릭터 진입점. 모델 파일(GLB, 2026-10-04 사용자 승인으로 GLTFLoader 도입)을 먼저 쓰고,

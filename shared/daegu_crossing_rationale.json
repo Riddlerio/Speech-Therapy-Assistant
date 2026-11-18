@@ -1,5 +1,5 @@
 {
-  "$description": "대구대 건너기(리듬게임) 설계 근거. 치료사 화면이 그대로 보여 주는 내용이다(2026-10-05, Claude 작성). 임상 효과를 주장하지 않으며, 자동 판정은 음향 근사이고 치료사가 확인한다. 근거 목록은 docs/clinical/DAEGU_CROSSING_RATIONALE_2026-10-05.md에 있다.",
+  "$description": "대구대 건너기(리듬게임) 설계 근거. 치료사 화면이 그대로 보여 주는 내용이다(2026-10-05, Claude 작성). 임상 효과를 주장하지 않으며, 자동 판정은 음향 근사이고 치료사가 확인한다. 근거 목록은 documents/03_clinical/DAEGU_CROSSING_RATIONALE_2026-10-05.md에 있다.",
   "version": 1,
   "target": {
     "sound": "/ㅅ/(치조 마찰음, 예사소리)",

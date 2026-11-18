@@ -3,7 +3,7 @@ import pytest
 from sqlalchemy import select, text
 
 from app.db import Base, make_engine
-from app.game_settings.models import ChildGameSettings
+from app.game_settings.service import ChildGameSettings
 from app.models import Account, AuditEvent, Child, Therapist, TrainingSession
 from app.security import hash_password
 from test_api_flow import api, auth, start_activity, student_auth

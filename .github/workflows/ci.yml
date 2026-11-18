@@ -1,5 +1,5 @@
 # 최소 CI(Phase 6 일부, 2026-10-05 사용자 승인): 테스트·빌드만 자동으로 돌린다. 배포·브랜치 보호는 하지 않는다.
-# 로컬 회귀 명령(docs/audit/FROZEN_CORE_CONTRACT.md 6절)과 같은 검사를 GitHub에서 반복한다.
+# 로컬 회귀 명령(documents/02_architecture/FROZEN_CORE_CONTRACT.md 6절)과 같은 검사를 GitHub에서 반복한다.
 name: CI
 
 on:

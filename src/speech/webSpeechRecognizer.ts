@@ -1,5 +1,6 @@
-import type { PlayItem } from '../shared/events'
-import type { RecognitionResult, SpeechRecognizer } from './recognizer'
+import type { PlayItem } from '../shared/types'
+export interface RecognitionResult { transcript: string | null; alternatives: string[]; confidence: number | null; recognizer: 'web_speech' | 'demo_script' }
+export interface SpeechRecognizer { readonly id: 'web_speech' | 'demo_script'; isAvailable(): boolean; start(expected: PlayItem): void; stop(): Promise<RecognitionResult> }
 
 interface NativeResult { results: ArrayLike<ArrayLike<{ transcript: string; confidence: number }>> }
 interface NativeSpeechRecognition { lang: string; interimResults: boolean; continuous: boolean; maxAlternatives: number; onresult: ((event: NativeResult) => void) | null; onerror: ((event: { error: string }) => void) | null; onend: (() => void) | null; start(): void; stop(): void }

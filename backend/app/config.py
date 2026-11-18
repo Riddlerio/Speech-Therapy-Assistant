@@ -1,3 +1,7 @@
+"""서버 설정값(비밀 키, DB 주소, CORS, 호야 대화·치료사 요약 LLM 옵션 등)을 한곳에 모아 둔다.
+환경 변수와 backend/.env를 읽어 settings 객체로 만들고, 다른 모든 모듈이 이 값을 가져다 쓴다.
+"""
+
 from pathlib import Path
 
 from pydantic import SecretStr
@@ -10,6 +14,9 @@ BACKEND_ENV_FILE = Path(__file__).resolve().parents[1] / ".env"
 
 
 class Settings(BaseSettings):
+    """서버 전체 설정 스키마. 각 필드는 같은 이름의 환경 변수(대소문자 무시)로 덮어쓸 수 있다.
+    값이 없으면 여기 적힌 개발용 기본값을 쓰고, 운영에서는 환경 변수로 반드시 바꿔야 하는 값(secret_key 등)이 있다.
+    """
     secret_key: str = "dev-only-change-me"
     database_url: str = "sqlite:///./speech_hero.db"
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"

@@ -6,13 +6,14 @@ import {
   callWord, LAP_QUESTION, LAP_START_LINES, lapTime, LISTEN_AGAIN_LEAD, MAX_LAPS, MISS_LINE, MODEL_LEAD, onsetReason, praiseLine, retryLine,
   PROBE_THANKS, ROUND_TITLES, STRIPES, type CrossingItem, type PaceEvent,
 } from '../game/crossing/crossingFlow'
-import { previewJudge, serverJudge, type CrossingJudge, type CrossingTurn } from '../game/crossing/crossingJudge'
+import { serverJudge, type CrossingJudge, type CrossingTurn } from '../game/crossing/crossingJudge'
 import { OnsetPipeline } from '../game/crossing/onsetPipeline'
 import {
   bar, barMs, beatLeadMs, beatMs, COUNT_IN, DEFAULT_RHYTHM, nextBarStart, nextBeat, nextBpm, timingKind, type Bar, type RhythmSetting,
 } from '../game/crossing/rhythm'
 import { ApiError } from '../api/client'
 import type { Acoustic } from '../shared/types'
+import { prefersReducedMotion } from '../shared/useReducedMotion'
 import { AudioCapture } from '../speech/audioCapture'
 import { detectCapabilities, missingText, supportsRealMode } from '../speech/capabilities'
 import { KoreanTts } from '../speech/koreanTts'
@@ -58,10 +59,8 @@ const PERK_LEAD_MS = 120
 const CLIP_START_MS = 40
 /** 말 시작 감지는 분석 창(약 20ms)만큼 늦다. 박 맞춤 연출에만 쓴다. */
 const DETECT_LAG_MS = 20
-const reducedMotion = () => typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
-/** preview: 개발 검토 화면(crossing-review.html)에서만 true. 서버 없이 근사 판정으로 장면을 확인한다. */
-export default function DaeguCrossing({ preview = false }: { preview?: boolean }) {
+export default function DaeguCrossing() {
   const navigate = useNavigate()
   const [capabilities] = useState(() => detectCapabilities())
   const realSupported = supportsRealMode('daegu_crossing', capabilities)
@@ -129,7 +128,7 @@ export default function DaeguCrossing({ preview = false }: { preview?: boolean }
   const pausedRef = useRef(false)
   const modeRef = useRef<'real' | 'demo'>('demo')
   const mounted = useRef(true)
-  const still = reducedMotion()
+  const still = prefersReducedMotion()
 
   useEffect(() => {
     mounted.current = true
@@ -167,7 +166,7 @@ export default function DaeguCrossing({ preview = false }: { preview?: boolean }
   async function begin(selected: 'real' | 'demo') {
     unlockDuduAudio(); unlockFx()
     setError(''); setMode(selected); modeRef.current = selected
-    const provider = preview ? previewJudge() : serverJudge(selected)
+    const provider = serverJudge(selected)
     judge.current = provider
     try {
       const started = await provider.start()
@@ -479,7 +478,7 @@ export default function DaeguCrossing({ preview = false }: { preview?: boolean }
     <header className="crossing-top">
       {/* 도움말이 있으면 제목 자리에 보인다(무대·버튼이 밀리지 않게). 제목은 화면 읽기용으로 남긴다. */}
       {phase === 'play' && tip && <RetryTipCard key={`${tip.title}-${tip.body}`} tip={tip} />}
-      <div className={phase === 'play' && tip ? 'crossing-top-main sr-only' : 'crossing-top-main'}><p className="eyebrow">대구대 건너기{mode === 'demo' && phase !== 'intro' ? ' · DEMO 연습' : ''}{preview ? ' · 미리보기(서버 판정 아님)' : ''}</p>
+      <div className={phase === 'play' && tip ? 'crossing-top-main sr-only' : 'crossing-top-main'}><p className="eyebrow">대구대 건너기{mode === 'demo' && phase !== 'intro' ? ' · DEMO 연습' : ''}</p>
         <h1>{phase === 'probe' ? '새 낱말 확인' : phase === 'play' ? (stripe < STRIPES ? `정문까지 ${STRIPES - stripe}칸!` : '거의 다 왔어!') : phase === 'choice' ? LAP_QUESTION : '두두랑 대구대까지!'}</h1>
         {phase === 'probe' && item && <span className="crossing-chip">그림 {item.probeIndex ?? 1} / {probeTotal}</span>}
         {phase === 'play' && <><span className="crossing-chip">{ROUND_TITLES[roundIndex - 1]}</span>

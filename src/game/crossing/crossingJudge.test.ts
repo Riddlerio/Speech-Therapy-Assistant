@@ -8,10 +8,10 @@ vi.mock('../../api/client', () => ({ api: vi.fn(async () => ({})) }))
 
 import { nextCrossingLap, sendActivityUtterance, startActivity, startCrossingProbes } from '../../api/activities'
 import { api } from '../../api/client'
-import { previewJudge, serverJudge } from './crossingJudge'
+import { serverJudge } from './crossingJudge'
 
 /*
- * Codex 계약(src/api/daeguCrossing.ts, 10줄 = 5라운드 × 2줄)을 흉내 낸 가짜 서버.
+ * Codex 계약(src/api/activities.ts, 10줄 = 5라운드 × 2줄)을 흉내 낸 가짜 서버.
  * 응답의 진행 번호는 '다음 항목' 기준이고, 끝나면 5/2/10에 머문다. 시도 번호는 서버가 정한다.
  */
 const PLAN = [['사', '사'], ['사', '사'], ['소', '시'], ['사과', '수박'], ['수', '시소']]
@@ -109,13 +109,6 @@ describe('대구대 건너기 서버 판정(Codex 계약)', () => {
     expect(turn.next).toMatchObject({ stripeIndex: 2 })
   })
 
-  it('미리보기 판정도 다음 판에서 첫 줄부터 다시 센다', async () => {
-    const judge = previewJudge()
-    const { first } = await judge.start()
-    const again = await judge.nextLap()
-    expect(again.first).toEqual(first)
-  })
-
   it('새 낱말 확인 시작 API에 같은 회기의 임대 토큰을 보낸다', async () => {
     const actual = await vi.importActual<typeof import('../../api/activities')>('../../api/activities')
     await actual.startCrossingProbes({ sessionId: 's1', leaseToken: 'lease-1' } as ActivityStart)
@@ -161,15 +154,5 @@ describe('대구대 건너기 서버 판정(Codex 계약)', () => {
     expect(await judge.startProbes()).toEqual({ first: null, total: 0 })
     await judge.finish(120)
     expect(api).toHaveBeenCalledWith('/play/sessions/s1/complete', expect.objectContaining({ method: 'POST' }))
-  })
-
-  it('미리보기 확인에서도 자동 결과와 피드백은 반환하지 않는다', async () => {
-    const judge = previewJudge()
-    await judge.start()
-    const { first, total } = await judge.startProbes()
-    expect(total).toBe(3)
-    const turn = await judge.submit(first!, { transcript: null, acoustic: { source: 'keyboard', durationMs: 400 } as Acoustic })
-    expect(turn).toMatchObject({ probe: true, next: { text: '사탕', modelCue: false } })
-    expect(turn).not.toHaveProperty('result')
   })
 })

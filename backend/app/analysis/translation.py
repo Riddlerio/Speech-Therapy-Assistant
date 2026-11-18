@@ -1,8 +1,15 @@
+"""게임 사건 코드(TARGET_RETRY, LEVEL_DOWN 등)를 치료사가 읽을 한국어 설명 문장으로 바꾼다.
+main.py가 GameEvent를 저장할 때 이 문장을 함께 저장해 치료사 화면의 회기 타임라인에 보여 준다.
+"""
+
 # 치료사 화면의 사건 기록에 영어 코드가 그대로 보이지 않게 단계 이름을 한국어로 적는다(src/therapist/planning.ts LEVEL_LABELS와 같음).
 LEVEL_TEXT = {"phoneme": "음소", "syllable": "음절", "word": "단어", "short_sentence": "짧은 문장", "spontaneous": "자발 발화"}
 
 
 def therapist_text(event_type, payload, item=None, goal=None, analysis=None):
+    """사건 종류와 내용(payload·문항·목표·판정)을 보고 "제시: 사과 (단어)", "목표 /ㅅ/ 재시도 — ..." 같은 문장을 만든다.
+    모르는 사건 코드는 코드 그대로 돌려준다. 게임 진행 중 사건이 생길 때마다 부른다.
+    """
     target = f"/{goal.target_phoneme}/" if goal else "목표 소리"
     label = item.get("displayText", "") if item else ""
     if event_type == "TARGET_PRESENTED":

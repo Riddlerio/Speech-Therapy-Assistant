@@ -1,6 +1,5 @@
-"""기존 모험 세션과 V2 5라운드 세션을 구분하고 저장된 상태의 형식을 확인한다.
-
-엔드포인트가 `state["key"]`로 직접 읽는 값은 모두 여기서 형식을 보장한다. 형식이 맞지 않으면 409다.
+"""기존 모험 세션과 V2 5라운드 세션을 구분하고, DB에 저장된 회기 상태(runtime_state)의 형식을 확인한다.
+엔드포인트가 `state["key"]`로 직접 읽는 값은 모두 여기서 형식을 보장한다. 형식이 맞지 않으면 500 대신 409로 거절한다.
 """
 import functools
 import logging
@@ -11,7 +10,7 @@ from fastapi import HTTPException
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictFloat, StrictInt, StrictStr, ValidationError, field_validator, model_validator
 
 from .games.rounds import GAME_ROUNDS
-from .game_settings.schemas import DaeguCrossingRhythm
+from .game_settings.service import DaeguCrossingRhythm
 
 
 INVALID_STATE = "세션 상태를 확인할 수 없습니다"
@@ -19,11 +18,13 @@ Number = StrictInt | StrictFloat
 
 
 class _State(BaseModel):
+    """모든 상태 스키마의 기본형. 타입은 엄격하게(strict) 검사하되 모르는 키는 그대로 허용한다."""
     # 알려지지 않은 키는 그대로 둔다. 쓰는 키의 형식만 강제한다.
     model_config = ConfigDict(extra="allow", strict=True)
 
 
 class LegacyItem(_State):
+    """기존 모험 세션에서 아동에게 제시한 문항 하나(문항 id, 화면 문장, 단계, 게임 이름)의 형식."""
     itemId: StrictStr
     displayText: StrictStr
     level: StrictStr
@@ -32,10 +33,12 @@ class LegacyItem(_State):
 
 
 class ActivityItem(LegacyItem):
+    """5라운드 게임의 문항 형식. game 값이 지원하는 5개 게임 중 하나여야 한다."""
     game: Literal["magic_beam", "sky_climb", "monster_adventure", "conversation_quest", "daegu_crossing"]
 
 
 class RoundSnapshot(_State):
+    """현재 라운드 정의(일반화 단계·임상 초점·유도 방식·독립성)를 저장해 둔 스냅숏 형식."""
     id: StrictStr | None = None
     generalizationLevel: StrictStr | None = None
     clinicalFocus: StrictStr | None = None
@@ -44,6 +47,7 @@ class RoundSnapshot(_State):
 
 
 class RoundRewardSnapshot(_State):
+    """라운드 하나를 마치고 받은 별(1~3개)·칭찬 문장·성공률 기록의 형식."""
     index: StrictInt = Field(ge=1, le=5)
     stars: StrictInt = Field(ge=1, le=3)
     praise: StrictStr
@@ -51,6 +55,7 @@ class RoundRewardSnapshot(_State):
 
 
 class ActivityState(_State):
+    """5라운드 게임 진행 중 상태(몇 라운드·몇 번째 시도·난이도·현재 문항·경험치 등)의 형식."""
     activityGame: Literal["magic_beam", "sky_climb", "monster_adventure", "conversation_quest", "daegu_crossing"]
     roundIndex: StrictInt = Field(ge=1, le=5)
     stageIndex: StrictInt = Field(ge=0, le=4)
@@ -77,11 +82,15 @@ class ActivityState(_State):
     @field_validator("roundStartedAt")
     @classmethod
     def _iso(cls, value: str) -> str:
+        """roundStartedAt이 ISO 날짜·시각 문자열인지 확인한다.
+        라운드 경과 시간을 계산할 때 날짜 해석이 실패하지 않도록 저장값을 미리 검사한다.
+        """
         datetime.fromisoformat(value)
         return value
 
 
 class CrossingState(ActivityState):
+    """대구 횡단보도 게임 전용 상태 형식. 박자 설정, 줄(스트라이프) 위치, 판 번호, 확인 낱말(probe) 진행을 더 가진다."""
     # 이전 회기는 박자 기록이 없을 수 있다. 현재 아동 설정으로 과거 기록을 채우지 않는다.
     rhythm: DaeguCrossingRhythm | None = None
     itemIndexInRound: StrictInt = Field(ge=1, le=2)
@@ -98,6 +107,9 @@ class CrossingState(ActivityState):
 
     @model_validator(mode="after")
     def consistent_cursor(self):
+        """라운드·구간·줄 위치·확인 낱말 진행 값이 서로 맞는지 교차 검사한다.
+        값 하나만 어긋나도 게임 진행이 꼬이므로, 저장 상태가 손상됐으면 여기서 ValueError로 막는다.
+        """
         if self.stageIndex != self.roundIndex - 1:
             raise ValueError("라운드와 구간이 일치하지 않습니다")
         if self.stripeIndex != (self.roundIndex - 1) * 2 + self.itemIndexInRound:
@@ -128,6 +140,7 @@ class CrossingState(ActivityState):
 
 
 class CrossingSummary(_State):
+    """완료된 횡단보도 회기의 요약(총 시도 수, 걸린 시간) 형식."""
     totalAttempts: StrictInt = Field(ge=0)
     durationSec: StrictInt = Field(ge=0)
     sessionComplete: Literal[True]
@@ -141,6 +154,7 @@ class CompletionState(_State):
 
 
 class CompletedSummary(_State):
+    """완료된 기존 모험 회기의 요약(총 경험치, 영웅 레벨, 배지, 몬스터 카드) 형식."""
     totalXp: StrictInt
     heroLevel: StrictInt
     badges: list[StrictStr]
@@ -148,10 +162,16 @@ class CompletedSummary(_State):
 
 
 def is_activity(session) -> bool:
+    """회기가 V2 5라운드 게임 세션인지(runtime_state에 activityGame이 있는지) 판단한다.
+    기존 모험 세션과 새 게임 세션을 다른 API 흐름으로 나눌 때 쓴다.
+    """
     return isinstance(session.runtime_state, dict) and "activityGame" in session.runtime_state
 
 
 def _validated(model, value) -> None:
+    """값이 dict이고 주어진 상태 스키마를 통과하는지 확인하고, 아니면 409를 던진다.
+    activity_state·completion_state가 공통으로 쓰는 검사 도우미다.
+    """
     if not isinstance(value, dict):
         raise HTTPException(409, INVALID_STATE)
     try:
@@ -161,7 +181,9 @@ def _validated(model, value) -> None:
 
 
 def activity_state(session) -> dict:
-    """V2 5라운드 API가 쓸 수 있는 상태만 돌려준다. 기존 모험 세션이나 손상된 상태는 409다."""
+    """V2 5라운드 API가 쓸 수 있는 상태만 복사해 돌려준다. 기존 모험 세션이나 손상된 상태는 409다.
+    아동 화면의 라운드 진행·발화 제출 API가 상태를 읽기 전에 부른다.
+    """
     if not is_activity(session):
         raise HTTPException(409, "5라운드 게임 세션이 아닙니다")
     _validated(CrossingState if session.runtime_state.get("activityGame") == "daegu_crossing" else ActivityState, session.runtime_state)
@@ -172,7 +194,9 @@ def activity_state(session) -> dict:
 
 
 def completion_state(session) -> dict:
-    """완료 API가 쓸 수 있는 상태. 이미 완료된 세션은 저장된 요약의 형식도 확인한다."""
+    """완료 API가 쓸 수 있는 상태를 돌려준다. 이미 완료된 세션은 저장된 요약의 형식도 확인한다.
+    아동이 회기를 끝낼 때(완료 API) 경험치·보상 계산 전에 부른다.
+    """
     if session.status == "completed":
         _validated(CrossingSummary if isinstance(session.runtime_state, dict) and session.runtime_state.get("activityGame") == "daegu_crossing" else CompletedSummary, session.summary_json)
     _validated(CompletionState, session.runtime_state)
@@ -182,7 +206,9 @@ def completion_state(session) -> dict:
 
 
 def state_guard(endpoint):
-    """검증을 통과한 뒤에도 예상하지 못한 상태·계획 손상이 500이 되지 않게 409로 바꾼다."""
+    """엔드포인트를 감싸, 검증을 통과한 뒤에도 예상하지 못한 상태·계획 손상이 500이 되지 않게 409로 바꾼다.
+    게임 진행 API에 데코레이터로 붙이며, 실패 시 DB를 되돌리고 아동 발화가 로그에 남지 않게 예외 종류만 기록한다.
+    """
     @functools.wraps(endpoint)
     def wrapper(*args, **kwargs):
         try:

@@ -18,7 +18,7 @@ def test_raw_dataset_and_checkpoint_paths_are_git_ignored(path):
 
 
 def test_research_reports_are_not_ignored():
-    result = subprocess.run(["git", "check-ignore", "-q", "research/pronunciation/reports/pronunciation_v1.md"], cwd=ROOT)
+    result = subprocess.run(["git", "check-ignore", "-q", "documents/06_research/pronunciation_v1.md"], cwd=ROOT)
     assert result.returncode == 1
 
 

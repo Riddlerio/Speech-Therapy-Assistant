@@ -1,5 +1,4 @@
-"""치료사 회기 계획 API. 계약은 docs/therapist-workflow.md 6절이다.
-
+"""치료사 회기 계획 API(계획 맥락 조회, AI 제안, 계획 만들기·수정·승인·취소·복제). 계약은 documents/02_architecture/therapist-workflow.md 6절이다.
 모든 경로는 담당 치료사만 쓴다. 계획은 항상 아동을 거쳐 조회해 다른 아동·치료사의 계획을 읽지 못한다.
 """
 from fastapi import APIRouter, Depends, HTTPException
@@ -20,11 +19,17 @@ PLAN_FIELDS = ("target_phoneme", "word_position", "start_level", "target_level",
 
 
 def _camel(name: str) -> str:
+    """snake_case 이름을 camelCase로 바꾼다(예: start_level → startLevel).
+    DB 필드 이름을 화면 JSON 키로 내보낼 때 쓴다.
+    """
     head, *rest = name.split("_")
     return head + "".join(part.title() for part in rest)
 
 
 def _current_goal(db, child_id: str) -> TrainingGoal:
+    """아동의 현재 활성 치료 목표를 가져온다. 없으면 409다.
+    계획은 항상 현재 목표를 기준으로 만들기 때문에 거의 모든 계획 API가 먼저 부른다.
+    """
     goal = db.scalar(select(TrainingGoal).where(TrainingGoal.child_id == child_id, TrainingGoal.status == "active"))
     if goal is None:
         raise HTTPException(409, "현재 치료 목표가 없습니다")
@@ -32,11 +37,17 @@ def _current_goal(db, child_id: str) -> TrainingGoal:
 
 
 def _steps(db, plan_id: str) -> list[TherapistSessionPlanStep]:
+    """계획의 활동 단계들을 순서(step_order)대로 가져온다.
+    계획 응답 만들기, 양식 저장, 복제에서 쓴다.
+    """
     return list(db.scalars(select(TherapistSessionPlanStep).where(TherapistSessionPlanStep.plan_id == plan_id)
                            .order_by(TherapistSessionPlanStep.step_order)).all())
 
 
 def plan_data(db, plan: TherapistSessionPlan) -> dict:
+    """계획 한 개를 화면용 dict(목표 버전, 상태, 양식 필드, 활동 단계, 근거·제안 스냅숏, 시각들)로 만든다.
+    계획 조회·생성·수정·승인·취소·복제 API의 공통 응답 형식이다.
+    """
     goal = db.get(TrainingGoal, plan.goal_id)
     return {"id": plan.id, "childId": plan.child_id, "goalId": plan.goal_id, "goalVersion": goal.version if goal else None,
             "parentPlanId": plan.parent_plan_id, "revision": plan.revision, "status": plan.status,
@@ -49,6 +60,9 @@ def plan_data(db, plan: TherapistSessionPlan) -> dict:
 
 
 def _owned_plan(db, plan_id: str, therapist: Therapist) -> tuple[TherapistSessionPlan, Child]:
+    """계획을 찾고 그 아동이 이 치료사의 담당인지 확인해 계획과 아동을 돌려준다. 계획이 없으면 404다.
+    다른 치료사의 계획은 존재 여부를 숨기고 거부 기록을 남긴다(owned_child가 처리).
+    """
     plan = db.get(TherapistSessionPlan, plan_id)
     if plan is None:
         raise HTTPException(404, "계획을 찾을 수 없습니다")
@@ -58,10 +72,16 @@ def _owned_plan(db, plan_id: str, therapist: Therapist) -> tuple[TherapistSessio
 
 
 def _audit(db, therapist: Therapist, action: str, plan_id: str):
+    """계획 관련 행동(생성·수정·승인 등)의 감사 기록을 추가한다.
+    누가 언제 계획을 바꿨는지 나중에 확인할 수 있게 한다.
+    """
     db.add(AuditEvent(actor_id=therapist.id, action=action, resource_id=plan_id, result="SUCCESS"))
 
 
 def _write_form(db, plan: TherapistSessionPlan, body: SessionPlanInput):
+    """요청 양식 값을 계획 필드에 쓰고, 기존 활동 단계를 지운 뒤 새 순서로 다시 만든다.
+    계획 생성과 초안 수정이 같은 방식으로 저장하도록 모아 둔 도우미다.
+    """
     values = body.model_dump()
     for field in PLAN_FIELDS:
         setattr(plan, field, values[field])
@@ -76,12 +96,17 @@ def _write_form(db, plan: TherapistSessionPlan, body: SessionPlanInput):
 
 
 def _require_draft(plan: TherapistSessionPlan):
+    """계획이 DRAFT(초안)인지 확인하고 아니면 409를 낸다.
+    승인·종료된 계획은 바꾸지 않고 복제해서 새 초안을 만들게 하려고 있다.
+    """
     if plan.status != "DRAFT":
         raise HTTPException(409, "승인되었거나 종료된 계획은 바꿀 수 없습니다. 복제해서 새 초안을 만드세요")
 
 
 def _snapshots(db, child: Child, goal: TrainingGoal) -> tuple[dict, dict]:
-    """결정적 계산만 다시 한다(LLM 호출 없음). transcript·원음성·아동 이름은 담지 않는다."""
+    """LLM 없이 결정적 계산만 다시 해서 그 시점의 근거 스냅숏과 제안 스냅숏을 만든다.
+    transcript·원음성·아동 이름은 담지 않는다. 계획 생성·승인·복제 때 당시 근거를 고정해 두려고 쓴다.
+    """
     result = run_planning(db, child.id, goal, use_llm=False)
     evidence = {"goal": goal_view(goal), "metrics": result["metrics"], "evidence": result["verified"][:20],
                 "capturedAt": now().isoformat()}
@@ -90,6 +115,9 @@ def _snapshots(db, child: Child, goal: TrainingGoal) -> tuple[dict, dict]:
 
 @router.get("/children/{child_id}/planning-context")
 def planning_context(child_id: str, db: Session = Depends(get_db), therapist: Therapist = Depends(require_therapist)):
+    """계획 화면에 필요한 맥락(아동 기본 정보, 현재 목표, 지표, 근거 상황, 최근 실제 회기, 최신 계획)을 돌려준다. LLM은 부르지 않는다.
+    치료사 화면의 회기 계획 탭을 열 때 호출한다. 검토 대기 수는 최근 5회기 밖까지 실제 회기 전체 기준이다.
+    """
     child = owned_child(db, child_id, therapist)
     goal = _current_goal(db, child.id)
     result = run_planning(db, child.id, goal, use_llm=False)
@@ -116,6 +144,9 @@ def planning_context(child_id: str, db: Session = Depends(get_db), therapist: Th
 
 @router.post("/children/{child_id}/session-plan-proposal")
 def session_plan_proposal(child_id: str, db: Session = Depends(get_db), therapist: Therapist = Depends(require_therapist)):
+    """계획 그래프를 실행해 다음 회기 제안, 요약(LLM 또는 템플릿)과 그 출처, 지표, 근거를 돌려준다. 저장하지는 않는다.
+    치료사 화면의 "제안 받기" 버튼이 호출한다.
+    """
     child = owned_child(db, child_id, therapist)
     goal = _current_goal(db, child.id)
     result = run_planning(db, child.id, goal)
@@ -126,6 +157,9 @@ def session_plan_proposal(child_id: str, db: Session = Depends(get_db), therapis
 
 @router.get("/children/{child_id}/session-plans")
 def list_session_plans(child_id: str, db: Session = Depends(get_db), therapist: Therapist = Depends(require_therapist)):
+    """담당 아동의 모든 회기 계획을 최신순으로 돌려준다.
+    치료사 화면의 계획 목록이 호출한다.
+    """
     child = owned_child(db, child_id, therapist)
     plans = db.scalars(select(TherapistSessionPlan).where(TherapistSessionPlan.child_id == child.id)
                        .order_by(TherapistSessionPlan.created_at.desc())).all()
@@ -135,6 +169,9 @@ def list_session_plans(child_id: str, db: Session = Depends(get_db), therapist: 
 @router.post("/children/{child_id}/session-plans")
 def create_session_plan(child_id: str, body: SessionPlanInput, db: Session = Depends(get_db),
                         therapist: Therapist = Depends(require_therapist)):
+    """현재 목표와 당시 근거·제안 스냅숏을 붙여 새 계획 초안(revision 1)을 저장한다.
+    치료사가 제안을 검토·수정한 뒤 "초안 저장"을 누르면 호출된다.
+    """
     child = owned_child(db, child_id, therapist)
     goal = _current_goal(db, child.id)
     evidence, recommendation = _snapshots(db, child, goal)
@@ -151,6 +188,9 @@ def create_session_plan(child_id: str, body: SessionPlanInput, db: Session = Dep
 
 @router.get("/session-plans/{plan_id}")
 def get_session_plan(plan_id: str, db: Session = Depends(get_db), therapist: Therapist = Depends(require_therapist)):
+    """계획 하나를 돌려준다(담당 치료사만).
+    치료사 화면이 계획 상세를 열 때 호출한다.
+    """
     plan, _child = _owned_plan(db, plan_id, therapist)
     return plan_data(db, plan)
 
@@ -158,6 +198,9 @@ def get_session_plan(plan_id: str, db: Session = Depends(get_db), therapist: The
 @router.patch("/session-plans/{plan_id}")
 def update_session_plan(plan_id: str, body: SessionPlanInput, db: Session = Depends(get_db),
                         therapist: Therapist = Depends(require_therapist)):
+    """초안(DRAFT) 계획의 양식과 활동 단계를 고쳐 저장한다. 승인·종료된 계획이면 409다.
+    치료사 화면에서 초안을 수정할 때 호출한다.
+    """
     plan, _child = _owned_plan(db, plan_id, therapist)
     _require_draft(plan)
     _write_form(db, plan, body)
@@ -168,6 +211,9 @@ def update_session_plan(plan_id: str, body: SessionPlanInput, db: Session = Depe
 
 @router.post("/session-plans/{plan_id}/approve")
 def approve_session_plan(plan_id: str, db: Session = Depends(get_db), therapist: Therapist = Depends(require_therapist)):
+    """초안을 승인하고 승인 시점의 근거·제안을 다시 고정한다. 기존 승인 계획은 SUPERSEDED로 바꾼다.
+    초안 작성 뒤 목표가 바뀌었으면 409로 거절한다. 치료사의 "승인" 버튼이 호출한다.
+    """
     plan, child = _owned_plan(db, plan_id, therapist)
     _require_draft(plan)
     goal = _current_goal(db, child.id)
@@ -189,6 +235,9 @@ def approve_session_plan(plan_id: str, db: Session = Depends(get_db), therapist:
 
 @router.post("/session-plans/{plan_id}/cancel")
 def cancel_session_plan(plan_id: str, db: Session = Depends(get_db), therapist: Therapist = Depends(require_therapist)):
+    """초안 또는 승인된 계획을 취소(CANCELLED) 처리한다. 이미 종료된 계획이면 409다.
+    치료사 화면의 "취소" 버튼이 호출한다.
+    """
     plan, _child = _owned_plan(db, plan_id, therapist)
     if plan.status not in {"DRAFT", "APPROVED"}:
         raise HTTPException(409, "이미 종료된 계획입니다")
@@ -201,6 +250,9 @@ def cancel_session_plan(plan_id: str, db: Session = Depends(get_db), therapist: 
 
 @router.post("/session-plans/{plan_id}/clone")
 def clone_session_plan(plan_id: str, db: Session = Depends(get_db), therapist: Therapist = Depends(require_therapist)):
+    """승인·종료된 계획을 복제해 revision을 하나 올린 새 초안을 만든다. 초안이거나 이미 수정 초안이 있으면 409다.
+    승인된 계획은 바꾸지 않는다는 원칙 때문에, 고치고 싶을 때 이 API로 새 초안을 만든다.
+    """
     source, child = _owned_plan(db, plan_id, therapist)
     if source.status == "DRAFT":
         raise HTTPException(409, "초안은 복제하지 않고 바로 수정하세요")

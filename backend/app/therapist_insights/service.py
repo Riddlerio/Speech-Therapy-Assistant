@@ -1,3 +1,7 @@
+"""치료사 화면의 경과 추세와 회기 인사이트를 계산한다(관찰 → 치료사 확인 결과 → 통계).
+실제·비샘플 회기에서 치료사가 확인·교정한 관찰만 성공률에 넣고, 불확실·음질 문제는 실패로 세지 않는다.
+"""
+
 from collections import Counter, defaultdict
 from datetime import timedelta, timezone
 from math import isfinite
@@ -24,10 +28,16 @@ SEOUL = timezone(timedelta(hours=9), "Asia/Seoul")
 
 
 def source_of(session, child):
+    """회기 출처를 SAMPLE(샘플 아동·seed), REAL(실제 마이크), DEMO(키보드 연습) 중 하나로 정한다.
+    실제 임상 비교에는 REAL만 쓰려고 모든 집계에서 출처를 먼저 가른다.
+    """
     return "SAMPLE" if child.is_seed or session.is_seed else "REAL" if session.mode == "real" else "DEMO"
 
 
 def observation_view(row, decision, session, child):
+    """관찰 한 행을 치료사 화면용 dict로 바꾼다. 치료사 결정을 반영한 최종 결과, 음질 경고, 성공률 분모에서 빠진 이유(출처·미확인·평가 불가·음질), 출처 표시를 담는다.
+    횡단보도 관찰이면 자동 음향 근거와 확인 낱말 여부도 붙인다.
+    """
     verified, _review = filter_verified([row], {row.id: decision} if decision else {})
     result = verified[0]["result"] if verified else row.ai_result
     source = source_of(session, child)
@@ -70,6 +80,9 @@ def observation_view(row, decision, session, child):
 
 
 def stats(rows):
+    """관찰 view 목록에서 전체·평가 가능·성공·제외 수, 성공률, 단서 유형별 개수를 계산한다.
+    추세와 회기 인사이트의 회기별·라운드별 통계에 공통으로 쓴다.
+    """
     included = [row for row in rows if row["included"]]
     successes = sum(row["result"] == "success" for row in included)
     return {"observedN": len(rows), "evaluableN": len(included), "successN": successes,
@@ -79,6 +92,9 @@ def stats(rows):
 
 
 def load_views(db, child, sessions):
+    """여러 회기의 관찰을 읽고 각 관찰의 마지막 치료사 결정을 붙여 view 목록으로 만든다.
+    goal_trends와 session_insights가 공통으로 쓴다.
+    """
     if not sessions:
         return []
     by_id = {session.id: session for session in sessions}
@@ -90,6 +106,9 @@ def load_views(db, child, sessions):
 
 
 def goal_trends(db, child):
+    """실제 회기 관찰을 목표 음소·위치·단계·활동별로 묶고, 첫 평가 가능 회기(기준선)와 이후 최근 최대 5회기를 비교한다.
+    확인 낱말은 빼며, 출처별 회기·관찰 수와 해석 한계 문구를 함께 돌려준다. 치료사 화면의 경과 탭이 쓴다.
+    """
     sessions = list(db.scalars(select(TrainingSession).where(TrainingSession.child_id == child.id)
                               .order_by(TrainingSession.started_at, TrainingSession.id)).all())
     rows = load_views(db, child, sessions)
@@ -120,6 +139,9 @@ def goal_trends(db, child):
 
 
 def session_insights(db, child, session):
+    """회기 하나의 관찰, 라운드별·전체 통계, 치료사용 요약 문장을 만든다. 횡단보도 회기면 전용 요약을 더한다.
+    요약 문장에는 분모 제외 기준과 "진단이 아님" 안내를 넣어 수치를 과하게 해석하지 않게 한다.
+    """
     rows = load_views(db, child, [session])
     practice = [row for row in rows if not row.get("isProbe")]
     total = stats(practice)

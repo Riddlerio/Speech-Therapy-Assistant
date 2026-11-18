@@ -1,5 +1,5 @@
-from itertools import count
-
+"""음소·단계별 연습 단어 은행(BANK)과 그 단어를 꺼내는 함수.
+게임 항목과 호야 대화 목표 단어가 같은 단어 목록을 쓰도록 한곳에 둔다."""
 
 BANK = {
     "ㅅ": {"syllable": ["사", "소", "수", "시", "서"], "word": ["사과", "사자", "소리", "수박", "시소", "사탕", "소풍", "수건"], "medial": ["가수", "우산", "이사", "가시"], "short_sentence": ["사과를 먹어요", "사자가 있어요", "소리가 나요", "수박이 커요"]},
@@ -9,12 +9,15 @@ BANK = {
 
 
 def items(phoneme: str, level: str, position: str = "initial") -> list[dict]:
+    """음소·단계·위치에 맞는 연습 항목 목록을 만든다(단어 단계의 중간 위치는 medial 목록).
+    활동 시작 때 라운드별 단어를 고르는 데 쓴다."""
     key = "medial" if position == "medial" and level == "word" else level
     return [{"itemId": f"{phoneme}-{level}-{i}", "displayText": text, "level": level, "game": "monster_tower", "pictureKey": text.split(" ")[0]} for i, text in enumerate(BANK.get(phoneme, {}).get(key, []))]
 
 
 def conversation_candidates(phoneme: str, position: str = "initial", excluded_words=(), priority_targets=(), limit: int = 6) -> list[str]:
-    """호야 대화에서 자연스럽게 쓸 수 있는 목표 단어. BANK만 쓰며 제외 단어와 다른 음소 목록은 넣지 않는다."""
+    """호야 대화에서 자연스럽게 쓸 수 있는 목표 단어를 고른다.
+    BANK만 쓰며 제외 단어와 다른 음소 목록은 넣지 않는다."""
     bank = BANK.get(phoneme, {})
     words = bank.get("medial" if position == "medial" else "word", [])
     excluded = set(excluded_words or ())

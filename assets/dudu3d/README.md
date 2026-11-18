@@ -12,11 +12,11 @@
 | `meshy_output/` | 제작 원본 보관 위치. Git 추적 대상에서 제외 |
 | `public/assets/dudu/dudu.glb` | 앱에 배포하는 모델. 2,637,828바이트, 삼각형 20,012개, 뼈 28개, 동작 11개 |
 
-`src/tiger/DuduCharacter.tsx`가 GLB를 읽고 `src/tiger/duduClips.ts`가 동작을 연결합니다. 모델을 불러오지 못하면 절차형 두두를 표시합니다. 아래의 날짜별 기록에는 실제 생성 설정, 텍스처·흉장 보정, 재생성 명령과 검토 결과를 보존했습니다.
+`src/tiger/DuduCharacter.tsx`가 GLB를 읽고 `src/tiger/duduAnimations.ts`가 동작을 연결합니다. 모델을 불러오지 못하면 절차형 두두를 표시합니다. 아래의 날짜별 기록에는 실제 생성 설정, 텍스처·흉장 보정, 재생성 명령과 검토 결과를 보존했습니다.
 
 ## 제작·사용 범위
 
-- 사용자가 대구대학교 캐릭터·흉장 사용 허락을 확인했고, Meshy 계정에서 Private 설정을 확인한 뒤 원화 기반 이미지를 업로드했습니다. 공개 저장소 게시·3D 변환·데모 배포를 포함한 **서면 허락은 아직 확인되지 않았습니다.** 파일별 출처와 조건은 [에셋·라이선스 표](../../docs/ASSET_LICENSES.md)에 있습니다.
+- 사용자가 대구대학교 캐릭터·흉장 사용 허락을 확인했고, Meshy 계정에서 Private 설정을 확인한 뒤 원화 기반 이미지를 업로드했습니다. 공개 저장소 게시·3D 변환·데모 배포를 포함한 **서면 허락은 아직 확인되지 않았습니다.** 파일별 출처와 조건은 [에셋·라이선스 표](../../documents/07_assets_production/ASSET_LICENSES.md)에 있습니다.
 - 2026-10-04 무료 체험은 대학 자료를 올리지 않고 일반 호랑이 텍스트로 진행했습니다. 당시 검토한 [Meshy 플랜·다운로드 조건](https://help.meshy.ai/en/articles/12062933-which-meshy-plan-is-right-for-you-free-vs-pro-vs-premium-vs-ultra), [다운로드 제한](https://help.meshy.ai/en/articles/10421033-why-can-t-i-download-my-model)에 따라 무료 결과는 최종 앱 자산으로 쓰지 않았습니다. Private 설정도 제공자의 모든 학습 사용을 배제한다는 뜻은 아닙니다([개인정보·학습 FAQ](https://help.meshy.ai/en/articles/15724182-is-meshy-safe-and-private-data-and-training-faq)).
 - 남은 검수는 공식 원화와 최종 형태를 사람이 비교·승인하고, 실제 저사양 휴대폰에서 모델 로딩·동작 성능을 확인하는 것입니다. 아래 헤드리스 Edge 측정은 실제 휴대폰 측정값이 아닙니다.
 
@@ -46,7 +46,7 @@
 7. 다운로드: GLB, Mixamo 뼈대, 모든 동작 단일 파일(13.5MB) → `meshy_output/v2/`(Git 제외).
 8. 웹용 변환: `tools/build_dudu.mjs`(텍스처 1024 WebP, 키프레임 정리, 정리, 양자화) → **`public/assets/dudu/dudu.glb` 2.62MB**, 20,012삼각형, 뼈 28개, 동작 11개. 다시 만들 때는 임시 폴더에서 `npm install @gltf-transform/cli@4` 후 `node build_dudu.mjs <입력> <출력> Running`처럼 실행한다.
 
-앱 연결: `src/tiger/DuduCharacter.tsx`가 GLB를 읽고, 동작 이름 대응은 `src/tiger/duduClips.ts`에 있다. 불러오는 중이거나 실패하면 절차형 모델을 보여 준다. 사람의 최종 원화 충실도 승인과 저사양 휴대폰 성능 측정은 아직 하지 않았다.
+앱 연결: `src/tiger/DuduCharacter.tsx`가 GLB를 읽고, 동작 이름 대응은 `src/tiger/duduAnimations.ts`에 있다. 불러오는 중이거나 실패하면 절차형 모델을 보여 준다. 사람의 최종 원화 충실도 승인과 저사양 휴대폰 성능 측정은 아직 하지 않았다.
 
 ## 2026-10-04 Blender 텍스처 보정 (Claude)
 

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { feedback, sessionDetail } from '../../api/therapist'
-import { getToken } from '../auth'
+import { getToken } from '../../api/auth'
 import ConversationInsights from '../ConversationInsights'
 import { ACTIVITY_LABELS, LEVEL_LABELS } from '../planning'
 import ClinicalTimeline from '../ClinicalTimeline'

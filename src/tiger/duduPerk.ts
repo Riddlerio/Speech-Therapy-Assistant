@@ -27,11 +27,6 @@ export function createPerkClock(now: () => number = () => performance.now()) {
   }
 }
 
-/** 움직임 줄이기 설정. */
-export function prefersReducedMotion(): boolean {
-  return typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-}
-
 /** GLB 머리 뼈를 찾는다(Mixamo 이름 …Head). */
 export function findHeadBone(model: Object3D): Object3D | null {
   let head: Object3D | null = null

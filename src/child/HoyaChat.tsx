@@ -10,6 +10,7 @@ import { WebSpeechRecognizer } from '../speech/webSpeechRecognizer'
 import { HoyaChatController, type HoyaChatState } from './hoyaChatController'
 import { KoreanTts } from '../speech/koreanTts'
 import { unlockDuduAudio } from '../speech/duduClips'
+import { prefersReducedMotion } from '../shared/useReducedMotion'
 import './duduDemo.css'
 import { playTurnChime, unlockFx, VoiceCredit } from './demoFx'
 import { TurnCue } from './turnCue'
@@ -18,7 +19,7 @@ import { GameCard } from './GameCard'
 
 /** 대화를 마치고 두두가 권하는 게임. 화면 아래 버튼으로 들어간다(2026-10-05 데모 흐름). */
 export const CROSSING_PATH = '/play/crossing'
-/** '대구대 건너기' 카드 그림(Meshy 이미지 생성, Nano Banana Pro, 2026-10-05. docs/ASSET_LICENSES.md). */
+/** '대구대 건너기' 카드 그림(Meshy 이미지 생성, Nano Banana Pro, 2026-10-05. documents/07_assets_production/ASSET_LICENSES.md). */
 const CROSSING_CARD_ART = '/assets/art/crossing_card.webp'
 // 인사할 때 먼저 점프하고 나서 말한다.
 const GREETING_JUMP_MS = 1300
@@ -193,7 +194,7 @@ export default function HoyaChat() {
   // 두두가 게임을 권하면 카드가 보이게 한 번 내린다(휴대폰처럼 화면이 좁아 카드가 아래에 있을 때).
   useEffect(() => {
     if (!suggested) return
-    const reduce = typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    const reduce = prefersReducedMotion()
     nextGameRef.current?.scrollIntoView?.({ behavior: reduce ? 'auto' : 'smooth', block: 'nearest' })
   }, [suggested])
 

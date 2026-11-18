@@ -1,5 +1,4 @@
-"""호야 대화 제공자에게 넘길 최소 context와 메시지를 만든다.
-
+"""호야 대화 제공자(LLM)에게 넘길 최소 context와 메시지를 만든다.
 신뢰하는 지시(system prompt, 서버가 정한 전략·목표)와 신뢰하지 않는 아동 발화를 서로 다른 메시지로 나눈다.
 API key·비밀번호·play code·계정 id·원본 음성·아동 이름은 넣지 않는다.
 """
@@ -24,11 +23,17 @@ STRATEGY_GUIDE: dict[str, str] = {
 
 @lru_cache
 def system_prompt() -> str:
+    """같은 폴더의 system_prompt.md를 읽어 돌려준다(한 번 읽으면 캐시).
+    OpenAI 제공자의 instructions와 응답 검증의 지시문 노출 검사에 쓴다.
+    """
     return SYSTEM_PROMPT_FILE.read_text(encoding="utf-8")
 
 
 @dataclass(frozen=True)
 class HoyaDialogueContext:
+    """제공자에게 넘길 대화 한 차례의 입력 묶음(연령대, 목표 음소·위치·단계, 서버가 정한 전략·근거, 목표 어휘, 허용 단서, 아동 발화와 최근 대화).
+    꼭 필요한 값만 담아 개인정보가 LLM으로 나가지 않게 한다.
+    """
     age_band: str
     target_phoneme: str
     word_position: str
@@ -44,6 +49,9 @@ class HoyaDialogueContext:
 
 
 def trusted_context(context: HoyaDialogueContext) -> dict:
+    """서버가 정한 값(연령대, 치료 맥락, 이번 전략과 설명, 음성 근거, 목표 어휘)만 dict로 만든다.
+    developer 메시지에 넣어 모델이 따라야 할 지시로 쓴다.
+    """
     return {
         "childContext": {"ageBand": context.age_band},
         "therapyContext": {"targetPhoneme": context.target_phoneme, "wordPosition": context.word_position,
@@ -55,11 +63,16 @@ def trusted_context(context: HoyaDialogueContext) -> dict:
 
 
 def untrusted_content(context: HoyaDialogueContext) -> dict:
+    """아동 발화와 최근 대화 내용만 dict로 만든다.
+    신뢰하지 않는 내용이라 지시와 섞이지 않게 user 메시지에 따로 넣는다(프롬프트 주입 방지).
+    """
     return {"childTranscript": context.child_transcript, "recentTurns": context.recent_turns}
 
 
 def build_messages(context: HoyaDialogueContext) -> list[dict]:
-    """Responses API 입력. developer 메시지는 서버 값, user 메시지는 아동 대화 내용(UNTRUSTED)만 담는다."""
+    """Responses API 입력 메시지 목록을 만든다. developer 메시지는 서버 값, user 메시지는 아동 대화 내용(UNTRUSTED)만 담는다.
+    OpenAI 제공자가 호출할 때 input으로 넘긴다.
+    """
     return [
         {"role": "developer", "content": json.dumps(trusted_context(context), ensure_ascii=False)},
         {"role": "user", "content": json.dumps({"untrustedChildContent": untrusted_content(context)}, ensure_ascii=False)},

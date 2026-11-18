@@ -5,6 +5,7 @@ import { KoreanTts } from '../speech/koreanTts'
 import { Hoya3D } from '../tiger/Hoya3D'
 import { PopBurst, VoiceCredit } from './demoFx'
 import { hasFinalConsonant } from './koreanText'
+import { prefersReducedMotion } from '../shared/useReducedMotion'
 import { hasPicture, WordPicture } from './WordPicture'
 import './duduDemo.css'
 
@@ -32,7 +33,7 @@ export default function DuduGoodbye() {
   const [action, setAction] = useState<HoyaAction>('CHEER')
   const [text, setText] = useState('')
   const [ended, setEnded] = useState(false)
-  const still = typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+  const still = prefersReducedMotion()
 
   useEffect(() => {
     const tts = new KoreanTts()

@@ -3,7 +3,7 @@
 import pytest
 from sqlalchemy import func, select, text
 
-from app import main as api_module
+from app.serializers import clinical_eligible
 from app.models import (AIRecommendation, ActivityRecommendation, AuditEvent, Child, ClinicalObservation, ClinicalVerification,
                         SpeechAnalysis, TrainingSession, Utterance)
 from test_api_flow import api, auth, real_child_auth, student_auth
@@ -176,7 +176,7 @@ def test_seed_child_real_session_keeps_seed_provenance(api):
     started = _start(client, student_auth(client), "real")
     session = _session(sessions, started["sessionId"])
     assert session.mode == "real" and session.is_seed is True
-    assert api_module.clinical_eligible(session) is False
+    assert clinical_eligible(session) is False
 
 
 @pytest.mark.parametrize("mode,eligible", [("real", True), ("demo", False)])
@@ -186,7 +186,7 @@ def test_real_child_session_provenance_by_mode(api, mode, eligible):
     started = _start(client, headers, mode)
     session = _session(sessions, started["sessionId"])
     assert session.is_seed is False and session.mode == mode
-    assert api_module.clinical_eligible(session) is eligible
+    assert clinical_eligible(session) is eligible
 
 
 def _confirmed_seed_real_observations(client):

@@ -1,4 +1,6 @@
-"""대구대 건너기의 10줄 진행. 게임 이동과 음향 근사 관찰을 분리한다."""
+"""대구대 건너기(횡단보도) 게임의 10줄(5라운드 × 2낱말) 진행, 판 반복, 피드백 없는 확인 낱말(probe)을 관리한다.
+게임 이동(화면 진행)과 음향 근사 관찰(판정)을 분리하며, main.py의 게임 시작·발화·판 추가·확인 낱말 API가 부른다.
+"""
 import secrets
 from dataclasses import replace
 
@@ -21,6 +23,9 @@ PRACTICE_WORDS = frozenset({"사과", "수박", "시소", "소리"})
 
 
 def build_stages(goal):
+    """목표(어두 /ㅅ/, 음절·낱말 단계)에 맞춰 5라운드 각각에 쓸 연습 항목 2개씩을 고른다. 제외 낱말은 같은 단계의 다른 항목으로 바꾼다.
+    게임을 시작할 때 부르며, 이 근사 판정은 어두 /ㅅ/만 지원하므로 다른 목표면 422로 거절한다.
+    """
     # 이 근사는 /ㅅ/ 어두만 지원한다. 다른 목표에 같은 판정을 붙이지 않는다.
     if goal.target_phoneme != "ㅅ" or goal.word_position != "initial" or goal.level not in {"syllable", "word"}:
         raise HTTPException(422, "대구대 건너기는 어두 /ㅅ/의 음절·낱말 목표를 지원합니다")
@@ -53,6 +58,9 @@ def build_stages(goal):
 
 
 def definition_for_item(state):
+    """현재 상태에 맞는 라운드 정의를 돌려준다. 확인 낱말 중이면 "새 낱말 확인"용 정의로 바꾸고, 아니면 현재 항목 단계를 일반화 단계로 쓴다.
+    단서 갱신·화면 응답·관찰 기록이 같은 라운드 정보를 쓰게 하려고 있다.
+    """
     definition = GAME_ROUNDS[GAME][state["roundIndex"] - 1]
     if probe_active(state):
         return replace(definition, id=f"{GAME}.probe", child_title="새 낱말 확인",
@@ -64,7 +72,9 @@ def definition_for_item(state):
 
 
 def update_cue(state, *, model):
-    """다음 표시 항목의 단서와 관찰 스냅숏을 함께 바꾼다."""
+    """다음 표시 항목의 단서(시범 듣기 또는 그림·글자)와 관찰 스냅숏(유도 방식·독립성)을 함께 바꾼다.
+    두 값을 한곳에서 같이 바꿔, 관찰 기록의 단서 정보가 실제 화면과 어긋나지 않게 한다.
+    """
     definition = definition_for_item(state)
     state["modelCue"] = model
     cue = "AUDITORY_MODEL" if model else definition.prompt_type
@@ -75,6 +85,9 @@ def update_cue(state, *, model):
 
 
 def child_round(definition):
+    """아동 화면에 보낼 라운드 정보(제목·안내 문장·시도 수)만 만든다.
+    기존 4게임의 payload는 유지하고, 이 게임에서는 임상 근거·판정 기준을 아이 화면에 내보내지 않으려고 따로 둔다.
+    """
     # 기존 4게임의 payload는 유지하고 이 게임에서는 임상 근거·판정 기준을 내보내지 않는다.
     return {"index": definition.index, "id": definition.id, "childTitle": definition.child_title,
             "childPrompt": definition.child_prompt,
@@ -83,6 +96,9 @@ def child_round(definition):
 
 
 def cursor(state):
+    """현재 진행 위치(라운드·줄·남은 시도·시범 여부·판 번호·확인 낱말 진행)를 화면용 dict로 만든다.
+    게임 상태 응답(activity_payload)에 합쳐 아동 화면이 캐릭터 위치와 버튼을 그리게 한다.
+    """
     active_probe = probe_active(state)
     complete = bool(state.get("roundsComplete")) and not active_probe
     return {"roundIndex": state["roundIndex"], "itemIndexInRound": state["itemIndexInRound"],
@@ -96,15 +112,24 @@ def cursor(state):
 
 
 def probe_active(state):
+    """확인 낱말 단계가 시작됐고 아직 끝나지 않았는지 판단한다.
+    진행·화면·참여 시간 계산이 지금 확인 낱말 중인지에 따라 다르게 동작해야 해서 여러 곳에서 쓴다.
+    """
     return bool(state.get("probeStarted")) and not state.get("probeComplete", False)
 
 
 def is_probe_observation(row):
+    """관찰 행이 확인 낱말(연습하지 않은 낱말) 기록인지 근거(evidence)로 판단한다.
+    경과 지표·치료사 분석이 확인 낱말 결과를 연습 결과와 섞지 않으려고 쓴다.
+    """
     evidence = row.evidence if isinstance(row.evidence, dict) else {}
     return evidence.get("probe") is True or evidence.get("elicitationType") == "GENERALIZATION_PROBE"
 
 
 def build_probes(goal, stages):
+    """연습한 낱말과 제외 낱말을 뺀 /ㅅ/ 낱말 중 앞에서부터 최대 3개를 확인 낱말로 고른다.
+    연습하지 않은 낱말에서도 소리가 나오는지(일반화) 보려고, 한 판을 마친 뒤 확인 낱말을 시작할 때 부른다.
+    """
     # 고정 연습 낱말 전체와 제외 설정 때문에 대체되어 실제 연습한 낱말도 모두 뺀다.
     practiced = PRACTICE_WORDS | {row["displayText"] for stage in stages for row in stage["items"]}
     excluded = set(goal.excluded_words or ())
@@ -113,6 +138,9 @@ def build_probes(goal, stages):
 
 
 def start_probes(state, selected):
+    """상태를 확인 낱말 단계로 바꾸고 첫 낱말을 띄운다. 고를 낱말이 없으면 바로 완료로 표시한다.
+    기록할 사건(PROBE_START 등) 초안 목록을 돌려주며, main.py의 확인 낱말 시작 API가 부른다.
+    """
     state.update(probeStarted=True, probeComplete=not selected, probeItems=selected,
                  probeIndex=1 if selected else 0, probeAttemptsUsed=0, modelCue=False, roundAttempt=1)
     drafts = [{"type": "PROBE_START", "payload": {"wordN": len(selected)}}]
@@ -125,7 +153,9 @@ def start_probes(state, selected):
 
 
 def advance_probe(state, result):
-    """정오는 저장에만 쓴다. 공개 이벤트는 중립이며 보류일 때만 한 번 더 듣는다."""
+    """확인 낱말 발화 한 번을 반영한다. 정오는 저장에만 쓰고 공개 이벤트는 중립이며, 판단 보류일 때만 한 번 더 듣는다.
+    아이에게 맞고 틀림을 알려 주지 않아야 일반화를 정확히 볼 수 있어서 이렇게 한다.
+    """
     state["probeAttemptsUsed"] += 1
     drafts = [{"type": "PROBE_RECORDED", "payload": {}}]
     if result in {"uncertain", "no_speech"} and state["probeAttemptsUsed"] < MAX_PROBE_TRIES:
@@ -143,7 +173,9 @@ def advance_probe(state, result):
 
 
 def advance(state, result, stages, at):
-    """발화 한 번을 반영한다. 무발화·불확실은 평가 시도나 보상을 만들지 않는다."""
+    """연습 발화 한 번을 반영해 시도 수·성공 수를 올리고, 필요하면 다음 줄·다음 라운드·판 완료로 넘긴다.
+    무발화·불확실은 평가 시도나 보상을 만들지 않는다. 기록할 사건 초안 목록을 돌려주며 main.py의 발화 제출 처리가 부른다.
+    """
     drafts = []
     neutral = result in {"uncertain", "no_speech"}
     if neutral:
@@ -186,7 +218,9 @@ def advance(state, result, stages, at):
 
 
 def next_lap(state, stages, at):
-    """한 판을 마친 회기에서 첫 줄부터 다시 건넌다. 시도 수(totalAttempts)와 관찰은 같은 회기에 이어서 쌓인다."""
+    """한 판을 마친 회기에서 첫 줄부터 다시 건너도록 상태를 되돌린다. 시도 수(totalAttempts)와 관찰은 같은 회기에 이어서 쌓인다.
+    아이가 "한 판 더"를 고르면 main.py의 판 추가 API가 부른다(최대 MAX_LAPS판).
+    """
     lap = state.get("lap", 1) + 1
     state.update(lap=lap, roundsComplete=False, roundIndex=1, stageIndex=0, itemIndexInRound=1, stripeIndex=1,
                  roundAttempt=1, roundAttemptsUsed=0, roundSuccesses=0, roundEvaluated=0, itemAttemptsUsed=0,

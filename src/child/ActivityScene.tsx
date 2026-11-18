@@ -3,6 +3,7 @@ import type { GameKind, HoyaAction } from '../control/speechGameSignal'
 import { Hoya3D } from '../tiger/Hoya3D'
 import { MagicBeamScene } from '../game/magicBeam/MagicBeamScene'
 import type { BeamVisualInput } from '../game/magicBeam/sceneState'
+import { prefersReducedMotion } from '../shared/useReducedMotion'
 import './duduAdventure.css'
 import './sceneFx.css'
 
@@ -22,10 +23,6 @@ const FARM = { hand: [56, 55] as Point, target: [17, 74] as Point }
 const at = ([x, y]: Point, extra: CSSProperties = {}): CSSProperties => ({ left: `${x}%`, top: `${y}%`, ...extra })
 const vars = (values: Record<string, string | number>) => values as CSSProperties
 
-function reducedMotion() {
-  return typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-}
-
 /** 승인된 데모 장면만 바꾼다. 재료 지급·임상 판정은 서버 응답을 따른다. */
 export function ActivityScene({ game, action, magicBeam = false, fx = null, roundIndex = 1, targetMs = 1, readBeamInput, paused = false }: { game: GameKind; action: HoyaAction; magicBeam?: boolean; fx?: SceneFx | null; roundIndex?: number; targetMs?: number; readBeamInput?: () => BeamVisualInput; paused?: boolean }) {
   if (game === 'magic_beam') return <MagicBeamScene action={action} roundIndex={roundIndex} targetMs={targetMs} readInput={readBeamInput} paused={paused} fx={fx} />
@@ -41,7 +38,7 @@ function ExistingActivityScene({ game, action, magicBeam = false, fx = null }: {
   const art = useRef<HTMLDivElement>(null)
   useEffect(() => {
     // 맞히는 순간 장면을 짧게 흔든다. 움직임 줄이기 설정에서는 생략한다.
-    if (!fx || fx.result !== 'hit' || reducedMotion()) return
+    if (!fx || fx.result !== 'hit' || prefersReducedMotion()) return
     art.current?.animate?.([{ translate: '0 0' }, { translate: '-5px 2px' }, { translate: '4px -2px' }, { translate: '-2px 1px' }, { translate: '0 0' }],
       { duration: 300, easing: 'ease-out' })
   }, [fx?.id])

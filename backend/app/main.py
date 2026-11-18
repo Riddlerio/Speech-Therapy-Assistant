@@ -1,3 +1,5 @@
+"""Speech Hero FastAPI 앱의 시작점: 앱 생성·보안 미들웨어·로그인/로그아웃·아동 놀이(활동 5라운드) 라우트.
+치료사 화면 라우트는 therapist_api.py, 기능별 라우트는 각 패키지 api.py에 두고 여기서 순서대로 등록한다."""
 import asyncio
 import secrets
 import logging
@@ -13,15 +15,12 @@ from sqlalchemy.orm import Session
 
 from .config import settings
 from .db import Base, engine, get_db, SessionLocal
-from .enums import LEVEL_ORDER
-from .models import (AIRecommendation, ActivityRecommendation, Account, AuditEvent, ClinicalObservation, ClinicalVerification, CookieSession, LoginFailure, Child, GameEvent, HoyaChatSession, HoyaChatTurn, ProgressMetric, SpeechAnalysis,
-                     Therapist, TherapistFeedback, TherapistRule, TrainingDecision, TrainingGoal,
-                     TrainingPlan, TrainingSession, Utterance, now)
-from .schemas import (ActivityRecommendationDecisionInput, ChildInput, CompleteInput, DemoLoginInput, FeedbackInput, GoalInput, LoginInput, ObservationDecisionInput, StartActivityInput,
-                      RecommendationDecisionInput, UtteranceInput)
-from .security import hash_password, hash_token, verify_dummy_password, verify_password
+from .models import (Account, AuditEvent, CookieSession, LoginFailure, Child, GameEvent, SpeechAnalysis,
+                     TrainingGoal, TrainingPlan, TrainingSession, Utterance, now)
+from .schemas import CompleteInput, DemoLoginInput, LoginInput, StartActivityInput, UtteranceInput
+from .security import hash_token, verify_dummy_password, verify_password
 from .maintenance import purge_expired_chat_text, purge_expired_transcripts, retention_loop
-from .auth import COOKIE_NAME, create_session, current_account, owned_child, require_student, require_therapist, require_admin
+from .auth import COOKIE_NAME, create_session, current_account, require_student, require_admin
 from .seed import seed
 from .demo import demo_account, is_demo_account
 from . import static_site
@@ -32,11 +31,11 @@ from .analysis.insights import generate_insights
 from .analysis.translation import therapist_text
 from .training.rewards import award
 from .clinical.observation_builder import build_observation
-from .clinical.activity_recommendation import propose_activity
 from .games.rounds import GAME_ROUNDS, effective_round, next_difficulty, public_round
 from .games.evaluation import evaluate_round
 from .games.conversation import quest_reply
 from .training.content import items
+from .therapist_api import router as therapist_router
 from .hoya.api import router as hoya_chat_router
 from .therapist_planning.api import router as session_planning_router
 from .therapist_insights.api import router as therapist_insights_router
@@ -47,10 +46,13 @@ from .games.round_rewards import round_reward
 from .games import crossing
 from .game_settings.api import router as game_settings_router
 from .game_settings.service import rhythm_snapshot
+from .serializers import current_goal, legacy_recommendation_allowed
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """서버 시작 때 표 생성·호야 표 구조 갱신·만료 전사 삭제·DEMO seed를 하고 주기 삭제 작업을 띄운다.
+    앱이 뜰 때 한 번 실행되며 종료 때 주기 작업을 취소한다."""
     Base.metadata.create_all(engine)
     # PR #4 초기 개발 DB의 호야 대화 표를 현재 구조로 옮긴다(자료 보존). 이미 최신이면 아무것도 하지 않는다.
     upgrade_hoya_chat_schema(engine)
@@ -77,6 +79,8 @@ app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origins.split(","
 
 @app.middleware("http")
 async def limit_body(request: Request, call_next):
+    """허용되지 않은 출처를 403으로, 잘못되거나 64KB를 넘는 본문을 400·413으로 막는다.
+    라우트가 본문을 읽기 전에 크기·출처를 먼저 걸러 과도한 요청을 차단한다."""
     origin = request.headers.get("origin")
     allowed = {value.strip() for value in settings.cors_origins.split(",")}
     if origin and origin not in allowed:
@@ -101,6 +105,8 @@ async def limit_body(request: Request, call_next):
 # 마지막에 등록한 미들웨어가 가장 바깥에서 실행된다. 403·413 같은 조기 응답에도 보안 헤더가 붙는다.
 @app.middleware("http")
 async def security_headers(request: Request, call_next):
+    """모든 응답에 캐시·nosniff·referrer·framing·CSP 보안 헤더를 붙인다.
+    화면(정적 파일)과 API에 서로 다른 CSP를 적용하려고 경로를 구분한다."""
     response = await call_next(request)
     path = request.url.path
     frontend = static_site.is_frontend_path(path)
@@ -117,73 +123,16 @@ async def security_headers(request: Request, call_next):
 
 @app.exception_handler(RequestValidationError)
 async def safe_validation_error(_request: Request, exc: RequestValidationError):
+    """422 검증 오류 목록에서 입력값(input)·컨텍스트(ctx) 항목을 빼고 돌려준다.
+    오류 응답에 아동 발화 내용이 다시 실려 나가지 않게 한다."""
     # 입력값과 예외 컨텍스트에는 아동의 발화 내용이 포함될 수 있다.
     errors = [{key: value for key, value in error.items() if key not in {"input", "ctx"}} for error in exc.errors()]
     return JSONResponse(status_code=422, content={"detail": errors})
 
 
-def public(model, fields):
-    return {field: getattr(model, field) for field in fields}
-
-
-def goal_data(goal):
-    return public(goal, ["id", "child_id", "version", "parent_goal_id", "status", "target_phoneme", "target_sound", "word_position", "level", "min_level", "session_duration_min", "repetition_target", "priority", "preferred_cue", "excluded_words", "excluded_games", "priority_targets", "note", "source", "source_recommendation_id"])
-
-
-def child_data(child):
-    return public(child, ["id", "child_code", "hero_name", "age_band", "play_code", "xp", "collection_json", "is_seed"])
-
-
-def rec_data(rec):
-    return public(rec, ["id", "child_id", "session_id", "rule_id", "observation", "evidence", "suggestion_text", "suggested_goal", "rationale", "confidence", "status"])
-
-
-def activity_rec_data(rec):
-    return public(rec, ["id", "child_id", "activity", "clinical_purpose", "reason", "evidence", "confidence", "status", "selected_activity", "decision_note", "created_at", "decided_at"])
-
-
-def clinical_eligible(session) -> bool:
-    """실제 음성 모드의 비샘플 세션만 임상 검증 통계에 들어간다."""
-    return session is not None and session.mode == "real" and not session.is_seed
-
-
-def legacy_recommendation_allowed(session) -> bool:
-    """legacy 목표 추천(R1–R5)은 임상 근거 회기나 seed 시연 회기에서만 만든다.
-
-    실제 아동의 DEMO 연습은 수락 시 목표를 바꾸는 추천을 만들지 않는다. seed 시연 자료는 샘플로 표시된다.
-    """
-    return session is not None and (clinical_eligible(session) or session.is_seed)
-
-
-def rec_payload(db, rec):
-    session = db.get(TrainingSession, rec.session_id)
-    return {**rec_data(rec), "provenance": {"sessionMode": session.mode if session else None,
-                                            "sessionIsSeed": bool(session and session.is_seed),
-                                            "clinicalEligible": clinical_eligible(session),
-                                            "demoPractice": not legacy_recommendation_allowed(session)}}
-
-
-def observation_data(observation, session=None):
-    eligible = clinical_eligible(session)
-    return {**observation_fields(observation), "is_demo": not eligible, "clinical_eligible": eligible}
-
-
-def observation_fields(observation):
-    return public(observation, ["id", "session_id", "utterance_id", "round_index", "round_id", "difficulty", "activity",
-                                "target_phoneme", "word_position", "generalization_level", "attempt_number",
-                                "cue_type", "independence", "duration_ms", "audio_quality", "ai_result",
-                                "ai_confidence", "possible_error_pattern", "evidence", "provenance",
-                                "verification_state", "created_at"])
-
-
-def current_goal(db, child_id):
-    return db.scalar(select(TrainingGoal).where(TrainingGoal.child_id == child_id, TrainingGoal.status == "active"))
-
-
-therapist_auth = require_therapist
-
-
 def play_session(db, session_id, account):
+    """아동 계정이 소유한 회기를 찾고, 없거나 남의 회기면 404를 낸다.
+    놀이 라우트가 회기를 읽기 전 소유권 확인에 쓴다(account가 없으면 서버 내부 seed 호출)."""
     session = db.get(TrainingSession, session_id)
     # account가 없는 경우는 서버 내부 DEMO seed 호출뿐이다.
     if not session or (account is not None and account.child_id != session.child_id):
@@ -192,6 +141,8 @@ def play_session(db, session_id, account):
 
 
 def save_events(db, session, drafts, utterance_id=None, item=None, goal=None, analysis=None):
+    """게임 이벤트 초안들을 치료사용 설명과 함께 저장하고 응답용 목록으로 돌려준다.
+    활동 시작·발화·판 넘김 때 화면 이벤트와 치료사 타임라인을 같은 기록으로 남긴다."""
     result = []
     for draft in drafts:
         event = GameEvent(session_id=session.id, utterance_id=utterance_id, type=draft["type"], payload=draft.get("payload", {}), therapist_text=therapist_text(draft["type"], draft.get("payload", {}), item, goal, analysis))
@@ -201,25 +152,10 @@ def save_events(db, session, drafts, utterance_id=None, item=None, goal=None, an
     return result
 
 
-def create_goal(db, child, values, source="manual", recommendation_id=None):
-    previous = current_goal(db, child.id)
-    data = {key: getattr(previous, key) for key in GoalInput.model_fields} if previous else GoalInput().model_dump()
-    data.update(values)
-    if data["level"] not in [v.value for v in LEVEL_ORDER] or data["min_level"] not in [v.value for v in LEVEL_ORDER] or LEVEL_ORDER.index(data["min_level"]) > LEVEL_ORDER.index(data["level"]):
-        raise HTTPException(422, "최소 단계가 목표 단계보다 높습니다")
-    if previous:
-        previous.status = "superseded"
-    goal = TrainingGoal(child_id=child.id, version=previous.version + 1 if previous else 1, parent_goal_id=previous.id if previous else None, source=source, source_recommendation_id=recommendation_id, **data)
-    db.add(goal)
-    for rule in db.scalars(select(TherapistRule).where(TherapistRule.child_id == child.id, TherapistRule.active == True)).all():
-        if rule.params.get("scope") == "until_level_change" and rule.level_at_creation != goal.level:
-            rule.active, rule.deactivated_reason = False, "goal level changed"
-    db.flush()
-    return goal
-
-
 @app.get("/api/system/info")
 def system_info():
+    """앱 버전·모드·분석 방식과 음성 전송 안내 문구를 돌려준다.
+    화면이 로그인 전에도 서비스 정보와 개인정보 안내를 보여 줄 때 쓴다."""
     return {"version": "0.2.0", "modes": ["real", "demo"], "analysisMethod": "baseline_acoustic_and_asr_v2",
             "pronunciationProvider": "BASELINE", "clinicalValidation": False,
             "notice": "Web Speech API 사용 시 브라우저 제공업체 서버로 음성이 전송될 수 있습니다. 원본 음성은 이 서버에 저장하지 않습니다."}
@@ -227,6 +163,8 @@ def system_info():
 
 @app.post("/api/auth/login")
 def login(body: LoginInput, request: Request, response: Response, db: Session = Depends(get_db)):
+    """아이디·비밀번호를 확인해 쿠키 세션을 열고, 실패는 IP·아이디·쌍 기준으로 세어 429로 제한한다.
+    모든 사용자의 로그인 입구이며 없는 아이디도 같은 시간이 걸리게 dummy 검증을 한다."""
     ip = request.client.host if request.client else "unknown"
     username = body.username.lower()
     keys = {"ip": hash_token(f"ip:{ip}"), "user": hash_token(f"user:{username}"), "pair": hash_token(f"pair:{ip}:{username}")}
@@ -259,6 +197,8 @@ def login(body: LoginInput, request: Request, response: Response, db: Session = 
 
 
 def start_cookie_session(db, response: Response, user: Account, action: str) -> dict:
+    """세션·CSRF 토큰을 만들고 감사 기록을 남긴 뒤 httponly 쿠키를 설정한다.
+    일반 로그인과 DEMO 로그인이 같은 쿠키 규칙을 쓰도록 공유한다."""
     token, csrf = create_session(db, user)
     db.add(AuditEvent(actor_id=user.id, action=action, resource_id=user.id, result="SUCCESS"))
     db.commit()
@@ -269,12 +209,15 @@ def start_cookie_session(db, response: Response, user: Account, action: str) -> 
 
 @app.get("/api/config/public")
 def public_config():
+    """로그인 전 화면에 필요한 공개 설정(DEMO 모드 여부)을 돌려준다.
+    로그인 화면이 DEMO 버튼을 보일지 정할 때 쓴다."""
     return {"demoModeEnabled": settings.seed_demo_data}
 
 
 @app.post("/api/auth/demo-login")
 def demo_login(body: DemoLoginInput, response: Response, db: Session = Depends(get_db)):
-    """DEMO 모드에서만 샘플 계정 세션을 만든다. 비밀번호는 브라우저로 전달하지 않는다."""
+    """DEMO 모드에서만 샘플 계정 세션을 만든다. 비밀번호는 브라우저로 전달하지 않는다.
+    시연용 빠른 로그인이며 DEMO 모드가 꺼져 있거나 계정이 없으면 404다."""
     if not settings.seed_demo_data:
         raise HTTPException(404)
     user = demo_account(db, body.role)
@@ -286,6 +229,8 @@ def demo_login(body: DemoLoginInput, response: Response, db: Session = Depends(g
 
 @app.post("/api/auth/logout", status_code=204)
 def logout(request: Request, response: Response, account: Account = Depends(current_account), db: Session = Depends(get_db)):
+    """현재 쿠키 세션을 지우고 감사 기록을 남긴 뒤 쿠키를 삭제한다(204).
+    로그아웃 버튼에서 쓰며 서버 쪽 세션도 함께 무효화한다."""
     db.execute(delete(CookieSession).where(CookieSession.token_hash == hash_token(request.cookies[COOKIE_NAME])))
     db.add(AuditEvent(actor_id=account.id, action="LOGOUT", resource_id=account.id, result="SUCCESS"))
     db.commit()
@@ -296,95 +241,26 @@ def logout(request: Request, response: Response, account: Account = Depends(curr
 
 @app.get("/api/auth/me")
 def auth_me(account: Account = Depends(current_account)):
+    """로그인한 계정의 id와 역할을 돌려준다.
+    화면이 새로고침 뒤 로그인 상태와 역할별 화면을 정할 때 쓴다."""
     return {"id": account.id, "role": account.role}
 
 
 @app.get("/api/admin/health")
 def admin_health(_account: Account = Depends(require_admin)):
+    """관리자 전용 상태 확인으로 {"status": "ok"}를 돌려준다.
+    운영 점검과 관리자 권한 검사가 동작하는지 확인할 때 쓴다."""
     return {"status": "ok"}
 
 
-@app.get("/api/children")
-def children(db: Session = Depends(get_db), therapist: Therapist = Depends(therapist_auth)):
-    return [child_data(c) for c in db.scalars(select(Child).where(Child.therapist_id == therapist.id)).all()]
-
-
-@app.post("/api/children")
-def add_child(body: ChildInput, db: Session = Depends(get_db), therapist: Therapist = Depends(therapist_auth)):
-    count = len(db.scalars(select(Child)).all()) + 1
-    play_code = secrets.token_hex(3).upper()
-    while db.scalar(select(Child.id).where(Child.play_code == play_code)):
-        play_code = secrets.token_hex(3).upper()
-    child = Child(child_code=f"C-{count:04d}", hero_name=body.hero_name, age_band=body.age_band, therapist_id=therapist.id, play_code=play_code, guardian_consent_at=now() if body.guardian_consent else None)
-    db.add(child)
-    db.flush()
-    initial_password = secrets.token_urlsafe(16)
-    salt = secrets.token_hex(16)
-    db.add(Account(username=play_code, password_salt=salt,
-                   password_hash=hash_password(initial_password, salt), role="STUDENT", child_id=child.id))
-    create_goal(db, child, {})
-    db.commit()
-    return {**child_data(child), "initialPassword": initial_password}
-
-
-@app.get("/api/children/{child_id}")
-def child_detail(child_id: str, db: Session = Depends(get_db), therapist: Therapist = Depends(therapist_auth)):
-    child = owned_child(db, child_id, therapist)
-    goals = db.scalars(select(TrainingGoal).where(TrainingGoal.child_id == child.id).order_by(TrainingGoal.version.desc())).all()
-    sessions = db.scalars(select(TrainingSession).where(TrainingSession.child_id == child.id).order_by(TrainingSession.started_at.desc())).all()
-    rules = db.scalars(select(TherapistRule).where(TherapistRule.child_id == child.id, TherapistRule.active == True)).all()
-    return {"child": child_data(child), "currentGoal": goal_data(goals[0]) if goals else None, "goalHistory": [goal_data(g) for g in goals], "sessions": [{"id": s.id, "mode": s.mode, "isSeed": s.is_seed, "startedAt": s.started_at, "status": s.status, "summary": s.summary_json, "goalVersion": db.get(TrainingGoal, s.goal_id).version, "metric": ({"attempts": m.attempts, "successRate": m.success_rate, "firstTrySuccessRate": m.first_try_success_rate} if (m := db.scalar(select(ProgressMetric).where(ProgressMetric.session_id == s.id))) else None)} for s in sessions], "activeRules": [public(r, ["id", "rule_type", "params", "active"]) for r in rules]}
-
-
-@app.get("/api/children/{child_id}/goals")
-def goals(child_id: str, db: Session = Depends(get_db), therapist: Therapist = Depends(therapist_auth)):
-    owned_child(db, child_id, therapist)
-    return [goal_data(g) for g in db.scalars(select(TrainingGoal).where(TrainingGoal.child_id == child_id).order_by(TrainingGoal.version.desc())).all()]
-
-
-@app.post("/api/children/{child_id}/goals")
-def add_goal(child_id: str, body: GoalInput, db: Session = Depends(get_db), therapist: Therapist = Depends(therapist_auth)):
-    child = owned_child(db, child_id, therapist)
-    goal = create_goal(db, child, body.model_dump())
-    db.commit()
-    return goal_data(goal)
-
-
-@app.delete("/api/children/{child_id}/speech-data", status_code=204)
-def delete_speech_data(child_id: str, db: Session = Depends(get_db), therapist: Therapist = Depends(therapist_auth)):
-    owned_child(db, child_id, therapist)
-    ids = db.scalars(select(TrainingSession.id).where(TrainingSession.child_id == child_id)).all()
-    utterance_ids = db.scalars(select(Utterance.id).where(Utterance.session_id.in_(ids))).all() if ids else []
-    # 발화에서 파생된 임상 관찰·치료사 검증·활동 제안도 함께 지운다. 참조하는 행부터 삭제한다.
-    observation_ids = db.scalars(select(ClinicalObservation.id).where(ClinicalObservation.child_id == child_id)).all()
-    if observation_ids:
-        db.execute(delete(ClinicalVerification).where(ClinicalVerification.observation_id.in_(observation_ids)))
-        db.execute(delete(ClinicalObservation).where(ClinicalObservation.id.in_(observation_ids)))
-    db.execute(delete(ActivityRecommendation).where(ActivityRecommendation.child_id == child_id))
-    # 호야 대화 문장도 아동 음성에서 나온 자료다. 턴을 먼저 지우고 대화 세션을 지운다.
-    chat_ids = db.scalars(select(HoyaChatSession.id).where(HoyaChatSession.child_id == child_id)).all()
-    if chat_ids:
-        db.execute(delete(HoyaChatTurn).where(HoyaChatTurn.session_id.in_(chat_ids)))
-        db.execute(delete(HoyaChatSession).where(HoyaChatSession.id.in_(chat_ids)))
-    if utterance_ids:
-        db.execute(delete(SpeechAnalysis).where(SpeechAnalysis.utterance_id.in_(utterance_ids)))
-    if ids:
-        for model in (TrainingDecision, GameEvent, ProgressMetric, AIRecommendation):
-            db.execute(delete(model).where(model.session_id.in_(ids)))
-    if utterance_ids:
-        db.execute(delete(Utterance).where(Utterance.id.in_(utterance_ids)))
-    if ids:
-        adventure_service.remove_session_links(db, ids)
-        db.execute(delete(TrainingSession).where(TrainingSession.id.in_(ids)))
-    db.add(AuditEvent(actor_id=therapist.id, action="SPEECH_DATA_DELETED", resource_id=child_id, result="SUCCESS"))
-    db.commit()
-    return Response(status_code=204)
 
 
 @app.post("/api/play/sessions/{session_id}/complete")
 @state_guard
 def complete(session_id: str, body: CompleteInput, db: Session = Depends(get_db), account: Account | None = Depends(require_student),
              x_activity_lease: str | None = Header(default=None)):
+    """활동 회기를 끝내고 지표 재계산·추천·보상·요약을 저장해 요약을 돌려준다.
+    아동이 5라운드를 마치면 부르며, 이미 완료된 회기는 저장된 요약을 그대로 돌려준다."""
     child_id = account.child_id if account is not None else play_session(db, session_id, account).child_id
     adventure_service.serialize_child(db, child_id)
     session = play_session(db, session_id, account)
@@ -433,6 +309,8 @@ def complete(session_id: str, body: CompleteInput, db: Session = Depends(get_db)
 
 @app.get("/api/play/children/{play_code}/profile")
 def play_profile(play_code: str, db: Session = Depends(get_db), account: Account = Depends(require_student)):
+    """놀이 코드로 아동의 영웅 정보·배지·카드·배정 활동·지도 진행을 돌려준다.
+    아동 화면의 프로필을 보여 주며 본인 놀이 코드가 아니면 404다."""
     child = db.scalar(select(Child).where(Child.play_code == play_code.upper()))
     if not child:
         raise HTTPException(404)
@@ -444,6 +322,8 @@ def play_profile(play_code: str, db: Session = Depends(get_db), account: Account
 
 @app.get("/api/me/home")
 def character_home(db: Session = Depends(get_db), account: Account = Depends(require_student)):
+    """아동 홈 화면의 영웅 이름·레벨·두두 터치 수·배정 활동을 돌려준다.
+    아동이 로그인한 뒤 첫 화면을 그릴 때 쓴다."""
     child = db.get(Child, account.child_id)
     return {"heroName": child.hero_name, "heroLevel": child.xp // 100 + 1,
             "tapCount": (child.collection_json or {}).get("hoyaTaps", 0),
@@ -452,6 +332,8 @@ def character_home(db: Session = Depends(get_db), account: Account = Depends(req
 
 @app.post("/api/me/character/tap")
 def character_tap(db: Session = Depends(get_db), account: Account = Depends(require_student)):
+    """두두 캐릭터 터치 수를 늘리고 차례대로 인사말 한 줄을 돌려준다.
+    아동 홈에서 캐릭터를 눌렀을 때의 작은 반응이다."""
     child = db.get(Child, account.child_id)
     count = (child.collection_json or {}).get("hoyaTaps", 0) + 1
     child.collection_json = {**(child.collection_json or {}), "hoyaTaps": count}
@@ -463,6 +345,8 @@ def character_tap(db: Session = Depends(get_db), account: Account = Depends(requ
 
 @app.post("/api/activities")
 def start_activity(body: StartActivityInput, db: Session = Depends(get_db), account: Account = Depends(require_student)):
+    """현재 목표로 5라운드 계획·회기·런타임 상태를 만들고 첫 항목과 시작 이벤트를 돌려준다.
+    아동이 게임을 고를 때 쓰며 보호자 동의(403)와 활성 목표(409)가 있어야 한다."""
     child = db.get(Child, account.child_id)
     if not child.guardian_consent_at:
         raise HTTPException(403, "보호자 동의가 필요합니다")
@@ -520,9 +404,10 @@ def start_activity(body: StartActivityInput, db: Session = Depends(get_db), acco
 @app.get("/api/activities/{session_id}")
 @state_guard
 def current_activity(session_id: str, db: Session = Depends(get_db), account: Account = Depends(require_student)):
+    """진행 중인 활동 회기의 현재 화면 상태를 돌려준다.
+    새로고침·재접속 때 이어 하기용이며 활성 회기가 아니면 409다."""
     session = play_session(db, session_id, account)
-    state = activity_state(session)
-    game = state["activityGame"]
+    activity_state(session)
     if session.status != "active":
         raise HTTPException(409, "활성 게임이 아닙니다")
     return adventure_service.activity_payload(db, session)
@@ -532,6 +417,8 @@ def current_activity(session_id: str, db: Session = Depends(get_db), account: Ac
 @state_guard
 def activity_utterance(session_id: str, body: UtteranceInput, db: Session = Depends(get_db), account: Account = Depends(require_student),
                        x_activity_lease: str | None = Header(default=None)):
+    """발화 한 번을 평가·저장하고 라운드 진행(재시도·통과·다음 라운드·완료)을 계산해 돌려준다.
+    V2 라운드 상태 기계의 핵심이며 현재 라운드·항목·시도 번호가 다르면 409다."""
     adventure_service.serialize_child(db, account.child_id)
     session = play_session(db, session_id, account)
     state = activity_state(session)
@@ -656,7 +543,8 @@ def activity_utterance(session_id: str, body: UtteranceInput, db: Session = Depe
 @state_guard
 def next_crossing_lap(session_id: str, db: Session = Depends(get_db), account: Account = Depends(require_student),
                       x_activity_lease: str | None = Header(default=None)):
-    """대구대 건너기: 한 판을 마친 같은 회기에서 첫 줄부터 한 판 더 건넌다(최대 crossing.MAX_LAPS판)."""
+    """대구대 건너기: 한 판을 마친 같은 회기에서 첫 줄부터 한 판 더 건넌다(최대 crossing.MAX_LAPS판).
+    새 판은 항목 id를 새로 만들며 새 낱말 확인을 시작한 뒤에는 쓸 수 없다."""
     adventure_service.serialize_child(db, account.child_id)
     session = play_session(db, session_id, account)
     state = activity_state(session)
@@ -685,7 +573,8 @@ def next_crossing_lap(session_id: str, db: Session = Depends(get_db), account: A
 @state_guard
 def start_crossing_probes(session_id: str, db: Session = Depends(get_db), account: Account = Depends(require_student),
                           x_activity_lease: str | None = Header(default=None)):
-    """끝까지 건넌 판 뒤 연습하지 않은 낱말을 피드백 없이 확인한다."""
+    """끝까지 건넌 판 뒤 연습하지 않은 낱말을 피드백 없이 확인한다.
+    일반화 확인용이며 한 회기에 한 번만 시작할 수 있다."""
     adventure_service.serialize_child(db, account.child_id)
     session = play_session(db, session_id, account)
     state = activity_state(session)
@@ -704,264 +593,7 @@ def start_crossing_probes(session_id: str, db: Session = Depends(get_db), accoun
     return {**adventure_service.activity_payload(db, session), "events": events}
 
 
-@app.get("/api/dashboard/overview")
-def overview(db: Session = Depends(get_db), therapist: Therapist = Depends(therapist_auth)):
-    children = db.scalars(select(Child).where(Child.therapist_id == therapist.id)).all()
-    child_ids = [c.id for c in children]
-    sessions = db.scalars(select(TrainingSession).where(TrainingSession.child_id.in_(child_ids)).order_by(TrainingSession.started_at.desc()).limit(10)).all() if child_ids else []
-    pending = db.scalars(select(AIRecommendation).where(AIRecommendation.child_id.in_(child_ids), AIRecommendation.status == "pending")).all() if child_ids else []
-    # 수정 전에 저장된 DEMO 연습 기반 추천(과거 행)은 대기 수와 목록에서 뺀다. 생성 경계만으로는 과거 행을 막지 못한다.
-    pending = [r for r in pending if legacy_recommendation_allowed(db.get(TrainingSession, r.session_id))]
-    return {"activeChildren": [{**child_data(c), "currentGoal": goal_data(current_goal(db, c.id)), "pendingRecommendations": sum(r.child_id == c.id for r in pending)} for c in children], "recentSessions": [{"id": s.id, "childId": s.child_id, "mode": s.mode, "isSeed": s.is_seed, "startedAt": s.started_at, "status": s.status} for s in sessions], "pendingRecommendations": [rec_payload(db, r) for r in pending]}
-
-
-@app.get("/api/children/{child_id}/recommendations")
-def recommendations(child_id: str, status: str | None = None, db: Session = Depends(get_db), therapist: Therapist = Depends(therapist_auth)):
-    owned_child(db, child_id, therapist)
-    query = select(AIRecommendation).where(AIRecommendation.child_id == child_id)
-    if status:
-        query = query.where(AIRecommendation.status == status)
-    return [rec_payload(db, r) for r in db.scalars(query.order_by(AIRecommendation.created_at.desc())).all()]
-
-
-@app.get("/api/children/{child_id}/activity-recommendations")
-def activity_recommendations(child_id: str, db: Session = Depends(get_db), therapist: Therapist = Depends(therapist_auth)):
-    owned_child(db, child_id, therapist)
-    rows = db.scalars(select(ActivityRecommendation).where(ActivityRecommendation.child_id == child_id)
-                      .order_by(ActivityRecommendation.created_at.desc())).all()
-    return [activity_rec_data(row) for row in rows]
-
-
-@app.post("/api/children/{child_id}/activity-recommendations")
-def generate_activity_recommendation(child_id: str, db: Session = Depends(get_db), therapist: Therapist = Depends(therapist_auth)):
-    owned_child(db, child_id, therapist)
-    pending = db.scalar(select(ActivityRecommendation).where(ActivityRecommendation.child_id == child_id,
-                                                               ActivityRecommendation.status == "PENDING"))
-    if pending:
-        return {"status": "PENDING", "recommendation": activity_rec_data(pending)}
-    proposal = propose_activity(db, child_id)
-    if proposal is None:
-        return {"status": "INSUFFICIENT_DATA", "recommendation": None}
-    rec = ActivityRecommendation(child_id=child_id, activity=proposal["activity"],
-                                 clinical_purpose=proposal["clinicalPurpose"], reason=proposal["reason"],
-                                 evidence=proposal["evidence"], confidence=proposal["confidence"])
-    db.add(rec)
-    db.commit()
-    return {"status": "PENDING", "recommendation": activity_rec_data(rec)}
-
-
-@app.post("/api/activity-recommendations/{recommendation_id}/decision")
-def decide_activity_recommendation(recommendation_id: str, body: ActivityRecommendationDecisionInput,
-                                   db: Session = Depends(get_db), therapist: Therapist = Depends(therapist_auth)):
-    rec = db.get(ActivityRecommendation, recommendation_id)
-    if rec is None:
-        raise HTTPException(404)
-    child = owned_child(db, rec.child_id, therapist)
-    if rec.status != "PENDING":
-        raise HTTPException(409, "이미 처리한 제안입니다")
-    if body.action == "modify" and (body.modified_game is None or not body.note.strip()):
-        raise HTTPException(422, "수정할 게임과 이유가 필요합니다")
-    if body.action == "reject" and not body.note.strip():
-        raise HTTPException(422, "거절 사유가 필요합니다")
-    if body.action != "reject":
-        child.collection_json = {**(child.collection_json or {}),
-                                 "assignedActivity": body.modified_game if body.action == "modify" else rec.activity}
-    rec.status = {"accept": "ACCEPTED", "modify": "MODIFIED", "reject": "REJECTED"}[body.action]
-    rec.selected_activity = None if body.action == "reject" else body.modified_game if body.action == "modify" else rec.activity
-    rec.decision_note = body.note
-    rec.decided_at = now()
-    rec.decided_by = therapist.id
-    db.add(AuditEvent(actor_id=therapist.id, action=f"RECOMMENDATION_{rec.status}",
-                      resource_id=rec.id, result="SUCCESS"))
-    db.commit()
-    return activity_rec_data(rec)
-
-
-@app.get("/api/sessions/{session_id}")
-def session_detail(session_id: str, db: Session = Depends(get_db), therapist: Therapist = Depends(therapist_auth)):
-    session = db.get(TrainingSession, session_id)
-    if not session:
-        raise HTTPException(404)
-    owned_child(db, session.child_id, therapist)
-    utterances = db.scalars(select(Utterance).where(Utterance.session_id == session.id).order_by(Utterance.created_at)).all()
-    decisions = db.scalars(select(TrainingDecision).where(TrainingDecision.session_id == session.id).order_by(TrainingDecision.created_at)).all()
-    events = db.scalars(select(GameEvent).where(GameEvent.session_id == session.id).order_by(GameEvent.created_at)).all()
-    metrics = db.scalars(select(ProgressMetric).where(ProgressMetric.session_id == session.id)).all()
-    recs = db.scalars(select(AIRecommendation).where(AIRecommendation.session_id == session.id)).all()
-    goal = db.get(TrainingGoal, session.goal_id)
-    rules = db.scalars(select(TherapistRule).where(TherapistRule.child_id == session.child_id, TherapistRule.active == True)).all()
-    return {"session": {"id": session.id, "mode": session.mode, "activityGame": session.runtime_state.get("activityGame"), "isSeed": session.is_seed, "status": session.status, "startedAt": session.started_at, "endedAt": session.ended_at, "durationSec": session.summary_json.get("durationSec"), "goalVersion": goal.version, "summary": session.summary_json}, "goal": goal_data(goal), "plan": db.get(TrainingPlan, session.plan_id).plan_json, "utterances": [{"id": u.id, "itemText": u.item_text, "level": u.level, "game": u.game, "recognizer": u.recognizer, "stageIndex": u.stage_index, "acoustic": u.acoustic, "createdAt": u.created_at, "transcript": u.transcript, "attemptIndex": u.attempt_index, "analysis": public(db.scalar(select(SpeechAnalysis).where(SpeechAnalysis.utterance_id == u.id)), ["ai_score", "ai_result", "final_score", "final_result", "target_status", "substitute_symbol", "pattern_tags", "therapist_override", "rule_applied_id", "method"])} for u in utterances], "decisions": [public(d, ["id", "decision_type", "reason_codes", "reason_text", "inputs_snapshot", "from_level", "to_level"]) for d in decisions], "events": [public(e, ["id", "type", "payload", "therapist_text", "utterance_id", "created_at"]) for e in events], "metrics": [public(m, ["attempts", "successes", "retries", "hints", "first_try_success_rate", "mean_score", "level_down_count"]) for m in metrics], "insight": session.insight_json, "recommendations": [rec_payload(db, r) for r in recs], "activeRules": [public(r, ["id", "rule_type", "params"]) for r in rules]}
-
-
-@app.get("/api/sessions/{session_id}/timeline")
-def session_timeline(session_id: str, db: Session = Depends(get_db), therapist: Therapist = Depends(therapist_auth)):
-    session = db.get(TrainingSession, session_id)
-    if session is None:
-        raise HTTPException(404)
-    owned_child(db, session.child_id, therapist)
-    events = db.scalars(select(GameEvent).where(GameEvent.session_id == session_id).order_by(GameEvent.created_at)).all()
-    observations = db.scalars(select(ClinicalObservation).where(ClinicalObservation.session_id == session_id).order_by(ClinicalObservation.created_at)).all()
-    return {"events": [public(event, ["id", "type", "payload", "utterance_id", "created_at"]) for event in events],
-            "observations": [observation_data(observation, session) for observation in observations]}
-
-
-@app.get("/api/sessions/{session_id}/clinical-summary")
-def clinical_summary(session_id: str, db: Session = Depends(get_db), therapist: Therapist = Depends(therapist_auth)):
-    session = db.get(TrainingSession, session_id)
-    if session is None:
-        raise HTTPException(404)
-    owned_child(db, session.child_id, therapist)
-    game = session.runtime_state.get("activityGame")
-    definitions = GAME_ROUNDS.get(game, ())
-    observations = db.scalars(select(ClinicalObservation).where(ClinicalObservation.session_id == session_id)).all()
-    rows = []
-    for definition in definitions:
-        all_round = [row for row in observations if row.round_index == definition.index and not crossing.is_probe_observation(row)]
-        sample = all_round if clinical_eligible(session) else []
-        verified = 0
-        verified_evaluated = 0
-        verified_observed = 0
-        verified_success = 0
-        for row in sample:
-            latest = db.scalar(select(ClinicalVerification).where(ClinicalVerification.observation_id == row.id)
-                               .order_by(ClinicalVerification.created_at.desc(), ClinicalVerification.id.desc()))
-            if latest and latest.action in {"confirm", "correct"}:
-                verified += 1
-                value = latest.correction.get("result") if latest.action == "correct" else row.ai_result
-                # 불확실·무발화·대화 속 목표 관찰은 정오 판정이 아니므로 비율의 분모에 넣지 않는다.
-                if value in {"success", "retry"}:
-                    verified_evaluated += 1
-                    verified_success += value == "success"
-                elif value == "target_observed":
-                    verified_observed += 1
-        # totalObservedN: 실제 음성 관찰 전체. evaluableN: AI가 success/retry로 판정한 표본만.
-        # 불확실·무발화·대화 속 목표 관찰은 평가 가능한 표본 수를 늘리지 않는다. 자료 없음은 0점이 아니다.
-        evaluable = sum(row.ai_result in {"success", "retry"} for row in sample)
-        rows.append({"roundIndex": definition.index, "roundId": definition.id,
-                     "clinicalFocus": definition.clinical_focus,
-                     "totalObservedN": len(sample), "evaluableN": evaluable, "demoN": len(all_round) - len(sample),
-                     "aiSupportedSuccesses": sum(row.ai_result == "success" for row in sample),
-                     "uncertainN": sum(row.ai_result == "uncertain" for row in sample),
-                     "noSpeechN": sum(row.ai_result == "no_speech" for row in sample),
-                     "targetObservedN": sum(row.ai_result == "target_observed" for row in sample),
-                     "verifiedN": verified, "verifiedEvaluatedN": verified_evaluated,
-                     "verifiedObservedN": verified_observed, "verifiedSuccesses": verified_success,
-                     "verifiedRate": round(100 * verified_success / verified_evaluated, 1) if verified_evaluated else None,
-                     "limitedData": evaluable < 5})
-    return {"game": game, "rounds": rows}
-
-
-@app.get("/api/observations/{observation_id}")
-def observation_detail(observation_id: str, db: Session = Depends(get_db), therapist: Therapist = Depends(therapist_auth)):
-    observation = db.get(ClinicalObservation, observation_id)
-    if observation is None:
-        raise HTTPException(404)
-    owned_child(db, observation.child_id, therapist)
-    decisions = db.scalars(select(ClinicalVerification).where(ClinicalVerification.observation_id == observation_id).order_by(ClinicalVerification.created_at)).all()
-    return {"observation": observation_data(observation, db.get(TrainingSession, observation.session_id)),
-            "decisions": [public(row, ["id", "action", "correction", "note", "created_at"]) for row in decisions]}
-
-
-@app.post("/api/observations/{observation_id}/decision")
-def decide_observation(observation_id: str, body: ObservationDecisionInput, db: Session = Depends(get_db), therapist: Therapist = Depends(therapist_auth)):
-    observation = db.get(ClinicalObservation, observation_id)
-    if observation is None:
-        raise HTTPException(404)
-    owned_child(db, observation.child_id, therapist)
-    if body.action == "correct" and body.corrected_result is None:
-        raise HTTPException(422, "교정 결과가 필요합니다")
-    if body.action == "reject" and not body.note.strip():
-        raise HTTPException(422, "거부 사유가 필요합니다")
-    correction = {"result": body.corrected_result} if body.action == "correct" else {}
-    db.add(ClinicalVerification(observation_id=observation.id, therapist_id=therapist.id,
-                                action=body.action, correction=correction, note=body.note))
-    session = db.get(TrainingSession, observation.session_id)
-    state = {"confirm": "CONFIRMED", "correct": "CORRECTED", "reject": "REJECTED"}[body.action]
-    # DEMO 관찰도 검토할 수 있지만 임상 검증 자료로 승격하지 않도록 상태를 구분한다.
-    observation.verification_state = state if clinical_eligible(session) else f"DEMO_{state}"
-    db.add(AuditEvent(actor_id=therapist.id, action=f"THERAPIST_{body.action.upper()}",
-                      resource_id=observation.id, result="SUCCESS"))
-    db.commit()
-    return observation_data(observation, session)
-
-
-@app.post("/api/recommendations/{recommendation_id}/decision")
-def decide_recommendation(recommendation_id: str, body: RecommendationDecisionInput, db: Session = Depends(get_db), therapist: Therapist = Depends(therapist_auth)):
-    rec = db.get(AIRecommendation, recommendation_id)
-    if not rec:
-        raise HTTPException(404)
-    child = owned_child(db, rec.child_id, therapist)
-    if rec.status != "pending":
-        raise HTTPException(409, "이미 처리한 추천입니다")
-    if body.action not in ("accept", "modify", "reject") or (body.action == "reject" and not body.note.strip()):
-        raise HTTPException(422, "결정 또는 거절 사유가 필요합니다")
-    if body.action != "reject" and not legacy_recommendation_allowed(db.get(TrainingSession, rec.session_id)):
-        # 수정 전에 저장된 DEMO 연습 기반 추천은 목표를 바꾸지 못한다. 거절(기록)만 할 수 있다.
-        raise HTTPException(409, "DEMO 연습에서 나온 추천은 목표에 반영할 수 없습니다. 거절만 할 수 있습니다")
-    goal = None
-    if body.action != "reject":
-        patch = rec.suggested_goal if body.action == "accept" else body.modified_goal
-        if patch is None:
-            raise HTTPException(422, "수정 목표가 필요합니다")
-        from pydantic.alias_generators import to_camel
-        fields = {key: patch[to_camel(key)] if to_camel(key) in patch else patch[key] for key in GoalInput.model_fields if key in patch or to_camel(key) in patch}
-        goal = create_goal(db, child, fields, "recommendation" if body.action == "accept" else "recommendation_modified", rec.id)
-    rec.status, rec.decided_at = {"accept": "accepted", "modify": "modified", "reject": "rejected"}[body.action], now()
-    feedback = TherapistFeedback(therapist_id=therapist.id, child_id=child.id, kind="recommendation_decision", recommendation_id=rec.id, action=body.action, payload=body.model_dump(), note=body.note, resulting_goal_id=goal.id if goal else None)
-    db.add(feedback)
-    db.commit()
-    return {"recommendation": rec_data(rec), "feedback": {"id": feedback.id, "action": feedback.action}, "newGoal": goal_data(goal) if goal else None}
-
-
-@app.post("/api/utterances/{utterance_id}/feedback")
-def utterance_feedback(utterance_id: str, body: FeedbackInput, db: Session = Depends(get_db), therapist: Therapist = Depends(therapist_auth)):
-    utterance = db.get(Utterance, utterance_id)
-    if not utterance:
-        raise HTTPException(404)
-    session = db.get(TrainingSession, utterance.session_id)
-    child = owned_child(db, session.child_id, therapist)
-    analysis = db.scalar(select(SpeechAnalysis).where(SpeechAnalysis.utterance_id == utterance.id))
-    goal = db.get(TrainingGoal, session.goal_id)
-    if body.action not in ("not_error", "allowed_at_stage", "cue_needed", "manual_score", "note"):
-        raise HTTPException(422)
-    if body.action == "manual_score" and (body.score is None or not 0 <= body.score <= 100):
-        raise HTTPException(422, "0~100 점수가 필요합니다")
-    if body.action == "cue_needed" and not body.cue:
-        raise HTTPException(422, "단서 종류가 필요합니다")
-    if body.action in ("not_error", "allowed_at_stage"):
-        analysis.final_result, analysis.therapist_override = "success", True
-    if body.action == "manual_score":
-        analysis.final_score, analysis.therapist_override = body.score, True
-    feedback = TherapistFeedback(therapist_id=therapist.id, child_id=child.id, kind="utterance_correction", utterance_id=utterance.id, action=body.action, payload=body.model_dump(), note=body.note)
-    db.add(feedback)
-    db.flush()
-    rule = None
-    if body.action == "cue_needed":
-        rule = TherapistRule(child_id=child.id, rule_type="CUE_OVERRIDE", params={"cue": body.cue}, level_at_creation=goal.level, source_feedback_id=feedback.id)
-    elif body.action == "allowed_at_stage":
-        rule = TherapistRule(child_id=child.id, rule_type="ACCEPT_SUBSTITUTION", params={"phoneme": goal.target_phoneme, "substitute": analysis.substitute_symbol, "scope": "until_level_change"}, level_at_creation=goal.level, source_feedback_id=feedback.id)
-    elif body.action == "not_error" and body.create_rule and utterance.transcript:
-        rule = TherapistRule(child_id=child.id, rule_type="ACCEPT_WORD_VARIANT", params={"item_text": utterance.item_text, "variant": utterance.transcript}, level_at_creation=goal.level, source_feedback_id=feedback.id)
-    if rule:
-        db.add(rule)
-        db.flush()
-        feedback.resulting_rule_id = rule.id
-    recompute(db, session, goal, session.summary_json.get("durationSec", 0))
-    db.commit()
-    return {"feedback": {"id": feedback.id, "action": feedback.action}, "analysis": public(analysis, ["ai_score", "ai_result", "final_score", "final_result", "therapist_override"]), "rule": public(rule, ["id", "rule_type", "params"]) if rule else None}
-
-
-@app.post("/api/rules/{rule_id}/deactivate")
-def deactivate_rule(rule_id: str, db: Session = Depends(get_db), therapist: Therapist = Depends(therapist_auth)):
-    rule = db.get(TherapistRule, rule_id)
-    if not rule:
-        raise HTTPException(404)
-    owned_child(db, rule.child_id, therapist)
-    rule.active, rule.deactivated_reason = False, "therapist"
-    db.commit()
-    return public(rule, ["id", "rule_type", "params", "active"])
-
-
+app.include_router(therapist_router)
 app.include_router(hoya_chat_router)
 app.include_router(session_planning_router)
 app.include_router(therapist_insights_router)
@@ -972,4 +604,6 @@ app.include_router(game_settings_router)
 # 반드시 마지막에 등록한다. 위의 /api 경로가 먼저 일치하고, 나머지 GET만 프로덕션 SPA로 간다.
 @app.api_route("/{path:path}", methods=["GET", "HEAD"], include_in_schema=False)
 def frontend(path: str):
+    """API가 아닌 GET·HEAD 경로에 빌드된 프론트엔드(SPA) 파일을 돌려준다.
+    반드시 마지막에 등록해 위의 /api 경로가 먼저 일치하게 한다."""
     return static_site.serve(settings.frontend_dist, path)

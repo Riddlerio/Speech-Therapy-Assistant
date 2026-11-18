@@ -1,16 +1,17 @@
-"""대구대 건너기의 저장된 관찰·검토를 읽는다. 임상 결정과 게임 판정은 바꾸지 않는다."""
+"""대구대 건너기의 회기별 확인 비율·자동 추정 이유·숙달 표시를 계산한다.
+치료사 인사이트 화면용이며 저장된 관찰·검토를 읽기만 하고 임상 결정과 게임 판정은 바꾸지 않는다."""
 from collections import defaultdict
-from math import isfinite
 
 from pydantic import ValidationError
 from sqlalchemy import select
 
-from ..game_settings.schemas import DaeguCrossingRhythm
+from ..game_settings.service import DaeguCrossingRhythm
 from ..games.evaluation import ONSET_FRICATION_MS, ONSET_MIN_SNR_DB, VOICED_AFTER_FRICATION_MS
 from ..games.crossing import is_probe_observation
 from ..models import ClinicalObservation, TrainingSession
 from ..pronunciation.audio_quality import assess_audio_quality
 from ..therapist_planning.evidence import filter_verified, latest_decisions
+from .crossing_evidence import _number
 from .service import source_of
 
 MASTERY_THRESHOLD = 0.8
@@ -25,12 +26,9 @@ NOTES = [
 ]
 
 
-def _number(acoustic, key):
-    value = acoustic.get(key)
-    return value if type(value) in (int, float) and isfinite(value) else None
-
-
 def _auto_reason(row):
+    """관찰 한 건의 자동 추정 이유(ok·noFrication·shortFrication·noVowel)를 고르거나 None을 돌려준다.
+    회기 요약의 이유별 건수에 쓰며, 보류·음질 불량·측정 누락은 실패 유형에 넣지 않으려고 None으로 뺀다."""
     # 저장된 자동 결과가 보류이면 음향값만으로 실패 유형이나 성공을 만들어 내지 않는다.
     if row.ai_result not in {"success", "retry"} or row.audio_quality == "POOR":
         return None
@@ -66,6 +64,8 @@ def _auto_reason(row):
 
 
 def _session_point(session, child, rows, decisions):
+    """한 회기의 출처·박자·시도·확인 비율·단계별 수치·새 낱말 확인을 한 점으로 만든다.
+    crossing_analytics가 회기 추이 그래프의 점 하나씩을 만들 때 쓴다."""
     source = source_of(session, child)
     probes = [row for row in rows if is_probe_observation(row)]
     rows = [row for row in rows if not is_probe_observation(row)]
@@ -104,6 +104,8 @@ def _session_point(session, child, rows, decisions):
 
 
 def crossing_analytics(db, child):
+    """아동의 모든 건너기 회기 점, 숙달 표시 여부, 해석 주의 문구를 돌려준다.
+    치료사 인사이트 API가 회기 간 변화를 보여 줄 때 쓴다."""
     sessions = list(db.scalars(select(TrainingSession).where(TrainingSession.child_id == child.id)
                               .order_by(TrainingSession.started_at, TrainingSession.id)).all())
     by_session = defaultdict(list)

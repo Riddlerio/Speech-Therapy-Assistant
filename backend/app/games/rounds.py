@@ -1,3 +1,7 @@
+"""게임 5종의 라운드 정의(제목·안내 문장·임상 초점·판정 규칙·목표 시간 등)와 난이도 조정 규칙을 담는다.
+게임 시작·진행·판정·화면 응답이 모두 이 표(GAME_ROUNDS)를 기준으로 동작한다.
+"""
+
 from dataclasses import dataclass, replace
 
 
@@ -9,6 +13,9 @@ RE_ONSET_END_HOLD_MS = 2500
 
 @dataclass(frozen=True)
 class RoundDefinition:
+    """라운드 하나의 고정 정의. 아동 화면에 보일 문구, 치료사용 임상 정보, 판정 규칙(rule)과 목표 시간(target_ms)을 가진다.
+    frozen이라 바꿀 수 없고, 난이도 반영은 effective_round가 복사본을 만들어 처리한다.
+    """
     id: str
     index: int
     child_title: str
@@ -29,6 +36,9 @@ class RoundDefinition:
 
 
 def _round(game, index, title, prompt, focus, task, level, elicitation, prompt_type, attempts, rule, target=0, end_hold_ms=700):
+    """GAME_ROUNDS 표를 짧게 쓰기 위한 RoundDefinition 생성 도우미. id를 "게임.r번호"로 만들고 제한 시간(대화 게임 90초, 나머지 60초)을 채운다.
+    이 모듈 안에서 라운드 표를 정의할 때만 쓴다.
+    """
     return RoundDefinition(f"{game}.r{index}", index, title, prompt, focus, task, level,
                            elicitation, prompt_type, attempts, 60 if game != "conversation_quest" else 90, rule, target,
                            end_hold_ms=end_hold_ms)
@@ -74,6 +84,9 @@ GAME_ROUNDS = {
 
 
 def effective_round(round_def: RoundDefinition, difficulty: int) -> RoundDefinition:
+    """난이도(1~5)에 맞춰 목표 시간을 늘이거나 줄인 라운드 정의를 돌려준다(800~3500ms 범위).
+    목표 시간이 없거나 박자·전이 규칙이면 그대로 둔다. main.py가 판정·다음 문항 준비 때 부른다.
+    """
     if not round_def.target_ms or round_def.rule in {"PULSES", "TRANSITION"}:
         return round_def
     multiplier = 1 + 0.15 * (difficulty - 2)
@@ -81,6 +94,9 @@ def effective_round(round_def: RoundDefinition, difficulty: int) -> RoundDefinit
 
 
 def public_round(round_def: RoundDefinition, difficulty: int | None = None) -> dict:
+    """라운드 정의를 아동 화면이 쓰는 JSON 형식(camelCase)으로 바꾼다. 난이도를 주면 반영된 목표 시간을 넣는다.
+    게임 상태 응답(adventure/service.py의 activity_payload)에서 라운드 목록을 보낼 때 쓴다.
+    """
     if difficulty is not None:
         round_def = effective_round(round_def, difficulty)
     return {"index": round_def.index, "id": round_def.id, "childTitle": round_def.child_title,
@@ -92,6 +108,9 @@ def public_round(round_def: RoundDefinition, difficulty: int | None = None) -> d
 
 
 def next_difficulty(current: int, successes: int, evaluated: int, increases: int, low_streak: int, decreased: bool) -> tuple[int, int, int, bool]:
+    """라운드 성공률로 다음 난이도를 정한다. 2/3 이상이면 올리고(최대 2번), 1/3 이하가 두 번 연속이면 한 번만 내린다.
+    라운드가 끝날 때 main.py가 불러 아이에게 너무 쉽거나 어렵지 않게 조절한다.
+    """
     if evaluated == 0:
         return current, increases, 0, decreased
     ratio = successes / evaluated

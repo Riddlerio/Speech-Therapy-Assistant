@@ -5,8 +5,5 @@ export function hasFinalConsonant(word: string): boolean {
   return code >= 0 && code <= 11171 && code % 28 !== 0
 }
 
-/** 부를 때: 민준아, 두두친구야. */
-export const callName = (name: string) => `${name}${hasFinalConsonant(name) ? '아' : '야'}`
-
 /** 칭찬할 때: 역시 민준이야, 역시 두두친구야. */
 export const isName = (name: string) => `${name}${hasFinalConsonant(name) ? '이야' : '야'}`

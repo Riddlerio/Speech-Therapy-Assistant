@@ -1,3 +1,7 @@
+"""서비스가 DB에 저장하는 모든 테이블(SQLAlchemy 모델)을 정의한다.
+계정·아동·목표부터 발화·판정·관찰·치료사 확인, 호야 대화, 회기 계획, 모험 보상까지 데이터의 모양이 여기서 정해진다.
+"""
+
 from datetime import datetime, timezone
 from uuid import uuid4
 
@@ -8,14 +12,21 @@ from .db import Base
 
 
 def uid():
+    """새 행의 기본 키로 쓸 UUID 문자열을 만든다.
+    대부분 테이블의 id 컬럼 default로 쓰인다.
+    """
     return str(uuid4())
 
 
 def now():
+    """현재 시각을 UTC(시간대 포함)로 돌려준다.
+    created_at 같은 시각 컬럼의 default와 보존 기간 계산에서 쓴다.
+    """
     return datetime.now(timezone.utc)
 
 
 class Therapist(Base):
+    """치료사 한 명. 로그인 아이디·비밀번호 해시·표시 이름을 가지며 담당 아동(Child)과 연결된다."""
     __tablename__ = "therapists"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
     username: Mapped[str] = mapped_column(String, unique=True)
@@ -26,6 +37,7 @@ class Therapist(Base):
 
 
 class AuthToken(Base):
+    """치료사용 예전 인증 토큰(해시와 만료 시각) 테이블. 현재 로그인은 쿠키 세션(CookieSession)을 쓴다."""
     __tablename__ = "auth_tokens"
     token_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
     therapist_id: Mapped[str] = mapped_column(ForeignKey("therapists.id"))
@@ -33,6 +45,7 @@ class AuthToken(Base):
 
 
 class Account(Base):
+    """로그인 계정. role(STUDENT·THERAPIST·ADMIN)에 따라 아동 또는 치료사와 연결된다."""
     __tablename__ = "accounts"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
     username: Mapped[str] = mapped_column(String, unique=True)
@@ -44,6 +57,7 @@ class Account(Base):
 
 
 class CookieSession(Base):
+    """로그인 후 발급한 쿠키 세션. 세션·CSRF 토큰은 원문 대신 해시로 저장하고 만료 시각을 가진다."""
     __tablename__ = "cookie_sessions"
     token_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
     account_id: Mapped[str] = mapped_column(ForeignKey("accounts.id"))
@@ -60,6 +74,7 @@ class LoginFailure(Base):
 
 
 class Child(Base):
+    """아동 한 명. 영웅 이름·연령대·담당 치료사·경험치·수집품을 가지며 is_seed면 DEMO 샘플 아동이다."""
     __tablename__ = "children"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
     child_code: Mapped[str] = mapped_column(String, unique=True)
@@ -74,6 +89,7 @@ class Child(Base):
 
 
 class TrainingGoal(Base):
+    """치료사가 정한 아동의 장기 훈련 목표(목표 음소·위치·단계·반복 수 등). 바꿀 때마다 version이 올라간 새 행을 만든다."""
     __tablename__ = "training_goals"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
     child_id: Mapped[str] = mapped_column(ForeignKey("children.id"))
@@ -100,6 +116,7 @@ class TrainingGoal(Base):
 
 
 class TrainingPlan(Base):
+    """목표 하나를 실제 게임 회기로 옮긴 실행 계획(plan_json)과 그렇게 정한 이유(rationale_json)."""
     __tablename__ = "training_plans"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
     goal_id: Mapped[str] = mapped_column(ForeignKey("training_goals.id"))
@@ -109,6 +126,7 @@ class TrainingPlan(Base):
 
 
 class TrainingSession(Base):
+    """아동이 게임을 한 번 진행한 회기. 진행 중 상태(runtime_state)와 끝난 뒤 요약·인사이트를 담는다."""
     __tablename__ = "training_sessions"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
     child_id: Mapped[str] = mapped_column(ForeignKey("children.id"))
@@ -126,6 +144,7 @@ class TrainingSession(Base):
 
 
 class Utterance(Base):
+    """아동의 발화 한 번(어떤 문항을 어떤 게임에서 몇 번째로 말했는지, 인식 문장, 음향 측정값)."""
     __tablename__ = "utterances"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
     session_id: Mapped[str] = mapped_column(ForeignKey("training_sessions.id"))
@@ -143,6 +162,7 @@ class Utterance(Base):
 
 
 class SpeechAnalysis(Base):
+    """발화 하나에 대한 판정 결과. 목표·인식 음소 정렬, AI 점수, 치료사 규칙 반영 후 최종 결과를 저장한다."""
     __tablename__ = "speech_analyses"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
     utterance_id: Mapped[str] = mapped_column(ForeignKey("utterances.id"), unique=True)
@@ -162,6 +182,7 @@ class SpeechAnalysis(Base):
 
 
 class TrainingDecision(Base):
+    """회기 중 서버가 내린 결정(힌트, 단계 내림·올림 등)과 그 이유·입력 스냅숏 기록."""
     __tablename__ = "training_decisions"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
     session_id: Mapped[str] = mapped_column(ForeignKey("training_sessions.id"))
@@ -176,6 +197,7 @@ class TrainingDecision(Base):
 
 
 class GameEvent(Base):
+    """게임 진행 중 생긴 사건(문항 제시, 성공 등)과 치료사에게 보여 줄 설명 문장."""
     __tablename__ = "game_events"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
     session_id: Mapped[str] = mapped_column(ForeignKey("training_sessions.id"))
@@ -187,6 +209,7 @@ class GameEvent(Base):
 
 
 class ClinicalObservation(Base):
+    """발화 하나에서 만든 임상 관찰 기록(목표 음소·단서·독립성·음질·AI 결과 등). 치료사 확인 전에는 PENDING 상태다."""
     __tablename__ = "clinical_observations"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
     session_id: Mapped[str] = mapped_column(ForeignKey("training_sessions.id"))
@@ -214,6 +237,7 @@ class ClinicalObservation(Base):
 
 
 class ClinicalVerification(Base):
+    """치료사가 관찰을 확인·수정·거절한 기록. 추가만 하고 고치거나 지우지 않는다."""
     __tablename__ = "clinical_verifications"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
     observation_id: Mapped[str] = mapped_column(ForeignKey("clinical_observations.id"))
@@ -225,6 +249,7 @@ class ClinicalVerification(Base):
 
 
 class AuditEvent(Base):
+    """누가 어떤 자원에 어떤 행동을 했는지 남기는 감사 기록(접근 거부, 데이터 수리 등)."""
     __tablename__ = "audit_events"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
     actor_id: Mapped[str] = mapped_column(String(36))
@@ -235,6 +260,7 @@ class AuditEvent(Base):
 
 
 class ProgressMetric(Base):
+    """회기 하나가 끝난 뒤 계산한 경과 지표(시도·성공·재시도·힌트 수, 성공률, 평균 점수 등)."""
     __tablename__ = "progress_metrics"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
     child_id: Mapped[str] = mapped_column(ForeignKey("children.id"))
@@ -259,6 +285,7 @@ class ProgressMetric(Base):
 
 
 class AIRecommendation(Base):
+    """회기 지표를 보고 규칙으로 만든 목표 변경 추천. 치료사가 수락·거절하기 전에는 pending 상태다."""
     __tablename__ = "ai_recommendations"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
     child_id: Mapped[str] = mapped_column(ForeignKey("children.id"))
@@ -277,6 +304,7 @@ class AIRecommendation(Base):
 
 
 class ActivityRecommendation(Base):
+    """다음에 할 활동(게임) 추천과 임상 목적·근거. 치료사가 결정하면 status와 선택 활동이 기록된다."""
     __tablename__ = "activity_recommendations"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
     child_id: Mapped[str] = mapped_column(ForeignKey("children.id"))
@@ -294,6 +322,7 @@ class ActivityRecommendation(Base):
 
 
 class TherapistFeedback(Base):
+    """치료사가 추천을 결정하거나 발화 판정을 고친 기록. 그 결과로 생긴 목표·규칙 id를 함께 남긴다."""
     __tablename__ = "therapist_feedback"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
     therapist_id: Mapped[str] = mapped_column(ForeignKey("therapists.id"))
@@ -309,6 +338,7 @@ class TherapistFeedback(Base):
 
 
 class TherapistRule(Base):
+    """치료사가 만든 아동별 판정·단서 규칙(대치 허용, 단어 변이 허용, 단서 고정 등). 판정 파이프라인과 호야 정책이 읽는다."""
     __tablename__ = "therapist_rules"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
     child_id: Mapped[str] = mapped_column(ForeignKey("children.id"))

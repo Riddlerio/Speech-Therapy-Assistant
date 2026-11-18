@@ -6,6 +6,7 @@ import type { SceneFx } from '../../child/ActivityScene'
 import { DuduCharacter } from '../../tiger/DuduCharacter'
 import { canUseWebGL, HoyaErrorBoundary, HoyaFallback } from '../../tiger/Hoya3D'
 import { beamChapter, beamVisualState, type BeamVisualInput } from './sceneState'
+import { useReducedMotion } from '../../shared/useReducedMotion'
 import './magicBeamScene.css'
 
 export interface MagicBeamSceneProps {
@@ -18,19 +19,6 @@ export interface MagicBeamSceneProps {
 }
 
 const EMPTY_INPUT = () => ({ active: false, durationMs: 0 })
-
-function useReducedMotion() {
-  const [reduced, setReduced] = useState(() => typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches)
-  useEffect(() => {
-    const query = window.matchMedia?.('(prefers-reduced-motion: reduce)')
-    if (!query) return
-    const change = () => setReduced(query.matches)
-    change()
-    query.addEventListener('change', change)
-    return () => query.removeEventListener('change', change)
-  }, [])
-  return reduced
-}
 
 function Rice({ position }: { position: [number, number, number] }) {
   return <group position={position}>

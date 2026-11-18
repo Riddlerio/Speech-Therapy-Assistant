@@ -1,4 +1,6 @@
-"""제공자 응답 검증. 안전을 system prompt 하나에만 맡기지 않는다. 통과하지 못하면 DemoProvider로 대체한다."""
+"""LLM 제공자가 만든 호야 응답이 안전한지 검사한다(길이, 전략 일치, 금지 표현, 지시문 노출 등).
+안전을 system prompt 하나에만 맡기지 않으려고 있으며, 통과하지 못하면 서비스가 DemoProvider 응답으로 대체한다.
+"""
 import re
 
 from .prompt.prompt_builder import system_prompt
@@ -16,17 +18,29 @@ BLOCKED_PATTERNS = [
 
 
 class ValidationFailure(Exception):
+    """응답 검증 실패를 알리는 예외. reason에 실패 종류(예: CORRECTION, TEXT_TOO_LONG)를 담는다.
+    hoya/service.py가 이 예외를 잡아 DEMO 응답으로 바꾸고 사유를 기록한다.
+    """
     def __init__(self, reason: str):
+        """실패 사유 코드를 예외 메시지와 reason 속성에 함께 저장한다.
+        로그·응답에 아동 발화 대신 짧은 사유 코드만 남기기 위해서다.
+        """
         super().__init__(reason)
         self.reason = reason
 
 
 def _prompt_fragments() -> list[str]:
+    """system prompt의 각 줄에서 공백을 뺀 앞 24글자 조각 목록을 만든다.
+    응답에 지시문 일부가 그대로 섞여 나왔는지(프롬프트 노출) 찾는 데 쓴다.
+    """
     lines = [re.sub(r"\s+", "", line.strip("-[] ")) for line in system_prompt().splitlines()]
     return [line[:24] for line in lines if len(line) >= 24]
 
 
 def validate_output(output: ProviderOutput, strategy: Strategy, lexicon: list[str]) -> ProviderOutput:
+    """제공자 응답을 검사해 통과하면 앞뒤 공백을 정리한 응답을 돌려주고, 아니면 ValidationFailure를 던진다.
+    빈 문장·너무 긴 문장·다른 전략·목표 어휘 밖 낱말·질문 2개 이상·교정/진단/개인정보 표현·지시문 노출을 막는다.
+    """
     text = (output.text or "").strip()
     if not text:
         raise ValidationFailure("EMPTY_TEXT")
