@@ -40,7 +40,7 @@ Phase 0 감사에서 찾은, 코드에 고정된 행동·임상·제품 기준�
 
 | 값 | 위치 | 용도 | 출처 |
 |---|---|---|---|
-| 클리핑 ≥ 0.01, 길이 < 300 또는 > 8000ms, SNR < 8이면 POOR. 잡음 바닥 > -35이면 NOISY. SNR ≥ 15이면 GOOD | `backend/app/pronunciation/audio_quality.py`의 `assess_audio_quality`(TS 사본 `frontend/src/speech/audioQuality.ts`와 이미 어긋남) | 음질 게이트 | UNKNOWN |
+| 클리핑 ≥ 0.01, 길이 < 300 또는 > 8000ms, SNR < 8이면 POOR. 잡음 바닥 > -35이면 NOISY. SNR ≥ 15이면 GOOD | `backend/app/pronunciation/audio_quality.py`의 `assess_audio_quality`(앱에서 쓰지 않던 TS 사본 `audioQuality.ts`는 2026-11-19 삭제) | 음질 게이트 | UNKNOWN |
 | bestRun ≤ duration + 200ms, frication ≤ active + 40ms | `pronunciation/acoustic.py`의 `AcousticSummary` 검증 | 입력 정합성 | TECHNICAL_LIMIT |
 | 0–60000ms, dB -160–20, SNR -100–180 | `pronunciation/acoustic.py` | schema 범위 | TECHNICAL_LIMIT |
 

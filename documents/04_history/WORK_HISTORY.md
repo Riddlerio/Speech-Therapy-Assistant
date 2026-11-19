@@ -4,7 +4,8 @@
 - **원문:** 지운 문서의 원문은 GitHub의 [정리 직전 버전](https://github.com/Riddlerio/s_project/tree/22eef9b993475537ec55859e1cca17dc15d02e73/docs)에서 볼 수 있다.
 - **완료된 번호 작업 원문:** [CODEX_TASKS.md](https://github.com/Riddlerio/s_project/blob/575f8b27deac6dd1c1d72d9a75f793360ccd61a1/docs/CODEX_TASKS.md) (1~6번 모두 완료).
 - **당시 시연 계획 원문:** [NEXT_STEPS.md](https://github.com/Riddlerio/s_project/blob/575f8b27deac6dd1c1d72d9a75f793360ccd61a1/docs/NEXT_STEPS.md). 현재 할 일은 [로드맵](../01_overview/ROADMAP.md)을 본다.
-- **초기 V2 지시·결정 원문:** 루트에 따로 있던 네 문서를 [V2 기획 원문](v2/)으로 모았다. 당시 구현 판단은 현재 상태와 구분한다.
+- **초기 V2 지시·결정 원문:** 루트에 따로 있던 네 문서를 `documents/04_history/v2/`로 모았다가 2026-11-19 정리에서 지웠다. 원문은 git 이력(정리 직전 커밋 `b796fdd`)에 있다.
+- **2026-09-30 감사 기록:** 제품 실태 감사(`PRODUCT_REALITY_MATRIX.md`)와 legacy·placeholder 목록(`LEGACY_AND_PLACEHOLDER_REGISTER.md`)은 정리가 끝나 2026-11-19에 지웠다. 원문은 git 이력(커밋 `b796fdd`)에 있다.
 
 ## 1. 한눈에 보기
 
@@ -90,7 +91,7 @@
 
 ## 4. 지운 문서의 내용이 간 곳
 
-> 이 절의 `docs/v2/`는 PR #34에서 정리한 **옛 폴더**다. 지금의 `documents/04_history/v2/`는 PR #35에서 새로 만든 [V2 기획 원문](v2/) 폴더로, 서로 다르다.
+> 이 절의 `docs/v2/`는 PR #34에서 정리한 **옛 폴더**다. PR #35에서 만든 `documents/04_history/v2/`(V2 기획 원문, 2026-11-19 삭제)와는 다르다.
 
 | 지운 문서 | 내용이 있는 곳 |
 |---|---|

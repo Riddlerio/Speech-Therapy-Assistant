@@ -13,7 +13,7 @@ Speech Hero는 **AI 기반 아동 발음·말소리 훈련 및 언어재활사 �
 
 ### 현재 부분 구현
 
-게임의 세부 장면·단서 단계·상호작용은 제한적이다. Conversation Quest의 호야 응답은 [고정된 DEMO 규칙](../../backend/app/games/conversation.py)이며 실제 대화 모델이나 문맥 기억이 아니다. 실물 마이크·Android 브라우저·3D 렌더·HTTPS 배포 조합은 수동 확인이 남았다. [기존 검증 기록(원문)](https://github.com/Riddlerio/s_project/blob/22eef9b993475537ec55859e1cca17dc15d02e73/docs/v2/VALIDATION_REPORT.md)도 이 범위를 구분한다.
+게임의 세부 장면·단서 단계·상호작용은 제한적이다. Conversation Quest의 호야 응답은 고정된 DEMO 규칙(`games/conversation.py`, 2026-11-19 삭제)이며 실제 대화 모델이나 문맥 기억이 아니다. 실물 마이크·Android 브라우저·3D 렌더·HTTPS 배포 조합은 수동 확인이 남았다. [기존 검증 기록(원문)](https://github.com/Riddlerio/s_project/blob/22eef9b993475537ec55859e1cca17dc15d02e73/docs/v2/VALIDATION_REPORT.md)도 이 범위를 구분한다.
 
 ### 향후 연구/검증 필요
 
@@ -63,7 +63,7 @@ R1 선택형 단어, R2 그림/열린 질문, R3 문장 틀을 이용한 구, R4
 
 ## 4. 아동 경험, 단서와 독립성
 
-`LOW`·`UNCERTAIN`은 [관찰 생성기](../../backend/app/clinical/observation_builder.py)의 근거 강도 표시이고 `NO_SPEECH`는 발화가 검출되지 않았다는 상태다. 모두 아동의 실패 판정과 다르다. 음질 불량이나 불확실한 인식은 `LISTEN_AGAIN`으로, 반복 불확실은 `UNCERTAIN_SKIP`과 `NEUTRAL_CONTINUE` 성격의 다음 항목 진행으로 처리한다. `NO_SPEECH`는 성공/재시도 분모에 넣지 않는다. V2의 `TARGET_RETRY`는 부드러운 단서(`gentle`)를 실어 보내고, 기존 모험 정책은 재시도·`HINT_REQUIRED`·단계 하향·항목 건너뛰기를 제공한다. [정책(2026-10-04 삭제 전 원문)](https://github.com/Riddlerio/s_project/blob/8e086b28062b37ba88ac9f8a7cff133f63cd15c7/backend/app/training/policy.py), [V2 처리](../../backend/app/main.py), [아동 화면](../../frontend/src/child/ActivitySession.tsx).
+`LOW`·`UNCERTAIN`은 [관찰 생성기](../../backend/app/clinical/observation_builder.py)의 근거 강도 표시이고 `NO_SPEECH`는 발화가 검출되지 않았다는 상태다. 모두 아동의 실패 판정과 다르다. 음질 불량이나 불확실한 인식은 `LISTEN_AGAIN`으로, 반복 불확실은 `UNCERTAIN_SKIP`과 `NEUTRAL_CONTINUE` 성격의 다음 항목 진행으로 처리한다. `NO_SPEECH`는 성공/재시도 분모에 넣지 않는다. V2의 `TARGET_RETRY`는 부드러운 단서(`gentle`)를 실어 보내고, 기존 모험 정책은 재시도·`HINT_REQUIRED`·단계 하향·항목 건너뛰기를 제공한다. [정책(2026-10-04 삭제 전 원문)](https://github.com/Riddlerio/s_project/blob/8e086b28062b37ba88ac9f8a7cff133f63cd15c7/backend/app/training/policy.py), [V2 처리](../../backend/app/main.py), 아동 화면(ActivitySession, 2026-11-19 삭제).
 
 현재 별도의 정교한 휴식 프로토콜이나 대체 응답 방식의 완성된 단계별 UI는 확인되지 않았다. 이를 이미 제공하는 기능으로 표시하지 않는다. 아동 화면은 놀이 피드백을, 치료사 화면은 불확실·무발화·DEMO와 평가 가능 표본을 분리한 근거를 보여 준다.
 
@@ -90,7 +90,7 @@ R1 선택형 단어, R2 그림/열린 질문, R3 문장 틀을 이용한 구, R4
 1. [AudioCapture](../../frontend/src/speech/audioCapture.ts)는 Web Audio 분석기에서 20ms 간격으로 프레임을 얻고, [features](../../frontend/src/speech/features.ts)는 RMS dB, peak dB, 고주파 비율, spectral centroid, clipping 등을 계산한다.
 2. [MicUtterancePipeline](../../frontend/src/speech/micUtterance.ts)은 시작 전 1초의 무음 RMS 중앙값으로 `noiseFloorDb`를 보정한다. [VAD](../../frontend/src/speech/vad.ts)는 발화 시작/종료를 정한다. `VOICE_END`의 `meanRmsDb`, `peakRmsDb`, `meanHfRatio`, `meanCentroidHz`, `clippingRatio`는 발성 신호 프레임으로 계산해 후행 무음·순간 peak가 섞이지 않게 한다. `durationMs`는 마지막 발성 프레임까지이며 종료 유예는 제외한다.
 3. [SustainTracker](../../frontend/src/speech/sustainTracker.ts)는 `bestRunMs`, `sustainSegmentsMs`, `maxPauseMs`, `fricationMs`, onset 뒤 유성 구간 등을 만든다. 음질 게이트는 `meanRmsDb−noiseFloorDb`, 길이, clipping을 사용한다. 음질이 부족하면 정오를 보류한다.
-4. [ActivitySession](../../frontend/src/child/ActivitySession.tsx)은 소리 시작/끝을 [SpeechGameSignal](../../frontend/src/control/speechGameSignal.ts)에 전달해 호야 행동을 바꾼다. 음향 요약은 API로 보낸다. Monster Adventure와 Conversation Quest에는 Web Speech ASR도 사용한다. DEMO의 키보드 음향값과 스크립트는 실제 음성 근거가 아니다.
+4. ActivitySession(2026-11-19 삭제)은 소리 시작/끝을 [SpeechGameSignal](../../frontend/src/control/speechGameSignal.ts)에 전달해 호야 행동을 바꾼다. 음향 요약은 API로 보낸다. Monster Adventure와 Conversation Quest에는 Web Speech ASR도 사용한다. DEMO의 키보드 음향값과 스크립트는 실제 음성 근거가 아니다.
 5. [evaluate_round](../../backend/app/games/evaluation.py)은 라운드 규칙에 따라 지속·마찰·쉼을 평가하거나, 단어는 [정규화→단순 한글 G2P→정렬](../../backend/app/speech/pipeline.py)로 근사 점수와 오류 태그를 만든다. 이것은 음성 파형의 직접적인 음소 정렬이나 학습된 발음 모델이 아니다. 대화는 목표 음소 관찰 여부를 정오와 분리한다.
 6. 서버는 `Utterance`, `SpeechAnalysis`, `GameEvent`, `ClinicalObservation`을 저장한다. 치료사는 화면에서 근거를 확인·교정·거부하고, 기존 모험 추천은 수락·수정·거절한다. V2 활동 제안도 치료사 결정 후 배정된다. 추천이 목표를 스스로 확정하지 않는다.
 

@@ -1,7 +1,7 @@
 # Frozen Core 계약
 
 Phase 0에서 사용자(제품 소유자)가 승인했다(2026-09-30). 이후 모든 Phase는 이 계약을 지킨다.
-근거가 된 감사 내용은 `PRODUCT_REALITY_MATRIX.md`에 있다.
+근거가 된 감사 기록(2026-09-30 제품 실태 감사)은 문서에서 지웠고 git 이력에 있다([WORK_HISTORY](../04_history/WORK_HISTORY.md) 참조).
 
 ## 1. 원칙
 
@@ -40,10 +40,10 @@ Phase 0에서 사용자(제품 소유자)가 승인했다(2026-09-30). 이후 �
 
 | 경로 | 등급 | 지켜야 할 제약 |
 |---|---|---|
-| `frontend/src/styles/**` | SAFE_TO_REDESIGN | tsx에서 쓰는 class 이름을 유지하거나 tsx와 함께 바꾼다: `child-screen`, `game-screen`, `target`, `small`, `big-button`, `card`, `grid`, `speech-bubble`, `quiet`, `therapist-screen`, `workspace-tabs`, `summary-grid`, `notice`, `muted`, `chart-wrap`. 치료사 class는 `workspace.test.tsx`가 확인한다. CSP 때문에 외부 폰트나 CDN은 쓸 수 없고 자체 호스팅해야 한다 |
+| `frontend/src/styles/**` | SAFE_TO_REDESIGN | tsx에서 쓰는 class 이름을 유지하거나 tsx와 함께 바꾼다: `child-screen`, `game-screen`, `target`, `small`, `big-button`, `card`, `grid`, `speech-bubble`, `quiet`, `therapist-screen`, `workspace-tabs`, `summary-grid`, `notice`, `muted`. 치료사 class는 `workspace.test.tsx`가 확인한다. CSP 때문에 외부 폰트나 CDN은 쓸 수 없고 자체 호스팅해야 한다 |
 | `frontend/src/pages/**` | SAFE_TO_REDESIGN | `/play`와 `/therapist/login` 링크를 유지한다 |
 | `frontend/src/character/**` | 삭제됨(2026-10-04) | legacy 모험 제거(로드맵 5절 3번)와 함께 `Character.tsx`·`tts.ts`를 지웠다. 폴더가 없다 |
-| `frontend/src/tiger/**` | SAFE_WITH_INTERFACE_CONSTRAINTS | `<Hoya3D action className>`, `HoyaAction` 17개 값(THINKING 포함) 처리, `HoyaFallback`과 `data-hoya-fallback="true"`, `ACTION_TEXT` 문구(테스트가 확인), fallback에 "3D" 문구를 쓰지 않을 것, `canUseWebGL`, `HoyaErrorBoundary`, context loss fallback, 높이는 부모가 정하는 구조를 유지한다. 내부 `Tiger` 메시는 교체할 수 있다. GLB loader를 도입하거나 의존성을 추가하려면 사용자 승인이 필요하다(2026-10-04 승인: three 내장 `GLTFLoader`로 `frontend/public/assets/dudu/dudu.glb`를 읽는다. `EXT_texture_webp`·`KHR_mesh_quantization`만 쓰고 meshopt·Draco·KTX2 디코더는 쓰지 않는다. 로딩 실패 시 절차형 모델로 돌아간다) |
+| `frontend/src/tiger/**` | SAFE_WITH_INTERFACE_CONSTRAINTS | `<Hoya3D action className>`, `HoyaAction` 7개 값(IDLE·LISTENING·TALKING·WAVE·CHEER·ENCOURAGE·THINKING) 처리, `HoyaFallback`과 `data-hoya-fallback="true"`, `ACTION_TEXT` 문구(테스트가 확인), fallback에 "3D" 문구를 쓰지 않을 것, `canUseWebGL`, `HoyaErrorBoundary`, context loss fallback, 높이는 부모가 정하는 구조를 유지한다. 내부 `Tiger` 메시는 교체할 수 있다. GLB loader를 도입하거나 의존성을 추가하려면 사용자 승인이 필요하다(2026-10-04 승인: three 내장 `GLTFLoader`로 `frontend/public/assets/dudu/dudu.glb`를 읽는다. `EXT_texture_webp`·`KHR_mesh_quantization`만 쓰고 meshopt·Draco·KTX2 디코더는 쓰지 않는다. 로딩 실패 시 절차형 모델로 돌아간다) |
 | `frontend/src/child/**`(화면층) | SAFE_WITH_INTERFACE_CONSTRAINTS | sessionStorage 키(`speechHero.code`, `speechHero.csrf`. `speechHero.activity`·`speechHero.result`는 모험 4종과 함께 2026-11-19 삭제), API 호출, `detectCapabilities`·`supportsRealMode`·`missingText` 게이트, Space와 pointer 입력 핸들러, TTS 중 마이크 차단 ref(`modelSpeaking`, `submitting`), `aria-live` 영역, DEMO 고지 문구를 유지한다 |
 | `frontend/src/game/**` | SAFE_WITH_INTERFACE_CONSTRAINTS | V2 게임 장면은 새 코드로 작성한다. legacy 상태 기계(`beamTransition`, `towerTransition`)와 `BeamCanvas`는 2026-10-04, 빛의 마법 장면(`magicBeam/`)은 모험 4종과 함께 2026-11-19 삭제했다. 지금 남은 게임은 `crossing/`뿐이다 |
 | `frontend/public/assets/**` | SAFE_TO_REDESIGN(신규) | 같은 출처에서 제공한다. 에셋 출처와 라이선스, 대구대 마스코트 IP는 사용자가 확인한다 |
@@ -57,7 +57,7 @@ Phase 0에서 사용자(제품 소유자)가 승인했다(2026-09-30). 이후 �
 - `backend/app/security.py`의 `issue_token` 삭제. 쿠키 인증 이후 쓰이지 않는다. `AuthToken` 모델과 표는 유지한다.
 - `backend/app/auth.py`의 `require_child_access` 삭제. 쓰이지 않고, 감사 기록과 테스트가 없으며 ADMIN을 그대로 통과시킨다. Phase 7에서 필요해지면 감사 기록과 테스트를 갖춰 다시 설계한다.
 
-나머지 legacy 경로(기존 모험, legacy AI 추천, ActivityRecommendation, `/progress` 그래프)는 사용자 결정에 따라 각 Phase를 진행하며 처리한다. 후보와 충돌 지점은 `LEGACY_AND_PLACEHOLDER_REGISTER.md`에 있다. 기존 모험은 2026-10-04 사용자 승인(로드맵 5절 2·3번)으로 삭제했다.
+나머지 legacy 경로(기존 모험, legacy AI 추천, ActivityRecommendation, `/progress` 그래프)는 사용자 결정에 따라 각 Phase를 진행하며 처리한다. 후보와 충돌 지점은 2026-09-30 감사 기록(legacy·placeholder 목록)에 있었고, 그 문서는 지웠으며 git 이력에 있다. 기존 모험은 2026-10-04 사용자 승인(로드맵 5절 2·3번)으로 삭제했다.
 
 ## 6. 회귀 명령
 
@@ -248,3 +248,4 @@ git diff --check
 - 치료사 규칙(ACCEPT_SUBSTITUTION·ACCEPT_WORD_VARIANT): 이 규칙은 예전 게임 기록용이며 현재 대구대 건너기·대화 판정에는 쓰이지 않는다. `speech/pipeline.analyze`를 부르는 곳이 없다.
 - 건너기 화면은 아직 lease를 claim하지 않는다(claim·heartbeat·pause API와 테스트만 유지).
 - `/api/play/children/{code}/profile`은 `heroName`만 준다(레벨·xp·배지·카드·지도 진행 삭제).
+- `HoyaAction`은 17개에서 7개로 줄었다(IDLE·LISTENING·TALKING·WAVE·CHEER·ENCOURAGE·THINKING). 현재 흐름이 내보내지 않는 CHARGE·BEAM·RELEASE·FLY·LAND·CAST·ATTACK·WALK_TO·PICK_UP·PUT_IN_BAG와 그 자세·클립 후보·안내 문구·한 번 재생(ONE_SHOT) 처리를 지웠다(2026-11-19).

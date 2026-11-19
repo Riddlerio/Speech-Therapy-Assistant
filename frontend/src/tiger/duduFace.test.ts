@@ -3,8 +3,7 @@ import { describe, expect, it } from 'vitest'
 import type { HoyaAction } from '../control/speechGameSignal'
 import { attachDuduFace, faceState } from './duduFace'
 
-const ACTIONS: HoyaAction[] = ['IDLE', 'LISTENING', 'TALKING', 'CHARGE', 'BEAM', 'RELEASE', 'FLY', 'LAND', 'CAST', 'ATTACK',
-  'WALK_TO', 'PICK_UP', 'PUT_IN_BAG', 'WAVE', 'CHEER', 'ENCOURAGE', 'THINKING']
+const ACTIONS: HoyaAction[] = ['IDLE', 'LISTENING', 'TALKING', 'WAVE', 'CHEER', 'ENCOURAGE', 'THINKING']
 
 describe('두두 표정', () => {
   it('평소에는 눈을 뜨고, 몇 초마다 짧게 깜박인다', () => {

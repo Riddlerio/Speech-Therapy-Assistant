@@ -7,10 +7,7 @@ import { useReducedMotion } from '../shared/useReducedMotion'
 // 두두는 모델 파일(GLB)이 있으면 그것을, 없거나 불러오지 못하면 절차형 3D 시제품(DuduModel)을 쓴다(DuduCharacter).
 
 const ACTION_TEXT: Partial<Record<HoyaAction, string>> = {
-  LISTENING: '두두가 귀 기울이고 있어요', TALKING: '두두가 말하고 있어요', CHARGE: '두두가 힘을 모으고 있어요',
-  BEAM: '두두가 빛을 쏘고 있어요', RELEASE: '두두가 빛을 놓았어요', FLY: '두두가 날고 있어요', LAND: '두두가 내려앉았어요',
-  CAST: '두두가 주문을 외우고 있어요', ATTACK: '두두가 몬스터에게 마법을 보냈어요', WALK_TO: '두두가 걸어가고 있어요',
-  PICK_UP: '두두가 물건을 집었어요', PUT_IN_BAG: '두두가 가방에 넣었어요', WAVE: '두두가 손을 흔들어요',
+  LISTENING: '두두가 귀 기울이고 있어요', TALKING: '두두가 말하고 있어요', WAVE: '두두가 손을 흔들어요',
   CHEER: '두두가 신나 해요', ENCOURAGE: '두두가 응원하고 있어요', THINKING: '두두가 생각하고 있어요',
 }
 

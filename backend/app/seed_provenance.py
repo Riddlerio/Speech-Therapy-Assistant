@@ -1,7 +1,7 @@
 """Phase 1 수정 전에 잘못 표시된 seed(샘플) 출처 행을 찾아 고친다. 기본은 미리 보기이고 `apply_repair`만 DB를 바꾼다.
 샘플 데이터가 실제 임상 집계에 섞이지 않게 하려고 있으며, backend/scripts의 audit·repair 스크립트가 부른다.
 
-수정 전 코드는 seed(샘플) 아동의 회기를 is_seed=False로 저장할 수 있었다(PRODUCT_REALITY_MATRIX 1절).
+수정 전 코드는 seed(샘플) 아동의 회기를 is_seed=False로 저장할 수 있었다(2026-09-30 감사 기록 1절, git 이력 참조).
 - 그런 게임 회기·대화 회기를 is_seed=True로 고친다. 임상 근거·계획·추천 집계는 회기 표시로 판단하므로 자동으로 빠진다.
 - 그 회기 관찰의 치료사 검토 상태(CONFIRMED·CORRECTED·REJECTED)는 지금 코드가 비임상 회기에 쓰는 DEMO_ 상태로 맞춘다.
 - 치료사 검토 기록(ClinicalVerification)은 추가만 하는 기록이라 지우거나 바꾸지 않는다.

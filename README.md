@@ -47,7 +47,6 @@
 ├─ frontend/                  프런트엔드 (React + TypeScript + Vite). npm 명령은 여기서 실행
 │  ├─ package.json, vite.config.ts, tsconfig.json
 │  ├─ index.html              앱 진입점
-│  ├─ dudu-review.html        (개발용) 두두 3D 동작 검토 화면
 │  ├─ voice-mic-check.html    (개발용) 실기기 마이크·목소리 점검 화면
 │  ├─ src/main.tsx, App.tsx   시작점과 화면 경로
 │  ├─ src/pages/              첫 화면(Landing)
@@ -82,7 +81,7 @@
 │  ├─ scripts/                smoke 검사·시연 DB·계정 생성 도구
 │  └─ tests/                  pytest
 ├─ shared/                    프런트·백엔드가 함께 읽는 JSON 기준 자료
-├─ assets/dudu3d/             두두 3D 모델 제작 원본과 도구
+├─ assets/dudu3d/             두두 3D 모델 제작 원본(입력·참고 그림)과 제작 기록
 └─ documents/                 설계·근거·기록 문서 (실행에는 필요 없음)
 ```
 
@@ -198,7 +197,7 @@ backend\.venv\Scripts\python.exe backend/scripts/smoke_api.py http://127.0.0.1:8
 | [01_overview](documents/01_overview/) | 로드맵, 구조도·화면 이미지 |
 | [02_architecture](documents/02_architecture/) | 시스템 구조, 치료사 업무 흐름, 동결 계약, 임시 기준값 |
 | [03_clinical](documents/03_clinical/) | 건너기 설계 근거, 임상 근거, 근거 출처 |
-| [04_history](documents/04_history/) | 작업 기록, 결정 기록, 감사 기록, V2 원문 |
+| [04_history](documents/04_history/) | 작업 기록, 결정 기록 |
 | [05_demo](documents/05_demo/) | 시연 진행표, 마이크 측정 |
 | [06_research](documents/06_research/) | 한국 아동 발음 데이터 연구 |
 | [07_assets_production](documents/07_assets_production/) | 자산 라이선스, 두두 음성 제작 기록 |

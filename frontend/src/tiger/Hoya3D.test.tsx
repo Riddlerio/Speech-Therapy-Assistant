@@ -6,8 +6,7 @@ import type { HoyaAction } from '../control/speechGameSignal'
 const doc = (getContext: (kind: string) => unknown) => ({ createElement: () => ({ getContext }) })
 
 describe('두두 3D 대체 화면', () => {
-  it.each<HoyaAction>(['IDLE', 'LISTENING', 'TALKING', 'CHARGE', 'BEAM', 'RELEASE', 'FLY', 'LAND',
-    'CAST', 'ATTACK', 'WALK_TO', 'PICK_UP', 'PUT_IN_BAG', 'WAVE', 'CHEER', 'ENCOURAGE', 'THINKING'])(
+  it.each<HoyaAction>(['IDLE', 'LISTENING', 'TALKING', 'WAVE', 'CHEER', 'ENCOURAGE', 'THINKING'])(
     '%s 대체 화면은 두두 이름으로 안내한다', action => {
       const html = renderToStaticMarkup(<HoyaFallback action={action} />)
       expect(html).toContain('두두')
@@ -24,10 +23,10 @@ describe('두두 3D 대체 화면', () => {
   })
 
   it('대체 화면은 3D라고 표시하지 않고 게임을 계속할 수 있다고 안내한다', () => {
-    const html = renderToStaticMarkup(<HoyaFallback action="BEAM" />)
+    const html = renderToStaticMarkup(<HoyaFallback action="THINKING" />)
     expect(html).toContain('간단한 대체 화면')
     expect(html).toContain('게임은 그대로 할 수 있어요')
-    expect(html).toContain('빛을 쏘고')
+    expect(html).toContain('생각하고')
     expect(html).not.toContain('3D')
   })
 
