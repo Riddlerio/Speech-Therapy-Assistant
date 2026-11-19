@@ -25,7 +25,7 @@ const form: PlanForm = {
   targetPhoneme: 'ㅅ', wordPosition: 'initial', startLevel: 'syllable', targetLevel: 'word', durationMin: 10, repetitionTarget: 30,
   preferredCue: 'visual_mouth', priorityTargets: ['사과'], excludedWords: [], conversationTheme: '', therapistNote: '',
   steps: [{ stepType: 'CONVERSATION', activity: 'hoya_conversation', targetLevel: null, parameters: { durationMin: 2 } },
-    { stepType: 'GAME', activity: 'monster_adventure', targetLevel: 'syllable', parameters: { trials: 30 } }],
+    { stepType: 'GAME', activity: 'daegu_crossing', targetLevel: 'syllable', parameters: { trials: 30 } }],
 }
 
 const plan = (status: SessionPlan['status'], over: Partial<SessionPlan> = {}): SessionPlan => ({
@@ -52,7 +52,7 @@ const view = (props: Partial<Parameters<typeof NextSessionView>[0]>) => render(<
 
 describe('치료사 홈과 작업 공간', () => {
   it('담당 아동 5명을 모두 보여 주고 각 아동 작업 공간으로 연결한다', () => {
-    const children: CaseloadChild[] = ['가', '나', '다', '라', '마'].map((name, index) => ({ id: `child-${index}`, hero_name: name, child_code: `C-000${index}`, age_band: '4-5', currentGoal: { target_phoneme: 'ㅅ', level: 'word' }, pendingRecommendations: 0 }))
+    const children: CaseloadChild[] = ['가', '나', '다', '라', '마'].map((name, index) => ({ id: `child-${index}`, hero_name: name, child_code: `C-000${index}`, age_band: '4-5', currentGoal: { target_phoneme: 'ㅅ', level: 'word' } }))
     const html = render(<CaseloadList children={children} />)
     expect(html).toContain('담당 아동 5명')
     children.forEach(child => expect(html).toContain(`href="/therapist/children/${child.id}"`))
@@ -75,34 +75,15 @@ describe('치료사 홈과 작업 공간', () => {
     expect(html).not.toContain('recharts')
   })
 
-  it('경과 · 기록은 검토 대기 관찰과 이전 계획을 보이고 기존 추천은 고급 정보로 접는다', () => {
-    const html = render(<ProgressPanel childId="c1" context={context()} trends={null} showAdvanced
+  it('경과 · 기록은 검토 대기 관찰과 이전 계획을 보이고 적용 규칙은 고급 정보로 접는다', () => {
+    const html = render(<ProgressPanel childId="c1" context={context()} trends={null}
       sessions={[{ id: 's1', mode: 'real', isSeed: false, startedAt: '2026-09-29T00:00:00Z', status: 'completed' }]}
-      plans={[plan('SUPERSEDED'), plan('APPROVED', { id: 'p2', revision: 2 })]} recommendations={[]} rules={[]} onDecide={noop} onDeactivate={noop} />)
+      plans={[plan('SUPERSEDED'), plan('APPROVED', { id: 'p2', revision: 2 })]} rules={[]} onDeactivate={noop} />)
     expect(html).toContain('관찰 3건')
     expect(html).toContain('/therapist/sessions/s1')
     expect(html).toContain('새 계획으로 대체됨')
     expect(html).toMatch(/<details class="card advanced"><summary>고급 정보/)
-  })
-})
-
-describe('legacy 추천 출처', () => {
-  const rec = (demoPractice: boolean) => ({ id: demoPractice ? 'demo' : 'real', observation: '관찰', suggestion_text: '제안', confidence: 'low', status: 'pending',
-    provenance: { sessionMode: demoPractice ? 'demo' : 'real', sessionIsSeed: false, clinicalEligible: !demoPractice, demoPractice } })
-  const html = (demoPractice: boolean) => render(<ProgressPanel childId="c1" context={context()} trends={null} sessions={[]} plans={[]}
-    recommendations={[rec(demoPractice)]} rules={[]} onDecide={noop} onDeactivate={noop} />)
-
-  it('DEMO 연습 기반 추천은 표시를 붙이고 수락·수정 버튼을 숨긴다', () => {
-    const demo = html(true)
-    expect(demo).toContain('DEMO 연습 기반')
-    expect(demo).not.toContain('>수락<')
-    expect(demo).toContain('거절')
-  })
-
-  it('임상 근거 회기의 추천은 기존처럼 수락할 수 있다', () => {
-    const real = html(false)
-    expect(real).toContain('>수락<')
-    expect(real).not.toContain('data-provenance')
+    expect(html).toContain('현재 대구대 건너기·대화 판정에는 쓰이지 않습니다')
   })
 })
 

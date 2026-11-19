@@ -29,7 +29,7 @@ export default function PlayEntry() {
       setToken(result.csrfToken)
       await getProfile(username)
       sessionStorage.setItem('speechHero.code', username)
-      // 데모 흐름(2026-10-05): 로그인하면 두두가 바로 인사하는 대화로 간다. 두두의 집·지도는 주소로만 연다.
+      // 데모 흐름(2026-10-05): 로그인하면 두두가 바로 인사하는 대화로 간다.
       navigate('/play/chat', { state: { autostart: true } })
     } catch (cause) { setError(cause instanceof Error ? cause.message : '로그인에 실패했습니다') }
   }

@@ -14,7 +14,6 @@ from sqlalchemy import func, select
 
 from app import main as api_module
 from app import maintenance
-from app.clinical.activity_recommendation import propose_activity
 from app.config import BACKEND_ENV_FILE, Settings
 from app.hoya.api import dialogue_service
 from app.hoya.evidence import classify_speech
@@ -600,7 +599,6 @@ def test_chat_does_not_touch_clinical_statistics(api):
     with sessions() as db:
         before = {model: db.scalar(select(func.count()).select_from(model))
                   for model in (ProgressMetric, ClinicalObservation, ActivityRecommendation, AIRecommendation, Utterance)}
-        child_id = db.scalar(select(Child.id).where(Child.play_code == "HERO01"))
     started = _start(client, headers, mode="real")
     for index, text in enumerate(["수박 먹었어", "학교 갔어", None], 1):
         assert _turn(client, headers, started["sessionId"], index, text, acoustic=GOOD_MIC,
@@ -609,7 +607,6 @@ def test_chat_does_not_touch_clinical_statistics(api):
     with sessions() as db:
         after = {model: db.scalar(select(func.count()).select_from(model)) for model in before}
         assert after == before
-        assert propose_activity(db, child_id) is None
 
 
 # ---------------------------------------------------------------- 설정 위치

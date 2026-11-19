@@ -1,4 +1,4 @@
-"""시연 데이터가 있는 로컬 서버의 쿠키 인증·5라운드 API를 확인한다."""
+"""시연 데이터가 있는 로컬 서버의 쿠키 인증·대구대 건너기 5라운드 API를 확인한다."""
 
 import sys
 import uuid
@@ -14,28 +14,38 @@ def main(base_url: str) -> None:
         login.raise_for_status()
         assert login.json()["role"] == "STUDENT"
         csrf = {"X-CSRF-Token": login.json()["csrfToken"]}
-        assert client.get("/api/me/home").status_code == 200
+        assert client.get("/api/play/children/HERO01/profile").status_code == 200
         assert client.get("/api/dashboard/overview").status_code == 403
-        assert client.post("/api/me/character/tap").status_code == 403
-        assert client.post("/api/me/character/tap", headers=csrf).status_code == 200
+        game = {"game": "daegu_crossing", "mode": "demo"}
+        assert client.post("/api/activities", json=game).status_code == 403
 
-        started = client.post("/api/activities", headers=csrf, json={"game": "magic_beam", "mode": "demo"})
+        started = client.post("/api/activities", headers=csrf, json=game)
         started.raise_for_status()
         data = started.json()
         assert len(data["rounds"]) == 5
-        item = data["firstItem"]
-        for index in range(1, 6):
-            response = client.post(f"/api/activities/{data['sessionId']}/utterances", headers=csrf,
-                                   json={"roundIndex": index, "itemId": item["itemId"], "attemptIndex": 1,
-                                         "acoustic": {"durationMs": 5000, "voicedMs": 4000, "activeMs": 4000,
-                                                      "bestRunMs": 4000, "fricationMs": 4000,
-                                                      "sustainSegmentsMs": [1600, 1600, 1600],
-                                                      "onsetFricationMs": 500, "voicedAfterFricationMs": 300}})
-            response.raise_for_status()
-            result = response.json()
-            assert any(event["type"] == "ROUND_CLEAR" for event in result["events"])
-            item = result["nextItem"]
-        assert result["sessionComplete"]
+
+        def cross_lap(result):
+            # 5라운드 × 2낱말 = 10줄. 매 줄 첫 시도에 성공하는 음향 값을 보낸다.
+            for _ in range(10):
+                response = client.post(f"/api/activities/{data['sessionId']}/utterances", headers=csrf,
+                                       json={"roundIndex": result["roundIndex"], "itemId": result["nextItem"]["itemId"],
+                                             "attemptIndex": result["nextAttemptIndex"],
+                                             "acoustic": {"durationMs": 1200, "voicedMs": 800, "activeMs": 900,
+                                                          "onsetFricationMs": 90, "voicedAfterFricationMs": 300}})
+                response.raise_for_status()
+                result = response.json()
+                assert result["result"] == "success"
+            assert result["sessionComplete"]
+
+        cross_lap({**data, "nextItem": data["firstItem"]})
+        # 다음 판(판을 마친 뒤) → 두 번째 판 완주 → 새 낱말 확인 시작(판 완료 뒤 한 번).
+        lap = client.post(f"/api/activities/{data['sessionId']}/laps", headers=csrf)
+        lap.raise_for_status()
+        assert lap.json()["lap"] == 2 and lap.json()["firstItem"]
+        cross_lap({**lap.json(), "nextItem": lap.json()["firstItem"]})
+        probes = client.post(f"/api/activities/{data['sessionId']}/probes", headers=csrf)
+        probes.raise_for_status()
+        assert probes.json()["probeStarted"] and probes.json()["probeTotal"] >= 0
         complete = client.post(f"/api/play/sessions/{data['sessionId']}/complete", headers=csrf,
                                json={"elapsedSec": 300})
         complete.raise_for_status()
@@ -46,7 +56,12 @@ def main(base_url: str) -> None:
         timeline = client.get(f"/api/sessions/{data['sessionId']}/timeline")
         timeline.raise_for_status()
         assert {row["round_index"] for row in timeline.json()["observations"]} == {1, 2, 3, 4, 5}
-        print("[OK] 쿠키 인증, CSRF, 역할 접근, 5라운드, 임상 관찰")
+        children = client.get("/api/children").json()
+        analytics = client.get(f"/api/therapist/children/{children[0]['id']}/crossing-analytics")
+        assert analytics.status_code == 200 and {"sessions", "mastery", "notes"} <= analytics.json().keys()
+        settings = client.get(f"/api/therapist/children/{children[0]['id']}/game-settings")
+        assert settings.status_code == 200 and "startBpm" in settings.json()["daeguCrossing"]
+        print("[OK] 쿠키 인증, CSRF, 역할 접근, 대구대 건너기 2판·새 낱말 확인, 임상 관찰, 건너기 분석·게임 설정")
 
         # 치료사 회기 계획: 근거 context → 제안 → 초안 → 승인 → 승인본 수정 거부.
         therapist_csrf = {"X-CSRF-Token": therapist.json()["csrfToken"]}

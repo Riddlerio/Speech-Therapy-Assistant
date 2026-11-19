@@ -8,7 +8,9 @@ from ..schemas_base import ApiModel, StrictApiModel
 
 StartLevel = Literal["phoneme", "syllable", "word", "short_sentence"]
 TargetLevel = Literal["syllable", "word", "short_sentence"]
-GAME_ACTIVITIES = {"magic_beam", "sky_climb", "monster_adventure", "conversation_quest"}
+# 새 계획은 daegu_crossing만 쓴다. 이전 게임 이름은 저장된 옛 계획을 읽기·복제·수정할 때 400이 나지 않게 계속 받는다.
+LEGACY_GAME_ACTIVITIES = {"magic_beam", "sky_climb", "monster_adventure", "conversation_quest"}
+GAME_ACTIVITIES = {"daegu_crossing"} | LEGACY_GAME_ACTIVITIES
 STEP_ACTIVITIES = {"CONVERSATION": {"hoya_conversation"}, "GAME": GAME_ACTIVITIES, "PRACTICE": GAME_ACTIVITIES}
 LEVELS = ("phoneme", "syllable", "word", "short_sentence")
 
@@ -24,7 +26,7 @@ class StepInput(StrictApiModel):
     """회기 계획의 단계 하나(대화·게임·연습 중 무엇을 할지).
     SessionPlanInput.steps의 항목이며 활동이 단계 유형과 맞는지 검사한다."""
     step_type: Literal["CONVERSATION", "GAME", "PRACTICE"]
-    activity: Literal["hoya_conversation", "magic_beam", "sky_climb", "monster_adventure", "conversation_quest"]
+    activity: Literal["hoya_conversation", "daegu_crossing", "magic_beam", "sky_climb", "monster_adventure", "conversation_quest"]
     target_level: StartLevel | None = None
     parameters: StepParameters = Field(default_factory=StepParameters)
 

@@ -3,9 +3,9 @@ import type { Acoustic } from '../shared/types'
 import type { GameKind } from '../control/speechGameSignal'
 
 export interface ActivityRound { index: number; id: string; childTitle: string; childPrompt: string; targetMs: number; attempts: number; elicitationType: string; difficulty?: number; itemSource?: string; endHoldMs?: number }
-export interface ActivityItem { itemId: string; displayText: string; level: string; game: GameKind; pictureKey: string; beamTargetMs?: number }
-export interface ActivityStart { sessionId: string; game: GameKind; mode: 'real' | 'demo'; heroName: string; rounds: ActivityRound[]; currentRound: ActivityRound; firstItem: ActivityItem; nextAttemptIndex?: number; completedRounds?: number[]; leaseToken?: string; sessionComplete?: boolean; magicBeamAvailable?: boolean }
-export interface ActivityResponse { events: { type: string; payload: Record<string, unknown> }[]; nextItem: ActivityItem | null; nextAttemptIndex: number; currentRound: ActivityRound | null; sessionComplete: boolean; magicBeamAvailable?: boolean; dialogue?: { provider: string; text: string; hoyaActions: string[] } | null }
+export interface ActivityItem { itemId: string; displayText: string; level: string; game: GameKind; pictureKey: string }
+export interface ActivityStart { sessionId: string; game: GameKind; mode: 'real' | 'demo'; heroName: string; rounds: ActivityRound[]; currentRound: ActivityRound; firstItem: ActivityItem; nextAttemptIndex?: number; completedRounds?: number[]; leaseToken?: string; sessionComplete?: boolean }
+export interface ActivityResponse { events: { type: string; payload: Record<string, unknown> }[]; nextItem: ActivityItem | null; nextAttemptIndex: number; currentRound: ActivityRound | null; sessionComplete: boolean; dialogue?: { provider: string; text: string; hoyaActions: string[] } | null }
 
 /** 확인 낱말은 정오·점수 없이 진행만 받는다. 기존 라운드 번호는 연습 마지막 위치를 유지한다. */
 export interface CrossingProbeProgress { probeStarted: boolean; probeComplete: boolean; probeIndex: number; probeTotal: number }
@@ -28,8 +28,8 @@ export const startCrossingProbes = (session: ActivityStart) =>
     method: 'POST', ...(session.leaseToken ? { headers: { 'X-Activity-Lease': session.leaseToken } } : {}) })
 
 export const sendActivityUtterance = (session: ActivityStart, item: ActivityItem, roundIndex: number, attemptIndex: number,
-  transcript: string | null, acoustic: Acoustic, attack: 'basic' | 'magic_beam' = 'basic') =>
+  transcript: string | null, acoustic: Acoustic) =>
   api<ActivityResponse>(`/activities/${session.sessionId}/utterances`, { method: 'POST', ...(session.leaseToken ? { headers: { 'X-Activity-Lease': session.leaseToken } } : {}), body: JSON.stringify({
-    roundIndex, itemId: item.itemId, attemptIndex, transcript, acoustic, attack,
+    roundIndex, itemId: item.itemId, attemptIndex, transcript, acoustic,
     recognizer: session.mode === 'demo' ? 'demo_script' : 'web_speech',
   }) })

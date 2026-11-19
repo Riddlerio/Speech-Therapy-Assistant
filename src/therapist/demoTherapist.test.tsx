@@ -13,12 +13,14 @@ const form: PlanForm = {
   conversationTheme: '', therapistNote: '', steps: [{ stepType: 'GAME', activity: 'sky_climb' }],
 }
 describe('데모 치료사 화면', () => {
-  it('새 선택에서는 빔을 숨기고 기존 계획의 값과 이름표는 보존한다', () => {
+  it('새 선택은 대구대 건너기뿐이고 기존 계획의 값과 이름표는 보존한다', () => {
     expect(ACTIVITY_LABELS.daegu_crossing).toBe('대구대 건너기')
-    expect(selectablePlanActivities('GAME')).not.toContain('magic_beam')
-    expect(selectablePlanActivities('GAME')).not.toContain('daegu_crossing')
+    expect(selectablePlanActivities('GAME')).toEqual(['daegu_crossing'])
+    expect(selectablePlanActivities('PRACTICE')).toEqual(['daegu_crossing'])
     const current = renderToStaticMarkup(<PlanEditor form={form} readOnly={false} onChange={() => {}} />)
     expect(current).not.toContain('value="magic_beam"')
+    expect(current).toContain('value="sky_climb" disabled="" selected=""')
+    expect(current).toContain('<option value="daegu_crossing">대구대 건너기</option>')
     const old: PlanForm = { ...form, steps: [{ stepType: 'GAME', activity: 'magic_beam' }] }
     expect(validateForm(old)).toEqual([])
     const history = renderToStaticMarkup(<PlanEditor form={old} readOnly onChange={() => {}} />)

@@ -44,14 +44,12 @@
 ```
 ├─ index.html                 앱 진입점
 ├─ dudu-review.html           (개발용) 두두 3D 동작 검토 화면
-├─ magic-beam-review.html     (개발용) 빛의 마법 장면 검토 화면
 ├─ voice-mic-check.html       (개발용) 실기기 마이크·목소리 점검 화면
 ├─ src/                       프런트엔드 (React + TypeScript)
 │  ├─ main.tsx, App.tsx       시작점과 화면 경로
 │  ├─ api/                    서버 호출 (client, auth=CSRF 토큰, 활동·대화·치료사 API)
 │  ├─ child/                  아동 화면: 대화(HoyaChat), 건너기(DaeguCrossing), 마무리
 │  ├─ game/crossing/          건너기 규칙: 박자, 판정 연결, 다시 시도 도움말
-│  ├─ game/magicBeam/         빛의 마법 장면
 │  ├─ speech/                 마이크·음향 측정·음성 인식·두두 목소리
 │  ├─ control/                소리 신호 → 캐릭터 동작 연결
 │  ├─ tiger/                  두두 3D 캐릭터
@@ -60,7 +58,7 @@
 │  └─ styles/                 CSS (tokens.css는 생성 파일)
 ├─ backend/                   백엔드 (FastAPI + SQLAlchemy + SQLite)
 │  ├─ app/main.py             앱 생성·보안 미들웨어·로그인·아동 놀이 API
-│  ├─ app/therapist_api.py    치료사용 API (아동·회기·관찰·추천)
+│  ├─ app/therapist_api.py    치료사용 API (아동·목표·회기·관찰)
 │  ├─ app/serializers.py      DB 행 → API 응답 변환 공용 함수
 │  ├─ app/games/              게임 라운드 정의·판정·건너기 진행
 │  ├─ app/speech/pipeline.py  인식 문장 정규화 → 음소 변환 → 정렬 → 점수 (한 파일)
@@ -153,7 +151,7 @@ backend\.venv\Scripts\python.exe -m pytest backend/tests -q -p no:cacheprovider 
 backend\.venv\Scripts\python.exe backend/scripts/smoke_api.py http://127.0.0.1:8000
 ```
 
-현재 결과: 프런트 46개 파일 333개 테스트, 백엔드 583개 테스트 통과. 자동 테스트는 코드 회귀 검사이며 임상 정확도를 뜻하지 않습니다. [CI](.github/workflows/ci.yml)는 PR과 `main` push에 같은 검사를 실행합니다.
+현재 결과: 프런트 39개 파일 291개 테스트, 백엔드 503개 테스트 통과. 자동 테스트는 코드 회귀 검사이며 임상 정확도를 뜻하지 않습니다. [CI](.github/workflows/ci.yml)는 PR과 `main` push에 같은 검사를 실행합니다.
 
 **아직 하지 않은 것:** 최신 버전의 실제 휴대폰·마이크 전체 리허설, 아동 음성 정확도·임상 평가, 운영 환경 준비(브랜치 보호·DB 마이그레이션). 우선순위는 [로드맵](documents/01_overview/ROADMAP.md)에 있습니다.
 

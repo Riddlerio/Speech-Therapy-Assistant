@@ -1,20 +1,14 @@
-"""게임 5종의 라운드 정의(제목·안내 문장·임상 초점·판정 규칙·목표 시간 등)와 난이도 조정 규칙을 담는다.
+"""대구대 건너기 5라운드 정의(제목·안내 문장·임상 초점·판정 규칙 등)를 담는다.
 게임 시작·진행·판정·화면 응답이 모두 이 표(GAME_ROUNDS)를 기준으로 동작한다.
 """
 
-from dataclasses import dataclass, replace
-
-
-# 쉼 후 재개(RE_ONSET)에서 한 발화 안의 쉼으로 인정하는 범위(ms). 상한은 그 라운드의 발화 종료 유예보다
-# 짧아야 한다. 그보다 길게 쉬면 브라우저가 발화를 끝내므로 서버도 한 발화 안의 쉼으로 인정하지 않는다.
-RE_ONSET_PAUSE_MS = (300, 2200)
-RE_ONSET_END_HOLD_MS = 2500
+from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
 class RoundDefinition:
     """라운드 하나의 고정 정의. 아동 화면에 보일 문구, 치료사용 임상 정보, 판정 규칙(rule)과 목표 시간(target_ms)을 가진다.
-    frozen이라 바꿀 수 없고, 난이도 반영은 effective_round가 복사본을 만들어 처리한다.
+    frozen이라 바꿀 수 없고, 바꾼 정의가 필요하면 dataclasses.replace로 복사본을 만든다.
     """
     id: str
     index: int
@@ -31,17 +25,16 @@ class RoundDefinition:
     target_ms: int = 0
     # 모든 라운드 항목은 기존 훈련 단어 목록에서 고른다. 미훈련(novel) 단어를 보장하지 않는다.
     item_source: str = "TRAINING_BANK"
-    # 발화 끝 판단 전 기다리는 시간. 쉼 후 재개를 보는 라운드는 한 발화 안에서 쉼을 허용한다.
+    # 발화 끝 판단 전 기다리는 시간.
     end_hold_ms: int = 700
 
 
-def _round(game, index, title, prompt, focus, task, level, elicitation, prompt_type, attempts, rule, target=0, end_hold_ms=700):
-    """GAME_ROUNDS 표를 짧게 쓰기 위한 RoundDefinition 생성 도우미. id를 "게임.r번호"로 만들고 제한 시간(대화 게임 90초, 나머지 60초)을 채운다.
+def _round(game, index, title, prompt, focus, task, level, elicitation, prompt_type, attempts, rule):
+    """GAME_ROUNDS 표를 짧게 쓰기 위한 RoundDefinition 생성 도우미. id를 "게임.r번호"로 만들고 제한 시간 60초를 채운다.
     이 모듈 안에서 라운드 표를 정의할 때만 쓴다.
     """
     return RoundDefinition(f"{game}.r{index}", index, title, prompt, focus, task, level,
-                           elicitation, prompt_type, attempts, 60 if game != "conversation_quest" else 90, rule, target,
-                           end_hold_ms=end_hold_ms)
+                           elicitation, prompt_type, attempts, 60, rule)
 
 
 GAME_ROUNDS = {
@@ -52,73 +45,15 @@ GAME_ROUNDS = {
         _round("daegu_crossing", 4, "낱말 건너기", "그림의 이름을 말해 줘!", "낱말 수준 산출 · 음향 근사", "TARGET_PRODUCTION", "WORD", "SELF_GENERATED", "PICTURE_PROMPT", 3, "ONSET_FRICATION"),
         _round("daegu_crossing", 5, "정문까지", "정문까지 한 줄씩 가 보자!", "음절·낱말 혼합 · 음향 근사", "TARGET_PRODUCTION", "WORD", "PROMPTED_PRODUCTION", "PICTURE_PROMPT", 3, "ONSET_FRICATION"),
     ),
-    "magic_beam": (
-        _round("magic_beam", 1, "마법 깨우기", "두두를 따라 스— 하고 말해줘!", "모델 후 /ㅅ/ 지속 산출", "SUSTAINED_PRODUCTION", "SOUND", "DIRECT_IMITATION", "AUDITORY_MODEL", 3, "FRICATION", 1000),
-        _round("magic_beam", 2, "빔 쏘기", "혼자 힘으로 빔을 쏴 볼까?", "독립 지속 산출", "SUSTAINED_PRODUCTION", "SOUND", "PROMPTED_PRODUCTION", "VISUAL", 3, "FRICATION", 1500),
-        _round("magic_beam", 3, "끊기지 않는 빔", "빛을 길게 이어 줘!", "연속성·쉼 관찰", "SUSTAINED_PRODUCTION", "SOUND", "PROMPTED_PRODUCTION", "VISUAL", 3, "CONTINUITY", 2000),
-        _round("magic_beam", 4, "리듬 펄스", "스, 스, 스! 세 번 들려줘!", "반복 onset 안정성", "RHYTHM", "SOUND", "DIRECT_IMITATION", "AUDITORY_MODEL", 3, "PULSES", 500, 1200),
-        _round("magic_beam", 5, "음절 빔", "사— 하고 말해줘!", "마찰음에서 모음으로 전이", "SUSTAINED_PRODUCTION", "SYLLABLE", "PROMPTED_PRODUCTION", "WORD_CARD", 3, "TRANSITION", 400),
-    ),
-    "sky_climb": (
-        _round("sky_climb", 1, "구름 위로", "소리를 내며 첫 구름에 올라가자!", "발성 시작·짧은 지속", "SUSTAINED_PRODUCTION", "SOUND", "DIRECT_IMITATION", "AUDITORY_MODEL", 3, "SUSTAIN", 1000),
-        _round("sky_climb", 2, "높이 날기", "소리를 길게 이어 보자!", "목표 음 독립 지속", "SUSTAINED_PRODUCTION", "SOUND", "PROMPTED_PRODUCTION", "VISUAL", 4, "SUSTAIN", 1500),
-        _round("sky_climb", 3, "바람 조절", "바람을 고르게 불어 줘!", "발성 강도 유지 참고", "SUSTAINED_PRODUCTION", "SOUND", "PROMPTED_PRODUCTION", "VISUAL", 3, "ENERGY_BAND", 1500),
-        _round("sky_climb", 4, "쉬고 다시", "잠깐 쉬었다가 다시 날아 보자!", "쉼 후 재개", "SUSTAINED_PRODUCTION", "SOUND", "DIRECT_IMITATION", "AUDITORY_MODEL", 5, "RE_ONSET", 1000, RE_ONSET_END_HOLD_MS),
-        _round("sky_climb", 5, "정상 도착", "마지막 구름까지 길게 날아가자!", "최장 지속 관찰", "SUSTAINED_PRODUCTION", "SOUND", "PROMPTED_PRODUCTION", "VISUAL", 6, "SUSTAIN", 2500),
-    ),
-    "monster_adventure": (
-        _round("monster_adventure", 1, "주문 따라 하기", "두두를 따라 말해줘!", "음절 수준 모방", "TARGET_PRODUCTION", "SYLLABLE", "DIRECT_IMITATION", "WORD_CARD", 3, "TARGET_WORD"),
-        _round("monster_adventure", 2, "따라 말하는 마법", "말을 따라 하며 마법을 모으자!", "단어 모방", "TARGET_PRODUCTION", "WORD", "DIRECT_IMITATION", "WORD_CARD", 3, "TARGET_WORD"),
-        _round("monster_adventure", 3, "그림 보고 마법", "그림을 보고 이름을 말해줘!", "독립 명명", "TARGET_PRODUCTION", "WORD", "SELF_GENERATED", "PICTURE_PROMPT", 3, "TARGET_WORD"),
-        _round("monster_adventure", 4, "새 장면 몬스터", "몬스터에게 그림 이름을 알려줘!", "새 장면에서 훈련 단어 산출", "TARGET_PRODUCTION", "WORD", "SELF_GENERATED", "PICTURE_PROMPT", 3, "TARGET_WORD"),
-        _round("monster_adventure", 5, "보스 몬스터", "짧은 말로 주문을 외워줘!", "구 수준 목표 음소 산출", "PHRASE_PRODUCTION", "PHRASE", "PROMPTED_PRODUCTION", "WORD_CARD", 2, "TARGET_WORD"),
-    ),
-    "conversation_quest": (
-        _round("conversation_quest", 1, "소풍 준비", "사과랑 바나나 중에 뭐 챙길까?", "선택형 유도 산출", "CONTEXTUAL_PRODUCTION", "WORD", "PROMPTED_PRODUCTION", "MODELED_CHOICE", 2, "CONVERSATION"),
-        _round("conversation_quest", 2, "무엇이 필요할까", "소풍에 뭐 가져갈까?", "그림 기반 자기 생성", "CONTEXTUAL_PRODUCTION", "WORD", "SELF_GENERATED", "OPEN_QUESTION", 2, "CONVERSATION"),
-        _round("conversation_quest", 3, "가방 채우기", "두두한테 넣어 달라고 말해줘!", "운반구 속 산출", "CONTEXTUAL_PRODUCTION", "PHRASE", "CONVERSATIONAL", "SENTENCE_FRAME", 2, "CONVERSATION"),
-        _round("conversation_quest", 4, "누구랑 갈까", "누구랑 갈까?", "문장 수준 응답", "CONTEXTUAL_PRODUCTION", "SENTENCE", "CONVERSATIONAL", "OPEN_QUESTION", 2, "CONVERSATION"),
-        _round("conversation_quest", 5, "소풍 이야기", "소풍에서 뭐가 제일 재밌었어?", "자유 대화 중 자발 산출", "CONTEXTUAL_PRODUCTION", "SPONTANEOUS", "SPONTANEOUS", "OPEN_QUESTION", 2, "CONVERSATION"),
-    ),
 }
 
 
-def effective_round(round_def: RoundDefinition, difficulty: int) -> RoundDefinition:
-    """난이도(1~5)에 맞춰 목표 시간을 늘이거나 줄인 라운드 정의를 돌려준다(800~3500ms 범위).
-    목표 시간이 없거나 박자·전이 규칙이면 그대로 둔다. main.py가 판정·다음 문항 준비 때 부른다.
+def public_round(round_def: RoundDefinition) -> dict:
+    """라운드 정의를 JSON 형식(camelCase)으로 바꾼다.
+    계획 단계 기록과 관찰 스냅숏(games/crossing.py)이 라운드 정보를 저장할 때 쓴다.
     """
-    if not round_def.target_ms or round_def.rule in {"PULSES", "TRANSITION"}:
-        return round_def
-    multiplier = 1 + 0.15 * (difficulty - 2)
-    return replace(round_def, target_ms=max(800, min(3500, round(round_def.target_ms * multiplier))))
-
-
-def public_round(round_def: RoundDefinition, difficulty: int | None = None) -> dict:
-    """라운드 정의를 아동 화면이 쓰는 JSON 형식(camelCase)으로 바꾼다. 난이도를 주면 반영된 목표 시간을 넣는다.
-    게임 상태 응답(adventure/service.py의 activity_payload)에서 라운드 목록을 보낼 때 쓴다.
-    """
-    if difficulty is not None:
-        round_def = effective_round(round_def, difficulty)
     return {"index": round_def.index, "id": round_def.id, "childTitle": round_def.child_title,
             "childPrompt": round_def.child_prompt, "clinicalFocus": round_def.clinical_focus,
             "generalizationLevel": round_def.generalization_level, "elicitationType": round_def.elicitation_type,
             "attempts": round_def.attempts, "targetMs": round_def.target_ms,
-            "itemSource": round_def.item_source, "endHoldMs": round_def.end_hold_ms,
-            **({"difficulty": difficulty} if difficulty is not None else {})}
-
-
-def next_difficulty(current: int, successes: int, evaluated: int, increases: int, low_streak: int, decreased: bool) -> tuple[int, int, int, bool]:
-    """라운드 성공률로 다음 난이도를 정한다. 2/3 이상이면 올리고(최대 2번), 1/3 이하가 두 번 연속이면 한 번만 내린다.
-    라운드가 끝날 때 main.py가 불러 아이에게 너무 쉽거나 어렵지 않게 조절한다.
-    """
-    if evaluated == 0:
-        return current, increases, 0, decreased
-    ratio = successes / evaluated
-    if ratio >= 2 / 3 and increases < 2:
-        return min(5, current + 1), increases + 1, 0, decreased
-    if ratio <= 1 / 3:
-        low_streak += 1
-        if low_streak >= 2 and not decreased:
-            return max(1, current - 1), increases, 0, True
-        return current, increases, low_streak, decreased
-    return current, increases, 0, decreased
+            "itemSource": round_def.item_source, "endHoldMs": round_def.end_hold_ms}

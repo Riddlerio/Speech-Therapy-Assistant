@@ -6,10 +6,9 @@ from pathlib import Path
 import pytest
 from sqlalchemy.orm.attributes import flag_modified
 
-from app.games.rounds import GAME_ROUNDS, RE_ONSET_END_HOLD_MS, RE_ONSET_PAUSE_MS
 from app.models import TrainingSession
-from test_api_flow import api, student_auth
-from test_hardening import _jump, _past_legacy, _start
+from test_api_flow import api, finish_crossing, student_auth
+from test_hardening import _past_legacy, _start
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -28,7 +27,8 @@ def _mutate(sessions, session_id, change):
 def _activity_post(client, headers, started):
     return client.post(f"/api/activities/{started['sessionId']}/utterances", headers=headers,
                        json={"roundIndex": 1, "itemId": started["firstItem"]["itemId"], "attemptIndex": 1,
-                             "acoustic": {"durationMs": 1300, "activeMs": 1200, "bestRunMs": 1200, "fricationMs": 1200}})
+                             "acoustic": {"durationMs": 700, "activeMs": 500, "onsetFricationMs": 90,
+                                          "voicedAfterFricationMs": 300}})
 
 
 # ---------------------------------------------------------------- B1. 손상된 세션 상태
@@ -36,7 +36,7 @@ def _activity_post(client, headers, started):
 ACTIVITY_DAMAGE = {
     "missing level": lambda state, _s: state["currentItem"].pop("level"),
     "missing game": lambda state, _s: state["currentItem"].pop("game"),
-    "game mismatch": lambda state, _s: state["currentItem"].update(game="sky_climb"),
+    "game mismatch": lambda state, _s: state["currentItem"].update(game="other_game"),
     "currentItem null": lambda state, _s: state.update(currentItem=None),
     "currentItem list": lambda state, _s: state.update(currentItem=[]),
     "roundDefinition not dict": lambda state, _s: state.update(roundDefinition=[]),
@@ -53,7 +53,7 @@ ACTIVITY_DAMAGE = {
 def test_malformed_activity_state_returns_409(api, name):
     client, sessions = api
     headers = student_auth(client)
-    started = _start(client, headers, "magic_beam", "demo")
+    started = _start(client, headers, mode="demo")
     _mutate(sessions, started["sessionId"], ACTIVITY_DAMAGE[name])
     assert client.get(f"/api/activities/{started['sessionId']}", headers=headers).status_code == 409
     assert _activity_post(client, headers, started).status_code == 409
@@ -62,12 +62,12 @@ def test_malformed_activity_state_returns_409(api, name):
 def test_corrupted_plan_behind_valid_state_is_409_not_500(api):
     client, sessions = api
     headers = student_auth(client)
-    started = _start(client, headers, "magic_beam", "demo")
+    started = _start(client, headers, mode="demo")
     with sessions() as db:
         from app.models import TrainingPlan
         session = db.get(TrainingSession, started["sessionId"])
         plan = db.get(TrainingPlan, session.plan_id)
-        plan.plan_json = {"stages": []}  # 다음 라운드 항목을 읽을 때 IndexError가 난다.
+        plan.plan_json = {"stages": []}  # 다음 줄 항목을 읽을 때 IndexError가 난다.
         db.commit()
     assert _activity_post(client, headers, started).status_code == 409
     with sessions() as db:  # 거부된 요청은 저장되지 않는다.
@@ -82,7 +82,7 @@ def test_corrupted_plan_behind_valid_state_is_409_not_500(api):
 def test_corrupted_state_on_completion_returns_409(api, damage):
     client, sessions = api
     headers = student_auth(client)
-    started = _start(client, headers, "magic_beam", "demo")
+    started = _start(client, headers, mode="demo")
     _mutate(sessions, started["sessionId"], damage)
     assert client.post(f"/api/play/sessions/{started['sessionId']}/complete", headers=headers, json={}).status_code == 409
 
@@ -90,7 +90,7 @@ def test_corrupted_state_on_completion_returns_409(api, damage):
 def test_corrupted_completed_summary_returns_409(api):
     client, sessions = api
     headers = student_auth(client)
-    started = _start(client, headers, "magic_beam", "demo")
+    started = _start(client, headers, mode="demo")
     with sessions() as db:
         session = db.get(TrainingSession, started["sessionId"])
         session.status = "completed"
@@ -102,9 +102,9 @@ def test_corrupted_completed_summary_returns_409(api):
 def test_valid_sessions_still_work_and_cross_calls_stay_409(api):
     client, sessions = api
     headers = student_auth(client)
-    past = _start(client, headers, "magic_beam", "demo")
+    past = _start(client, headers, mode="demo")
     _past_legacy(sessions, past["sessionId"])
-    activity = _start(client, headers, "magic_beam", "demo")
+    activity = _start(client, headers, mode="demo")
     assert _activity_post(client, headers, activity).status_code == 200
     assert client.post(f"/api/activities/{past['sessionId']}/utterances", headers=headers,
                        json={"roundIndex": 1, "itemId": past["firstItem"]["itemId"], "acoustic": {}}).status_code == 409
@@ -116,53 +116,11 @@ def test_valid_sessions_still_work_and_cross_calls_stay_409(api):
 def test_valid_completion_still_works(api):
     client, _ = api
     headers = student_auth(client)
-    started = _start(client, headers, "magic_beam", "demo")
+    started = _start(client, headers, mode="demo")
+    finish_crossing(client, headers, started["sessionId"], started)
     first = client.post(f"/api/play/sessions/{started['sessionId']}/complete", headers=headers, json={})
     assert first.status_code == 200
     assert client.post(f"/api/play/sessions/{started['sessionId']}/complete", headers=headers, json={}).json() == first.json()
-
-
-# ---------------------------------------------------------------- B2. 브라우저 요약 → 서버 평가
-
-FIXTURE = json.loads((ROOT / "shared" / "re_onset_mic_cases.json").read_text(encoding="utf-8"))
-
-
-def test_re_onset_pause_range_is_shorter_than_browser_grace():
-    sky_r4 = GAME_ROUNDS["sky_climb"][3]
-    assert sky_r4.rule == "RE_ONSET" and sky_r4.end_hold_ms == RE_ONSET_END_HOLD_MS == FIXTURE["endHoldMs"]
-    assert list(RE_ONSET_PAUSE_MS) == FIXTURE["pauseRangeMs"]
-    assert RE_ONSET_PAUSE_MS[1] < RE_ONSET_END_HOLD_MS
-
-
-@pytest.mark.parametrize("case", FIXTURE["cases"], ids=[case["name"] for case in FIXTURE["cases"]])
-def test_browser_generated_sky_climb_r4_summaries_through_api(api, case):
-    """프론트 MicUtterancePipeline이 frame에서 만든 요약(fixture)을 그대로 서버에 보내 평가한다."""
-    client, sessions = api
-    headers = student_auth(client)
-    started = _start(client, headers, "sky_climb")
-    item = _jump(sessions, started["sessionId"], 4)
-    attempt = 1
-    for acoustic, expected in zip(case["acoustics"], case["utterances"]):
-        response = client.post(f"/api/activities/{started['sessionId']}/utterances", headers=headers,
-                               json={"roundIndex": 4, "itemId": item["itemId"], "attemptIndex": attempt, "acoustic": acoustic})
-        assert response.status_code == 200, response.text
-        events = {event["type"] for event in response.json()["events"]}
-        assert expected in events, (case["name"], events)
-        assert "LISTEN_AGAIN" not in events or expected == "LISTEN_AGAIN"  # 정상 재발성은 음질 불량이 되지 않는다.
-        attempt = response.json()["nextAttemptIndex"]
-    assert len(case["acoustics"]) == len(case["utterances"])
-
-
-def test_pause_longer_than_range_is_not_accepted_inside_one_utterance(api):
-    client, sessions = api
-    headers = student_auth(client)
-    started = _start(client, headers, "sky_climb")
-    item = _jump(sessions, started["sessionId"], 4)
-    acoustic = {**FIXTURE["cases"][0]["acoustics"][0], "maxPauseMs": RE_ONSET_PAUSE_MS[1] + 100,
-                "pauseTotalMs": RE_ONSET_PAUSE_MS[1] + 100}
-    response = client.post(f"/api/activities/{started['sessionId']}/utterances", headers=headers,
-                           json={"roundIndex": 4, "itemId": item["itemId"], "attemptIndex": 1, "acoustic": acoustic})
-    assert "TARGET_RETRY" in {event["type"] for event in response.json()["events"]}
 
 
 # ---------------------------------------------------------------- B3. DEMO 계정은 DEMO 모드에서만
@@ -237,7 +195,7 @@ def test_regular_accounts_still_log_in_when_demo_mode_is_off(api, monkeypatch):
     assert client.get("/api/dashboard/overview").status_code == 200
     student = client.post("/api/auth/login", json={"username": "REAL01", "password": "strongpass2"})
     assert student.status_code == 200 and student.json()["role"] == "STUDENT"
-    assert client.get("/api/me/home").status_code == 200
+    assert client.get("/api/play/children/REAL01/profile").status_code == 200
 
 
 def test_demo_account_detection():

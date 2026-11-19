@@ -26,7 +26,7 @@ Speech Hero가 맡는 부분은 치료사가 목표를 정한 뒤의 훈련 수�
 | 요약 | 아동 코드·별칭, 연령대, 현재 목표, 최근 실제 회기, 검토할 관찰 수, 다음 회기 계획 상태 |
 | 치료 목표 | TrainingGoal 조회와 수정(버전 구조 유지), 목표 이력 |
 | 다음 회기 | 최근 검증 근거 → 시스템 요약 → 다음 회기 제안 → 치료사 수정 → 승인 |
-| 경과 · 기록 | 목표 경과, 최근 회기, 검토 대기 관찰, 이전 회기 계획. 기존 AI 추천과 치료사 규칙은 접힌 "고급 정보" 안에 둔다 |
+| 경과 · 기록 | 목표 경과, 최근 회기, 검토 대기 관찰, 이전 회기 계획. 치료사 규칙은 접힌 "고급 정보" 안에 둔다(기존 AI 추천은 2026-11-19 삭제). 이 규칙은 예전 게임 기록용이며 현재 대구대 건너기·대화 판정에는 쓰이지 않습니다. |
 
 치료사는 긴 프롬프트를 쓰지 않는다. 다음 회기는 구조화된 form으로 작성하고, 자유 입력은 치료사 메모 하나만 둔다.
 
@@ -43,7 +43,7 @@ Speech Hero가 맡는 부분은 치료사가 목표를 정한 뒤의 훈련 수�
 TrainingGoal → TherapistSessionPlan → [future] TherapyRun → TrainingPlan / TrainingSession / HoyaChatSession
 ```
 
-- `collection_json`에는 배지, 몬스터 카드, hoyaTaps, 게임 보상 같은 비임상 상태만 둔다. 회기 계획, 임상 근거, 추천은 넣지 않는다.
+- `collection_json`은 예전 모험 보상 상태였고 지금은 쓰지 않는다(기존 행만 남음). 회기 계획, 임상 근거, 추천은 넣지 않는다.
 - DB는 SQLAlchemy와 SQLite를 유지한다. 새 table은 `create_all`로 추가하며, 기존 table은 바꾸지 않는다.
 - 운영 단계에서는 PostgreSQL과 Alembic을 도입할 예정이다. 이번 PR 범위는 아니다.
 
@@ -66,8 +66,8 @@ DRAFT ──approve──▶ APPROVED ──clone──▶ 새 DRAFT(revision+1)
 | step_type | 허용 activity |
 |---|---|
 | CONVERSATION | hoya_conversation |
-| GAME | magic_beam, sky_climb, monster_adventure, conversation_quest |
-| PRACTICE | magic_beam, sky_climb, monster_adventure, conversation_quest |
+| GAME | daegu_crossing (예전 저장 계획의 magic_beam·sky_climb·monster_adventure·conversation_quest는 읽기·복제만 허용) |
+| PRACTICE | daegu_crossing (예전 값은 위와 같음) |
 
 `parameters`는 `{trials?: 1-60, durationMin?: 1-15}`만 허용한다. 임의의 JSON은 받지 않는다.
 
@@ -102,7 +102,7 @@ START → LoadPlanningContext → FilterVerifiedEvidence → CalculateMetrics
 | LoadPlanningContext | SQLAlchemy로 아동 한 명의 목표·회기·관찰만 읽음 |
 | FilterVerifiedEvidence | Python 결정 규칙(4절) |
 | CalculateMetrics | Python 결정 계산 |
-| GeneratePlanProposal | Python 결정 규칙. 기존 `propose_activity`의 활동 제안을 재사용 |
+| GeneratePlanProposal | Python 결정 규칙. 목표가 어두 /ㅅ/·음절 또는 낱말이면 대화 → 대구대 건너기 → 대화, 아니면 대화 한 단계(`proposal.crossing_supported`) |
 | GenerateSummary | LLM(OpenAI SDK). 설정이 없거나 실패하면 결정적 템플릿 |
 | ValidateOutput | Pydantic schema와 금지 표현 검사. 통과하지 못하면 템플릿으로 대체 |
 
@@ -130,7 +130,7 @@ LLM 입력은 이미 비식별 구조화 context이며, 켜기 전에 기관의 
 
 다음 표현이 나오면 출력을 폐기하고 템플릿을 쓴다: 진단, 장애가 개선, 치료 효과 보장, 정확한 발음 판정, AI 확정 등.
 입력에 없는 숫자가 있거나, 비율(%)이 서버가 계산한 비율 값과 다를 때도 같다. `nextSessionSuggestion`은 LLM 문장을 쓰지 않고 항상 서버 규칙의 설명 문장으로 바꾼다. LLM이 새 활동이나 치료법을 제안하지 못하게 하기 위해서다.
-활동 제안(`propose_activity`)은 그 근거 관찰이 모두 화면에 보인 범위(최근 실제 회기 5개) 안에 있을 때만 쓴다.
+활동 제안(`propose_activity`)은 모험 4종과 함께 2026-11-19 삭제했다. 응답의 `activityHint`는 화면 호환을 위해 키만 남고 항상 null이다.
 
 설정 키(`backend/.env`)는 다음과 같다. 셋 중 하나라도 없으면 LLM을 호출하지 않는다.
 

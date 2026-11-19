@@ -86,9 +86,8 @@ def update_cue(state, *, model):
 
 def child_round(definition):
     """아동 화면에 보낼 라운드 정보(제목·안내 문장·시도 수)만 만든다.
-    기존 4게임의 payload는 유지하고, 이 게임에서는 임상 근거·판정 기준을 아이 화면에 내보내지 않으려고 따로 둔다.
+    임상 근거·판정 기준을 아이 화면에 내보내지 않으려고 public_round와 따로 둔다.
     """
-    # 기존 4게임의 payload는 유지하고 이 게임에서는 임상 근거·판정 기준을 내보내지 않는다.
     return {"index": definition.index, "id": definition.id, "childTitle": definition.child_title,
             "childPrompt": definition.child_prompt,
             "attempts": MAX_PROBE_TRIES if definition.elicitation_type == "GENERALIZATION_PROBE" else MAX_TRIES,

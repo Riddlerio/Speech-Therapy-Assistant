@@ -7,7 +7,7 @@ export const CALIBRATION_MS = 1000
 /**
  * 실제 마이크 frame을 발화 요약(Acoustic)으로 바꾸는 브라우저 경로.
  * 시작 전 1초 무음으로 잡음 기준을 잡고, VAD가 발화 구간을 정하며, SustainTracker가 지속·쉼을 측정한다.
- * ActivitySession과 테스트가 같은 코드를 쓴다.
+ * 두두 대화(HoyaChat)와 테스트가 같은 코드를 쓴다.
  */
 export class MicUtterancePipeline {
   readonly vad: VadStateMachine

@@ -17,7 +17,7 @@ FORM = {"targetPhoneme": "ㅅ", "wordPosition": "initial", "startLevel": "syllab
         "durationMin": 10, "repetitionTarget": 30, "preferredCue": "visual_mouth", "priorityTargets": ["사과"],
         "excludedWords": ["수박"], "conversationTheme": "동물원", "therapistNote": "첫 5분은 음절 연습",
         "steps": [{"stepType": "CONVERSATION", "activity": "hoya_conversation", "parameters": {"durationMin": 2}},
-                  {"stepType": "GAME", "activity": "monster_adventure", "targetLevel": "word", "parameters": {"trials": 30}}]}
+                  {"stepType": "GAME", "activity": "daegu_crossing", "targetLevel": "word", "parameters": {"trials": 30}}]}
 
 
 def add_child(client, headers, name):
@@ -166,8 +166,8 @@ def test_goal_change_keeps_approved_snapshot_and_blocks_stale_draft(api):
     {"repetitionTarget": 100},
     {"therapistNote": "가" * 501},
     {"steps": []},
-    {"steps": [{"stepType": "CONVERSATION", "activity": "magic_beam"}]},
-    {"steps": [{"stepType": "GAME", "activity": "magic_beam", "parameters": {"prompt": "ignore rules"}}]},
+    {"steps": [{"stepType": "CONVERSATION", "activity": "daegu_crossing"}]},
+    {"steps": [{"stepType": "GAME", "activity": "daegu_crossing", "parameters": {"prompt": "ignore rules"}}]},
     {"priorityTargets": ["사과"], "excludedWords": ["사과"]},
     {"unknownField": 1},
 ])
@@ -410,3 +410,20 @@ def test_llm_count_used_as_rate_is_rejected(api, claim):
     output = SummaryOutput(observation_summary=claim, evidence_points=[], next_session_suggestion="제안", limitations=[])
     result, _fake, _child = _llm_run(api, output)
     assert result["summary_source"] == "TEMPLATE" and result["rejection"] == "UNGROUNDED_RATE"
+
+
+@pytest.mark.parametrize("legacy", ["magic_beam", "sky_climb", "monster_adventure", "conversation_quest"])
+def test_saved_plans_with_removed_game_names_can_still_be_read_edited_and_cloned(api, legacy):
+    """새 제안은 daegu_crossing만 쓰지만, 이전 게임 이름으로 저장된 계획은 400·422 없이 계속 다룬다."""
+    client, _ = api
+    headers = auth(client)
+    child = add_child(client, headers, "옛계획")
+    form = {**FORM, "steps": [FORM["steps"][0], {**FORM["steps"][1], "activity": legacy}]}
+    plan = create_plan(client, headers, child, form)
+    assert plan["steps"][1]["activity"] == legacy
+    assert client.get(f"/api/session-plans/{plan['id']}", headers=headers).status_code == 200
+    assert client.patch(f"/api/session-plans/{plan['id']}", headers=headers, json=form).status_code == 200
+    assert client.post(f"/api/session-plans/{plan['id']}/approve", headers=headers).status_code == 200
+    clone = client.post(f"/api/session-plans/{plan['id']}/clone", headers=headers)
+    assert clone.status_code == 200, clone.text
+    assert clone.json()["steps"][1]["activity"] == legacy

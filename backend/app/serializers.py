@@ -4,7 +4,7 @@ from fastapi import HTTPException
 from sqlalchemy import select
 
 from .enums import LEVEL_ORDER
-from .models import TherapistRule, TrainingGoal, TrainingSession
+from .models import TherapistRule, TrainingGoal
 from .schemas import GoalInput
 
 
@@ -16,7 +16,7 @@ def public(model, fields):
 
 def goal_data(goal):
     """훈련 목표 행을 응답용 dict로 바꾼다.
-    목표 목록·대시보드·추천 결정 응답에서 같은 모양을 쓰려고 둔다."""
+    목표 목록·대시보드 응답에서 같은 모양을 쓰려고 둔다."""
     return public(goal, ["id", "child_id", "version", "parent_goal_id", "status", "target_phoneme", "target_sound", "word_position", "level", "min_level", "session_duration_min", "repetition_target", "priority", "preferred_cue", "excluded_words", "excluded_games", "priority_targets", "note", "source", "source_recommendation_id"])
 
 
@@ -26,38 +26,10 @@ def child_data(child):
     return public(child, ["id", "child_code", "hero_name", "age_band", "play_code", "xp", "collection_json", "is_seed"])
 
 
-def rec_data(rec):
-    """legacy 목표 추천(AIRecommendation) 행을 응답용 dict로 바꾼다.
-    추천 목록과 결정 응답에서 쓴다(출처 정보가 필요하면 rec_payload)."""
-    return public(rec, ["id", "child_id", "session_id", "rule_id", "observation", "evidence", "suggestion_text", "suggested_goal", "rationale", "confidence", "status"])
-
-
-def activity_rec_data(rec):
-    """활동 제안(ActivityRecommendation) 행을 응답용 dict로 바꾼다.
-    활동 제안 목록·생성·결정 응답에서 같은 모양을 쓰려고 둔다."""
-    return public(rec, ["id", "child_id", "activity", "clinical_purpose", "reason", "evidence", "confidence", "status", "selected_activity", "decision_note", "created_at", "decided_at"])
-
-
 def clinical_eligible(session) -> bool:
     """실제 음성 모드의 비샘플 세션만 임상 검증 통계에 들어간다.
     DEMO·seed 자료가 임상 수치에 섞이지 않게 하는 단일 기준이다."""
     return session is not None and session.mode == "real" and not session.is_seed
-
-
-def legacy_recommendation_allowed(session) -> bool:
-    """legacy 목표 추천(R1–R5)은 임상 근거 회기나 seed 시연 회기에서만 만든다.
-    실제 아동의 DEMO 연습은 수락 시 목표를 바꾸는 추천을 만들지 않는다. seed 시연 자료는 샘플로 표시된다."""
-    return session is not None and (clinical_eligible(session) or session.is_seed)
-
-
-def rec_payload(db, rec):
-    """legacy 추천 dict에 원본 회기의 모드·샘플 여부·임상 적격성(provenance)을 붙인다.
-    치료사가 추천이 DEMO 연습에서 나왔는지 구분할 수 있게 한다."""
-    session = db.get(TrainingSession, rec.session_id)
-    return {**rec_data(rec), "provenance": {"sessionMode": session.mode if session else None,
-                                            "sessionIsSeed": bool(session and session.is_seed),
-                                            "clinicalEligible": clinical_eligible(session),
-                                            "demoPractice": not legacy_recommendation_allowed(session)}}
 
 
 def observation_data(observation, session=None):
@@ -85,7 +57,7 @@ def current_goal(db, child_id):
 
 def create_goal(db, child, values, source="manual", recommendation_id=None):
     """이전 목표를 복사해 values를 덮어쓴 새 목표 버전을 만들고 이전 목표는 superseded로 바꾼다.
-    아동 등록·목표 수정·추천 수락·seed에서 쓰며, 단계가 바뀌면 그 단계 한정 규칙을 끈다."""
+    아동 등록·목표 수정·seed에서 쓰며, 단계가 바뀌면 그 단계 한정 규칙을 끈다."""
     previous = current_goal(db, child.id)
     data = {key: getattr(previous, key) for key in GoalInput.model_fields} if previous else GoalInput().model_dump()
     data.update(values)

@@ -1,5 +1,5 @@
 """발화 하나를 판정하는 Speech Engine: 인식 문장 정규화 → 간단한 G2P 음소 변환 → 편집 거리 음소 정렬 → 점수·결과 판정 순으로 이어진다.
-흐름: 아동 화면 → 발화 API → (여기) 판정 → 관찰 → 치료사 확인. 매직빔은 음향 수치로 판정하고, 치료사 규칙(대치·변이 허용)도 여기서 반영한다.
+흐름: 발화 API → (여기) 판정 → 관찰 → 치료사 확인. 지금은 앱에서 부르는 곳이 없고(2026-11-19 예전 게임 삭제), 동결된 인터페이스라 남겨 둔다.
 """
 
 import re
@@ -7,7 +7,6 @@ import unicodedata
 from dataclasses import asdict, dataclass
 from math import isfinite
 
-from ..pronunciation.audio_quality import assess_audio_quality
 
 
 def normalize(text: str | None) -> str | None:
@@ -132,30 +131,9 @@ def acoustic_number(acoustic: dict, key: str, default: float = 0) -> float:
 
 
 def analyze(item: dict, transcript: str | None, acoustic: dict, goal, rules=()) -> AnalysisResult:
-    """매직빔은 최장 발성·마찰 비율로, 단어 문항은 목표·인식 음소 정렬로 점수와 결과를 정한다. 음질이 나쁘면 uncertain으로 보류한다.
+    """단어 문항의 목표·인식 음소 정렬로 점수와 결과를 정한다.
     대치 유형(파열음화·파찰음화·경음화 등)을 태그로 남기고, 치료사가 만든 대치·단어 변이 허용 규칙이 맞으면 성공으로 바꾼다.
     """
-    if item.get("game") == "magic_beam":
-        target = item.get("beamTargetMs", 1500)
-        if acoustic.get("source") == "keyboard":
-            # 명시적 DEMO 입력은 실제 음향 근거로 해석하지 않는다.
-            run_ms = acoustic_number(acoustic, "bestRunMs", acoustic_number(acoustic, "voicedMs"))
-            passed = run_ms >= 0.8 * target
-            return AnalysisResult(min(100, round(run_ms / target * 100)), "success" if passed else "retry", "correct" if passed else "omitted", None, ["DEMO_INPUT"], [], [], [])
-        active_ms = acoustic_number(acoustic, "activeMs", acoustic_number(acoustic, "voicedMs"))
-        if active_ms <= 0:
-            return AnalysisResult(0, "no_speech", "unknown", None, ["NO_SPEECH"], [], [], [])
-        quality = assess_audio_quality(acoustic.get("noiseFloorDb"), acoustic.get("meanRmsDb"),
-                                       acoustic.get("durationMs"), acoustic.get("clippingRatio"), acoustic.get("snrDb"))
-        if quality["level"] == "POOR":
-            return AnalysisResult(0, "uncertain", "unknown", None, ["POOR_AUDIO"], [], [], [])
-        if quality["level"] == "UNKNOWN":
-            return AnalysisResult(0, "uncertain", "unknown", None, ["NO_ACOUSTIC_EVIDENCE"], [], [], [])
-        run_ms = acoustic_number(acoustic, "bestRunMs")
-        frication_ms = acoustic_number(acoustic, "fricationMs")
-        passed = run_ms >= 0.8 * target and frication_ms >= 0.6 * active_ms
-        tags = ["VOICED_NOT_FRICATIVE"] if not passed and active_ms >= 0.8 * target and frication_ms < 0.6 * active_ms else []
-        return AnalysisResult(min(100, round(run_ms / target * 100)), "success" if passed else "retry", "correct" if passed else "omitted", None, tags, [], [], [])
     observed = normalize(transcript)
     if not observed:
         return AnalysisResult(0, "no_speech", "omitted", None, [], [], [], [])

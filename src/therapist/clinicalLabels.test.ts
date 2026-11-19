@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { INDEPENDENCE_LABELS, JUDGMENT_METHODS, MEASUREMENT_SOURCE_LABELS, PROVENANCE_LABELS, QUALITY_LABELS } from './insights'
 import { ACTIVITY_LABELS } from './planning'
-import { confidenceText, GOAL_SOURCE_LABELS, recommendationStatusText, RECOMMENDATION_CONFIDENCE, RECOMMENDATION_STATUS, recommendationBadges, sessionSourceText, sessionStatusText, verificationText } from './clinicalLabels'
+import { GOAL_SOURCE_LABELS, sessionSourceText, sessionStatusText, verificationText } from './clinicalLabels'
 
 describe('치료사 근거 표시', () => {
   it('DEMO 검토 상태를 임상 검증으로 표시하지 않는다', () => {
@@ -10,22 +10,13 @@ describe('치료사 근거 표시', () => {
   })
 })
 
-describe('회기·추천 출처 표시', () => {
+describe('회기 출처 표시', () => {
   it('seed 아동의 회기는 실제 마이크를 써도 샘플이다', () => {
     expect(sessionSourceText({ mode: 'real', isSeed: true })).toBe('샘플')
     expect(sessionSourceText({ mode: 'demo', isSeed: true })).toBe('샘플')
     expect(sessionSourceText({ mode: 'real', isSeed: false })).toBe('실제')
     expect(sessionSourceText({ mode: 'demo', isSeed: false })).toBe('DEMO')
   })
-
-  it('임상 근거가 아닌 회기에서 나온 legacy 추천에만 표시를 붙인다', () => {
-    expect(recommendationBadges({ sessionMode: 'real', sessionIsSeed: false, clinicalEligible: true, demoPractice: false })).toEqual([])
-    expect(recommendationBadges({ sessionMode: 'demo', sessionIsSeed: false, clinicalEligible: false, demoPractice: true })).toContain('DEMO 연습 기반')
-    expect(recommendationBadges({ sessionMode: 'real', sessionIsSeed: true, clinicalEligible: false, demoPractice: false })).toContain('샘플 회기 기반')
-    expect(recommendationBadges(undefined)).toEqual([])
-  })
-
-
 })
 
 describe('회기 상태 이름표', () => {
@@ -44,17 +35,8 @@ describe('관찰 카드 이름표', () => {
   })
 })
 
-describe('기존 AI 추천 이름표', () => {
-  it('근거 양·처리 상태를 한국어로 보인다(confidence는 확률이 아니라 근거 수 기준)', () => {
-    expect([RECOMMENDATION_CONFIDENCE.high, RECOMMENDATION_CONFIDENCE.medium, RECOMMENDATION_CONFIDENCE.low]).toEqual(['많음', '보통', '적음'])
-    expect([RECOMMENDATION_STATUS.pending, RECOMMENDATION_STATUS.accepted, RECOMMENDATION_STATUS.modified, RECOMMENDATION_STATUS.rejected]).toEqual(['검토 대기', '수락', '수정', '거부'])
-  })
-})
-
-describe('활동 제안·목표 이력 이름표', () => {
-  it('대소문자가 섞인 서버 값도 한국어로 보이고, 모르는 값은 그대로 둔다', () => {
-    expect([confidenceText('MEDIUM'), confidenceText('high'), confidenceText(undefined)]).toEqual(['보통', '많음', '-'])
-    expect([recommendationStatusText('PENDING'), recommendationStatusText('rejected'), recommendationStatusText('NEW_STATE')]).toEqual(['검토 대기', '거부', 'NEW_STATE'])
+describe('목표 이력 이름표', () => {
+  it('목표 출처를 한국어로 보인다', () => {
     expect(GOAL_SOURCE_LABELS.demo_rehearsal).toBe('시연용')
   })
 })

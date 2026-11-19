@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../../api/client'
-import { childDetail, decision, planningContext, goalTrends, saveGoal, sessionPlans } from '../../api/therapist'
+import { childDetail, planningContext, goalTrends, saveGoal, sessionPlans } from '../../api/therapist'
 import type { GoalTrends } from '../insights'
 import { getToken } from '../../api/auth'
 import type { PlanningContext, SessionPlan } from '../planning'
@@ -10,9 +10,8 @@ import GoalPanel from '../workspace/GoalPanel'
 import type { GoalRow } from '../workspace/GoalPanel'
 import NextSessionPanel from '../workspace/NextSessionPanel'
 import ProgressPanel from '../workspace/ProgressPanel'
-import type { LegacyRecommendation, RuleRow, SessionRow } from '../workspace/ProgressPanel'
+import type { RuleRow, SessionRow } from '../workspace/ProgressPanel'
 import SummaryPanel from '../workspace/SummaryPanel'
-import SkillGrantPanel from '../SkillGrantPanel'
 import GameSettingsPanel from '../GameSettingsPanel'
 import CrossingAnalyticsPanel from '../analytics/CrossingAnalyticsPanel'
 import CrossingRationalePanel from '../analytics/CrossingRationalePanel'
@@ -42,24 +41,22 @@ export default function ChildDetail() {
   const [context, setContext] = useState<PlanningContext | null>(null)
   const [plans, setPlans] = useState<SessionPlan[]>([])
   const [metrics, setMetrics] = useState<GoalTrends | null>(null)
-  const [recs, setRecs] = useState<LegacyRecommendation[]>([])
   const [error, setError] = useState('')
   // 가장 최근 요청의 아동만 반영한다. 아동을 바꾸는 사이 늦게 온 이전 아동 응답은 버린다.
   const current = useRef(id)
   current.current = id
   async function load() {
     const requested = id
-    const [child, planning, planRows, chart, recommendations] = await Promise.all([
+    const [child, planning, planRows, chart] = await Promise.all([
       childDetail(id, token) as Promise<ChildDetailData>, planningContext(id), sessionPlans(id), goalTrends(id, token),
-      api<LegacyRecommendation[]>(`/children/${id}/recommendations`, {}, token),
     ])
     if (current.current !== requested) return
-    setData(child); setContext(planning); setPlans(planRows); setMetrics(chart); setRecs(recommendations)
+    setData(child); setContext(planning); setPlans(planRows); setMetrics(chart)
   }
   const reload = () => load().catch(cause => setError(String(cause)))
   useEffect(() => {
     // 이전 아동의 화면·계획을 지워 새 아동 화면에서 이전 계획을 저장·승인하지 못하게 한다.
-    setData(null); setContext(null); setPlans([]); setMetrics(null); setRecs([]); setError('')
+    setData(null); setContext(null); setPlans([]); setMetrics(null); setError('')
     if (!token) navigate('/therapist/login'); else void reload()
   }, [id, token, navigate])
   async function attempt(action: () => Promise<unknown>) {
@@ -72,11 +69,10 @@ export default function ChildDetail() {
       {tab === 'summary' && <SummaryPanel context={context} playCode={data.child.play_code} />}
       {tab === 'goal' && <><GoalPanel goal={data.currentGoal} history={data.goalHistory} onSave={values => attempt(() => saveGoal(id, values, token))} />
         <CrossingRationalePanel level={data.currentGoal?.level} /><GameSettingsPanel childId={id} /></>}
-      {tab === 'next' && <><NextSessionPanel key={id} childId={id} plans={plans} onChanged={async () => { await reload() }} /><SkillGrantPanel key={`skill-${id}`} childId={id} /></>}
+      {tab === 'next' && <><NextSessionPanel key={id} childId={id} plans={plans} onChanged={async () => { await reload() }} /></>}
       {tab === 'progress' && <><CrossingAnalyticsPanel childId={id} goal={data.currentGoal} />
         <ProgressPanel childId={id} context={context} trends={metrics} sessions={data.sessions} plans={plans}
-        recommendations={recs} rules={data.activeRules}
-        onDecide={(recId, action, note, level) => { void attempt(() => decision(recId, { action, modifiedGoal: action === 'modify' ? { level } : undefined, note }, token)) }}
+        rules={data.activeRules}
         onDeactivate={ruleId => { void attempt(() => api(`/rules/${ruleId}/deactivate`, { method: 'POST' }, token)) }} /></>}
     </>}
   </Workspace>

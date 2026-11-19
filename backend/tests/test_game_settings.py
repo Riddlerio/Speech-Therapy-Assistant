@@ -152,17 +152,13 @@ def test_legacy_session_without_rhythm_stays_missing_and_default_is_only_for_new
 
 
 @pytest.mark.parametrize("game", ["magic_beam", "sky_climb", "monster_adventure", "conversation_quest"])
-def test_other_games_keep_their_existing_payload_and_state(api, game):
+def test_removed_games_cannot_be_started(api, game):
     client, sessions = api
     student = student_auth(client)
-    started = start_activity(client, student, game)
-    sid = started["sessionId"]
-    assert "rhythm" not in started
-    assert "rhythm" not in client.get(f"/api/activities/{sid}").json()
-    claimed = client.post(f"/api/activities/{sid}/claim", headers=student, json={})
-    assert claimed.status_code == 200 and "rhythm" not in claimed.json()
+    response = client.post("/api/activities", headers=student, json={"game": game, "mode": "demo"})
+    assert response.status_code == 422
     with sessions() as db:
-        assert "rhythm" not in db.get(TrainingSession, sid).runtime_state
+        assert not db.scalars(select(TrainingSession).where(TrainingSession.status == "active")).all()
 
 
 def test_create_all_adds_only_new_table_to_existing_database(tmp_path):

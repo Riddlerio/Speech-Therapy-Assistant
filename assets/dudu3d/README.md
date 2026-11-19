@@ -94,8 +94,6 @@ Blender 4.5.14 LTS 휴대용판을 `C:\Users\kor02\Tools\blender-4.5.14-windows-
 | 스크립트 | 하는 일 |
 |---|---|
 | `capture_review.mjs` | `/dudu-review.html`을 동작별로 촬영. `&close`·`&face`·`&lower`·`&still`·`&expr=closed\|happy\|talk` |
-| `check_still.mjs` | 빛의 마법 검토 화면에서 두두 영역의 픽셀 변화로 정지 규칙 확인(듣기 자세 0이어야 함) |
-| `check_scenes.mjs` | 홈·빛의 마법(검토 화면·실제 활동)을 1280·390 폭으로 촬영하고 가로 넘침 확인. DEMO 서버 필요 |
 
 다른 포트의 개발 서버를 쓸 때는 백엔드의 `CORS_ORIGINS`에 그 주소를 넣어야 DEMO 로그인이 된다(설정 파일은 바꾸지 않고 환경 변수로).
 

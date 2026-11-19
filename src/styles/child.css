@@ -5,39 +5,14 @@
 .child-brand span { font-family: inherit; font-size: 1rem; color: var(--ink); letter-spacing: -.05em; }
 .child-header-status { display: inline-flex; align-items: center; gap: .5rem; font-size: .81rem; font-weight: 800; color: var(--muted); }
 .child-header-status span { width: 8px; height: 8px; border-radius: 50%; background: var(--color-palette-green-l50); }
-.header-back { background: transparent; color: var(--ink); padding: .35rem 0; font-size: .9rem; min-height: 44px; }
-.header-back:hover:not(:disabled) { color: var(--forest); background: transparent; box-shadow: none; }
-.primary-action, .secondary-action { min-height: 52px; display: inline-flex; align-items: center; justify-content: space-between; gap: 2rem; }
+.secondary-action { min-height: 52px; display: inline-flex; align-items: center; justify-content: space-between; gap: 2rem; }
 .secondary-action { border: 1px solid var(--color-palette-green-l78); background: transparent; color: var(--forest); }
 .secondary-action:hover:not(:disabled) { border-color: var(--forest); background: var(--color-palette-neutral-l92); color: var(--forest-deep); box-shadow: none; }
-
-/* 집: 두두와 문장이 같은 화면에서 주인공이 된다. */
-.home-screen { overflow: hidden; }
-.home-layout { display: grid; grid-template-columns: .92fr 1.08fr; gap: clamp(2rem, 6vw, 6rem); align-items: center; min-height: calc(100vh - 205px); }
-.home-copy { padding: 2.5rem 0 2rem; position: relative; z-index: 1; }
-.home-copy h1 { max-width: 650px; margin: 1.1rem 0 1.5rem; font-size: clamp(3.3rem, 5.2vw, 6.3rem); font-weight: 900; letter-spacing: -.08em; }
-.home-description { max-width: 31rem; color: var(--muted); font-size: 1.1rem; line-height: 1.9; }
-.home-dialogue { max-width: 30rem; min-height: 85px; display: flex; align-items: start; gap: .6rem; margin: 2rem 0; padding: 1rem 1.3rem; border: 1px solid var(--color-palette-green-l84); border-radius: 18px; background: var(--color-surface-paper); box-shadow: 0 10px 25px var(--color-alpha-green-l16-a05); }
-.home-dialogue p { margin: .3rem 0; font-size: 1.03rem; font-weight: 700; }
-.dialogue-icon { color: var(--forest); font-family: Georgia, serif; font-size: 2.4rem; line-height: .9; }
-.home-actions { display: flex; flex-wrap: wrap; gap: .75rem; }
-.home-character { position: relative; isolation: isolate; height: min(68vh, 690px); min-height: 450px; border-radius: 48% 48% 4rem 4rem; background: radial-gradient(circle at 50% 35%, var(--color-palette-green-l91-4), var(--color-palette-green-l86) 61%, var(--color-palette-green-l79-2) 100%); overflow: hidden; }
-.home-character-halo { position: absolute; z-index: -1; inset: 14%; border: 1px solid var(--color-palette-green-l63); border-radius: 50%; background: var(--color-alpha-paper-a33); }
-.home-character > div[role=img] { height: 100%; }
-.character-caption { position: absolute; left: 50%; bottom: 1.4rem; transform: translateX(-50%); white-space: nowrap; color: var(--color-palette-green-l29); font-size: .72rem; font-weight: 900; letter-spacing: .13em; pointer-events: none; }
-.home-shortcuts { display: grid; grid-template-columns: repeat(2, 1fr); border-top: 1px solid var(--line); }
-.home-shortcuts button { width: 100%; display: flex; justify-content: space-between; gap: .8rem; align-items: center; border-radius: 0; border-right: 1px solid var(--line); padding: 1.25rem .8rem; background: transparent; color: var(--ink); text-align: left; }
-.home-shortcuts button:first-child { padding-left: 0; }
-.home-shortcuts button:last-child { border: 0; padding-left: 1.5rem; }
-.home-shortcuts button:hover:not(:disabled) { background: transparent; color: var(--forest); box-shadow: none; }
-.home-shortcuts button span:first-child { color: var(--color-text-muted); font-size: .75rem; }
 
 .entry-screen.child-screen { max-width: none; margin: 0; padding: 0; text-align: left; }
 .entry-layout { min-height: calc(100vh - 82px); display: grid; grid-template-columns: 1fr minmax(330px, 460px); gap: clamp(2rem, 6vw, 6rem); align-items: center; }
 .entry-copy h1 { font-size: clamp(3.8rem, 7vw, 7.2rem); margin: 1rem 0; font-weight: 900; letter-spacing: -.09em; }
 .entry-copy > p:not(.eyebrow) { color: var(--muted); font-size: 1.1rem; }
-.entry-decoration { display: inline-flex; align-items: center; gap: 1.4rem; margin-top: 3rem; color: var(--forest); font-family: Georgia, serif; font-size: 8rem; }
-.entry-decoration span { max-width: 7rem; font-family: inherit; font-size: .8rem; font-weight: 800; line-height: 1.5; }
 /* 첫 화면에서 두두가 손을 흔들며 맞는다(데스크톱. 휴대폰은 로그인 칸이 먼저 보이게 숨김) */
 .entry-dudu { width: min(380px, 100%); height: 380px; margin-top: .4rem; background: radial-gradient(ellipse 40% 5% at 50% 89%, var(--color-alpha-forest-a20) 0 55%, transparent 60%), radial-gradient(ellipse 50% 10% at 50% 91%, var(--color-palette-green-l76) 0 68%, transparent 71%); }
 /* 휴대폰: 두두를 작게 세우고 로그인 카드가 발끝을 살짝 덮게 한다(게임 첫 화면처럼 두두가 맞아 준다). */
@@ -51,116 +26,14 @@
 .entry-demo p { margin: 0 0 .7rem; }
 .entry-demo button { width: 100%; }
 
-/* 지도: 기존의 네 독립 활동을 한 세계의 네 갈래로 읽게 한다. */
-.map-intro { display: flex; justify-content: space-between; gap: 2rem; align-items: end; padding: 3.3rem 0 2.2rem; }
-.map-intro h1 { font-size: clamp(2.8rem, 4.2vw, 5rem); margin: .55rem 0; font-weight: 900; }
-.map-intro p:last-child { color: var(--muted); margin: 0; }
-.map-level { min-width: 152px; display: flex; flex-direction: column; gap: .35rem; padding: 1rem 1.2rem; border: 1px solid var(--line); border-radius: 18px; background: var(--paper); }
-.map-level small { color: var(--color-text-muted); font-size: .66rem; font-weight: 900; letter-spacing: .14em; }
-.map-level strong { font-size: 1.85rem; letter-spacing: -.06em; }
-.map-level span { font-size: .8rem; color: var(--muted); }
-.map-options { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; padding: .8rem 1rem; border: 1px solid var(--line); border-radius: 14px; background: var(--color-surface-paper); }
-.map-options > div { display: flex; align-items: center; flex-wrap: wrap; gap: .7rem; }
-.map-options strong { font-size: .87rem; }
-.map-options > div span { font-size: .8rem; color: var(--muted); }
-.map-options fieldset { padding: 0; margin: 0; border: 0; display: flex; gap: .45rem; }
-.map-options label { display: inline-flex; align-items: center; gap: .15rem; min-height: 44px; border: 1px solid transparent; border-radius: 100px; padding: .45rem .7rem; font-size: .78rem; font-weight: 800; cursor: pointer; }
-.map-options label.selected { border-color: var(--color-palette-green-l75); background: var(--color-palette-neutral-l93); color: var(--forest); }
-.map-options input { margin: 0 .2rem 0 0; }
-.assigned-journey { display: flex; align-items: center; gap: 1.3rem; flex-wrap: wrap; margin: 1.5rem 0 2.4rem; padding: 1.35rem 1.6rem; border-radius: 18px; color: var(--color-palette-neutral-l98); background: var(--color-palette-teal-l19); }
-.assigned-icon { display: grid; place-items: center; flex: 0 0 46px; height: 46px; border-radius: 50%; color: var(--color-palette-green-l24); background: var(--lime); font-size: 1.4rem; }
-.assigned-journey > div { flex: 1; min-width: 240px; }
-.assigned-journey .eyebrow { color: var(--color-palette-green-l76-2); margin: 0; }
-.assigned-journey h2 { font-size: 1.2rem; margin: .2rem 0; }
-.assigned-journey p:not(.eyebrow) { color: var(--color-palette-green-l87); margin: 0; font-size: .85rem; }
-.assigned-journey button { background: var(--lime); color: var(--color-palette-green-l21); white-space: nowrap; }
-.assigned-journey button:hover:not(:disabled) { background: var(--color-palette-green-l81-2); }
-.section-heading { display: flex; justify-content: space-between; align-items: end; gap: 1rem; margin: 3rem 0 1.3rem; }
-.section-heading .eyebrow { margin: 0; }
-.section-heading h2 { font-size: clamp(2rem, 2.9vw, 3rem); margin: .35rem 0 0; }
-.section-heading > span { color: var(--muted); font-size: .81rem; font-weight: 700; }
-.journey-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; }
-.journey-card { min-height: 360px; display: flex; flex-direction: column; padding: 1.15rem; border: 1px solid var(--color-palette-green-l83); border-radius: 21px; background: var(--color-palette-green-l91-2); overflow: hidden; }
-.journey-card-2 { border-color: var(--color-palette-neutral-l84); background: var(--color-palette-neutral-l91); }
-.journey-card-3 { border-color: var(--color-palette-orange-l83); background: var(--color-palette-yellow-l90); }
-.journey-card-4 { border-color: var(--color-palette-orange-l83-2); background: var(--color-palette-orange-l91); }
-.journey-card-top { display: flex; align-items: start; justify-content: space-between; font-size: .73rem; font-weight: 900; color: var(--color-palette-green-l34); }
-.journey-symbol { display: grid; place-items: center; width: 64px; height: 64px; border: 1px solid var(--color-alpha-white-a53); border-radius: 18px; background: var(--color-alpha-white-a49); color: var(--forest); font-size: 2.7rem; font-family: Georgia, serif; line-height: 1; }
-.journey-card-content { margin-top: auto; }
-.journey-card-content small { color: var(--color-palette-green-l34); font-size: .72rem; font-weight: 800; }
-.journey-card h3 { margin: .35rem 0 .4rem; font-size: 1.6rem; }
-.journey-card p { min-height: 2.8rem; margin: 0 0 1.2rem; color: var(--color-palette-green-l34); font-size: .86rem; }
-.journey-card button { width: 100%; display: flex; justify-content: space-between; align-items: center; background: var(--color-surface-paper); color: var(--forest); }
-.journey-card button:hover:not(:disabled) { background: var(--color-palette-neutral-l95-5); color: var(--forest-deep); }
-.journey-card .small { margin: .6rem 0 0; font-size: .75rem; }
-.map-foot-grid { display: grid; grid-template-columns: 1fr; gap: 1rem; margin-top: 1.6rem; }
-.map-collection { border: 1px solid var(--line); border-radius: 18px; padding: 1.4rem 1.6rem; background: var(--paper); }
-.map-foot-grid h2 { font-size: 1.25rem; margin: .35rem 0 1rem; }
-.map-collection > div { display: flex; justify-content: space-between; gap: 1rem; padding: .55rem 0; border-top: 1px solid var(--line); font-size: .85rem; }
-.map-collection > div span { color: var(--muted); }
-.map-collection > div strong { text-align: right; }
-.privacy-note { max-width: 64rem; margin: 1.5rem 0 0; color: var(--muted); font-size: .76rem; }
-
-/* 결과는 성적표처럼 보이지 않게 여정의 한 장면으로 마무리한다. */
-.reward-content { max-width: 690px; margin: 3rem auto 4rem; text-align: center; }
-.reward-sun { width: 150px; height: 150px; display: grid; place-items: center; margin: auto auto 2rem; border-radius: 50%; background: radial-gradient(circle, var(--color-palette-green-l93), var(--color-palette-green-l80-5)); color: var(--color-palette-green-l37); font-size: 4.2rem; box-shadow: 0 0 0 18px var(--color-palette-green-l91-3); }
-.reward-content h1 { margin: .6rem 0 1rem; font-size: clamp(3rem, 5.5vw, 5.3rem); }
-.reward-message { color: var(--muted); }
-.reward-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin: 2.4rem 0 1rem; }
-.reward-stats > div { display: flex; flex-direction: column; gap: .45rem; border: 1px solid var(--line); border-radius: 16px; padding: 1.2rem; background: var(--paper); }
-.reward-stats span { color: var(--muted); font-size: .81rem; }
-.reward-stats strong { font-size: 2.2rem; }
-.reward-treasure { margin-bottom: 2rem; border: 1px solid var(--color-palette-green-l81); border-radius: 18px; background: var(--color-palette-neutral-l93-2); padding: 1.4rem; }
-.reward-treasure h2 { margin: .2rem 0; }
-.reward-treasure p { margin: 0; color: var(--color-palette-green-l33); }
-
 /* 기존 게임·대화 화면의 기능을 유지하면서 배경과 타이포만 맞춘다. */
-.child-screen:not(.home-screen):not(.map-screen):not(.reward-screen):not(.entry-screen):not(.dudu-hub) { max-width: 850px; margin: auto; padding: 2rem; text-align: center; background: var(--color-surface-page); }
+.child-screen:not(.entry-screen):not(.dudu-hub) { max-width: 850px; margin: auto; padding: 2rem; text-align: center; background: var(--color-surface-page); }
 .child-screen .target { font-size: clamp(2.5rem, 7vw, 4rem); font-weight: 900; color: var(--forest); margin: 1.4rem; }
 .game-screen { display: flex; flex-direction: column; align-items: center; }
 .quiet { background: transparent; color: var(--color-palette-green-l38-2); font-size: .8rem !important; }
 .speech-bubble { font-size: 1.15rem; font-weight: 700; }
-.activity-game.child-screen { display: block; max-width: none; padding: 0; text-align: left; background: var(--color-surface-page); }
-.activity-shell { max-width: 1220px; margin: auto; padding: 2rem clamp(1rem, 4vw, 3.5rem) 3rem; }
-.activity-header { display: flex; justify-content: space-between; align-items: end; gap: 1rem; border-bottom: 1px solid var(--line); padding-bottom: 1.1rem; }
-.activity-header .eyebrow { margin: 0; }
-.activity-header h1 { margin: .3rem 0 0; font-size: clamp(2.2rem, 4vw, 3.7rem); }
-.activity-header > span { padding-bottom: .4rem; color: var(--forest); font-family: Georgia, serif; font-size: 1rem; font-weight: 800; letter-spacing: .08em; white-space: nowrap; }
-.activity-progress { display: grid; grid-template-columns: repeat(5, 1fr); gap: .5rem; margin: 1.3rem 0 1.7rem; }
-.activity-progress > span { display: flex; align-items: center; justify-content: space-between; gap: .4rem; min-height: 43px; border: 1px solid var(--line); border-radius: 10px; padding: .4rem .7rem; color: var(--color-text-muted); background: var(--paper); font-size: .75rem; font-weight: 700; }
-.activity-progress > span.current { border-color: var(--forest); color: white; background: var(--forest); }
-.activity-progress > span.completed { border-color: var(--color-palette-green-l83-2); color: var(--forest); background: var(--color-palette-green-l91); }
-.activity-progress small { font-size: .8rem; font-weight: 900; }
-.activity-stage { display: grid; grid-template-columns: 1.1fr .9fr; gap: clamp(1.2rem, 3vw, 2.5rem); align-items: stretch; }
-.activity-stage-art { position: relative; isolation: isolate; height: min(55vw, 530px); min-height: 380px; overflow: hidden; border-radius: 28px; background: radial-gradient(circle at 50% 40%, var(--color-palette-green-l90-2) 0, var(--color-palette-green-l85-2) 65%, var(--color-palette-green-l80) 100%); }
-.activity-art-ring { position: absolute; z-index: -1; inset: 10% 19%; border: 1px solid var(--color-palette-green-l63-2); border-radius: 50%; background: var(--color-alpha-paper-a31); }
-.activity-character { height: 100%; }
-.activity-art-caption { position: absolute; bottom: 1.3rem; left: 1.4rem; color: var(--color-palette-green-l34); font-size: .72rem; font-weight: 900; letter-spacing: .14em; pointer-events: none; }
-.activity-instruction { display: flex; flex-direction: column; justify-content: center; padding: 1.2rem .3rem; }
-.activity-instruction h2 { margin: .2rem 0 .7rem; font-size: clamp(1.8rem, 2.7vw, 3rem); }
-.activity-instruction > p:not(.eyebrow):not(.activity-message) { margin: 0; color: var(--muted); font-size: 1.02rem; }
-.activity-target { display: flex; flex-direction: column; gap: .2rem; margin: 1.6rem 0 1.1rem; border-left: 4px solid var(--forest); padding: .65rem 1rem; background: var(--color-palette-neutral-l94-2); }
-.activity-target span { color: var(--muted); font-size: .78rem; font-weight: 800; }
-.activity-target strong { font-size: clamp(2rem, 4vw, 3.3rem); color: var(--forest-deep); letter-spacing: -.05em; }
-.activity-message { min-height: 3rem; margin: 0; color: var(--color-palette-green-l26); font-weight: 800; }
-.activity-controls { display: flex; flex-direction: column; align-items: center; margin: 1.8rem auto 0; max-width: 760px; text-align: center; }
-.activity-hold { width: min(100%, 440px); min-height: 62px; display: flex; align-items: center; justify-content: center; gap: 1.5rem; border-radius: 14px; font-size: 1.05rem; touch-action: none; user-select: none; }
-.activity-hold span { border: 1px solid var(--color-alpha-white-a53); border-radius: 5px; padding: .2rem .45rem; color: var(--color-palette-green-l92); font-size: .7rem; font-weight: 900; }
-.activity-controls .small { margin-top: .8rem; font-size: .75rem; }
-.activity-demo-dialogue { width: 100%; margin-bottom: 1rem; }
-.activity-demo-dialogue label { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: .4rem; font-size: .9rem; font-weight: 800; }
-.activity-demo-dialogue input { min-width: 260px; }
-.activity-demo-dialogue > div { display: flex; justify-content: center; gap: .5rem; flex-wrap: wrap; }
-.activity-demo-dialogue > div button { background: var(--color-palette-neutral-l92-2); color: var(--forest); border: 1px solid var(--color-palette-green-l80-3); }
-.activity-demo-dialogue > div button:hover:not(:disabled) { background: var(--color-palette-green-l87-3); }
-/* 몬스터 구간: 판정 결과에 연결된 기존 action만 장면 반응으로 표현한다. */
-.activity-monster_adventure .activity-stage-art { background: radial-gradient(circle at 60% 28%, var(--color-palette-green-l89) 0, var(--color-palette-green-l79) 54%, var(--color-palette-green-l65) 100%); }
-.activity-monster_adventure .activity-stage-art::before { content: ''; position: absolute; inset: 49% -10% -20%; z-index: 0; background: linear-gradient(145deg, var(--color-palette-green-l43) 0 24%, transparent 24% 35%, var(--color-palette-green-l49) 35% 62%, transparent 62% 70%, var(--color-palette-green-l41) 70%), linear-gradient(var(--color-palette-green-l60), var(--color-palette-green-l36)); clip-path: polygon(0 62%, 18% 26%, 33% 54%, 47% 12%, 67% 53%, 82% 19%, 100% 62%, 100% 100%, 0 100%); opacity: .52; }
-.activity-monster_adventure .activity-stage-art::after { content: ''; position: absolute; z-index: 0; top: 10%; right: 8%; width: 95px; height: 95px; border-radius: 50%; background: var(--color-alpha-yellow-l89-a54); box-shadow: 0 0 0 24px var(--color-alpha-yellow-l89-a17); }
-.activity-monster_adventure .activity-character { position: absolute; z-index: 2; width: 100%; height: 100%; top: 0; left: 0; transform: translateX(-10%) scale(.82); transform-origin: left center; }
-@media (max-width: 1050px) { .journey-grid { grid-template-columns: repeat(2, 1fr); } .journey-card { min-height: 310px; } }
-@media (max-width: 760px) { .home-layout { grid-template-columns: 1fr; gap: 0; } .home-copy { padding-bottom: 0; } .home-character { order: -1; height: 440px; min-height: 440px; margin-top: 1.5rem; } .home-shortcuts { margin-top: 2rem; } .map-intro { align-items: start; } .map-foot-grid { grid-template-columns: 1fr; } .entry-layout { grid-template-columns: 1fr; gap: 1rem; padding: 2rem 0; } .entry-copy h1 { font-size: 3.7rem; } .entry-decoration { display: none; } .activity-stage { grid-template-columns: 1fr; } .activity-stage-art { height: 390px; min-height: 390px; } .activity-instruction { padding: 0; } }
-@media (max-width: 520px) { .child-header { min-height: 70px; } .home-copy h1 { font-size: 3.2rem; } .home-character { height: 360px; min-height: 360px; } .home-actions button { width: 100%; } .home-shortcuts button { font-size: .78rem; padding-right: .4rem; } .home-shortcuts button:last-child { padding-left: .75rem; } .map-intro { flex-direction: column; padding: 2rem 0 1.3rem; } .map-level { flex-direction: row; align-items: center; justify-content: space-between; width: 100%; } .map-level strong { font-size: 1.3rem; } .map-options fieldset { width: 100%; } .journey-grid { grid-template-columns: 1fr; } .journey-card { min-height: 270px; } .reward-stats { gap: .5rem; } .reward-sun { width: 120px; height: 120px; font-size: 3.2rem; } .monster-opponent { right: 5%; top: 39%; transform: scale(.78); } .monster-caption { top: .8rem; right: .8rem; } }
+@media (max-width: 760px) { .entry-layout { grid-template-columns: 1fr; gap: 1rem; padding: 2rem 0; } .entry-copy h1 { font-size: 3.7rem; } }
+@media (max-width: 520px) { .child-header { min-height: 70px; } }
 
 /* 하늘 배경(대화·마무리·로그인·건너기 공통): 구름은 화면 폭과 관계없이 같은 모양이게 픽셀 크기로 그린다 */
 /* 그림 배경(Meshy 이미지 생성: 하늘·구름·언덕·떠 있는 대학 섬). 그림을 불러오기 전과 불러오지 못하면 아래 그라데이션 하늘이 보인다. */

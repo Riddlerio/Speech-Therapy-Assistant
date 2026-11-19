@@ -4,28 +4,25 @@ from datetime import timedelta
 from types import SimpleNamespace
 import secrets
 
-from sqlalchemy import delete, select
+from sqlalchemy import select
 
-from .models import Account, Therapist, Child, EpisodeProgress, RoundMaterialReward, TrainingGoal, TrainingSession, now
+from .models import Account, Therapist, Child, TrainingGoal, TrainingSession, now
 from .security import hash_password
 
 
-# 샘플 아동의 회기 이력. (며칠 전, 게임, 첫 시도를 일부러 어렵게 할지). 모두 seed·DEMO 자료라 임상 근거에 들어가지 않는다.
-HISTORY = {
-    "HERO01": [(14, "monster_adventure", True), (10, "magic_beam", False), (6, "monster_adventure", False), (2, "monster_adventure", True)],
-    "HERO02": [(9, "magic_beam", False), (5, "sky_climb", False)],
-}
+# 샘플 아동의 대구대 건너기 회기 이력. (며칠 전, 첫 시도를 일부러 어렵게 할지). 모두 seed·DEMO 자료라 임상 근거에 들어가지 않는다.
+# 건너기는 어두 /ㅅ/만 지원해서 /ㄹ/·/ㅈ/ 목표인 HERO02·HERO03에는 샘플 회기가 없다.
+HISTORY = {"HERO01": [(14, True), (10, False), (6, False), (2, True)]}
 # 목표 이력: (며칠 전, 바꿀 값). 치료사가 단계를 조정한 흐름을 보여 주는 샘플이다.
 GOAL_CHANGES = {"HERO01": [(12, {"level": "syllable", "min_level": "syllable"}), (4, {"level": "word"})]}
-GOOD_ACOUSTIC = {"durationMs": 5000, "voicedMs": 4000, "activeMs": 4000, "bestRunMs": 4000, "fricationMs": 4000,
-                 "sustainSegmentsMs": [1600, 1600, 1600], "pauseTotalMs": 900, "onsetFricationMs": 500,
-                 "voicedAfterFricationMs": 300, "energyMean01": 0.5, "meanRmsDb": -20, "peakRmsDb": -12, "meanHfRatio": 0.5}
-SHORT_ACOUSTIC = {**GOOD_ACOUSTIC, "durationMs": 400, "voicedMs": 300, "activeMs": 300, "bestRunMs": 300, "fricationMs": 250,
-                  "sustainSegmentsMs": [300]}
+GOOD_ACOUSTIC = {"durationMs": 1200, "voicedMs": 800, "activeMs": 900, "onsetFricationMs": 90,
+                 "voicedAfterFricationMs": 300, "meanRmsDb": -20, "peakRmsDb": -12}
+# 시작 마찰이 짧은 시도(재시도로 판정된다).
+SHORT_ACOUSTIC = {**GOOD_ACOUSTIC, "onsetFricationMs": 30}
 
 
 def seed(db):
-    """DEMO용 치료사·샘플 아동·계정·목표를 만들고 실제 활동 경로로 과거 회기를 채운다.
+    """DEMO용 치료사·샘플 아동·계정·목표를 만들고 실제 대구대 건너기 경로로 과거 회기를 채운다.
     치료사 자료가 이미 있으면 빠진 쿠키 계정만 보충하며, 시작 때 seed_demo_data가 켜져 있으면 실행된다."""
     if db.scalar(select(Therapist.id).limit(1)):
         # 명시적 DEMO 모드에서 기존 MVP DB를 재사용할 때 새 쿠키 계정을 보충한다.
@@ -59,23 +56,22 @@ def seed(db):
         children[code] = child
     db.commit()
 
-    # 앱 초기화 후 실제 5라운드 활동 경로를 호출한다. 점수와 판단은 분석 파이프라인에서만 계산한다.
+    # 앱 초기화 후 실제 5라운드 활동 경로를 호출한다. 판정은 평가 규칙에서만 계산한다.
     from .main import activity_utterance, complete, start_activity
     from .serializers import create_goal
     from .schemas import CompleteInput, StartActivityInput, UtteranceInput
 
-    def run(child, days_ago, game, struggle):
-        """샘플 아동 한 명의 활동 하나를 실제 라우트 함수로 끝까지 진행하고 날짜를 과거로 옮긴다.
-        점수·판단을 직접 만들지 않고 분석 파이프라인이 계산하게 하려고 쓴다."""
+    def run(child, days_ago, struggle):
+        """샘플 아동 한 명의 대구대 건너기 한 판을 실제 라우트 함수로 끝까지 진행하고 날짜를 과거로 옮긴다.
+        판정을 직접 만들지 않고 평가 규칙이 계산하게 하려고 쓴다."""
         account = SimpleNamespace(child_id=child.id)  # 서버 내부 seed 호출. 소유권 검사는 같은 아동으로 통과한다.
-        started = start_activity(StartActivityInput(game=game, mode="demo"), db=db, account=account)
+        started = start_activity(StartActivityInput(game="daegu_crossing", mode="demo"), db=db, account=account)
         session_id = started["sessionId"]
         item, round_index, attempt = started["firstItem"], started["currentRound"]["index"], 1
         for steps in range(1, 60):
             hard = struggle and attempt == 1 and round_index <= 2
             body = {"roundIndex": round_index, "itemId": item["itemId"], "attemptIndex": attempt, "recognizer": "demo_script",
-                    "acoustic": SHORT_ACOUSTIC if hard and game != "monster_adventure" else GOOD_ACOUSTIC,
-                    "transcript": ("바나나" if hard else item["displayText"]) if game in {"monster_adventure", "conversation_quest"} else None}
+                    "acoustic": SHORT_ACOUSTIC if hard else GOOD_ACOUSTIC, "transcript": item["displayText"]}
             result = activity_utterance(session_id, UtteranceInput.model_validate(body), db=db, account=account, x_activity_lease=None)
             if result["sessionComplete"]:
                 break
@@ -92,15 +88,10 @@ def seed(db):
     for code, history in HISTORY.items():
         child = children[code]
         changes = list(GOAL_CHANGES.get(code, []))
-        for days_ago, game, struggle in history:
+        for days_ago, struggle in history:
             while changes and changes[0][0] > days_ago:
                 changed_days, values = changes.pop(0)
                 goal = create_goal(db, child, values, source="seed")
                 goal.created_at = now() - timedelta(days=changed_days)
                 db.commit()
-            run(child, days_ago, game, struggle)
-    # 샘플 회기는 과거 기록을 보여 주기 위한 것이다. 소풍 재료는 0에서 시작해 시연에서 직접 모으게 한다.
-    seeded = [child.id for child in children.values()]
-    db.execute(delete(RoundMaterialReward).where(RoundMaterialReward.child_id.in_(seeded)))
-    db.execute(delete(EpisodeProgress).where(EpisodeProgress.child_id.in_(seeded)))
-    db.commit()
+            run(child, days_ago, struggle)

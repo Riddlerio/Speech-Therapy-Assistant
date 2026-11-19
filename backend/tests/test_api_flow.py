@@ -7,7 +7,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app import main as api_module
 from app.db import Base, get_db, make_engine
-from app.models import Account, ActivityRecommendation, AIRecommendation, AuditEvent, Child, ClinicalObservation, ClinicalVerification, CookieSession, Therapist, TherapistFeedback, TrainingGoal, TrainingSession, now
+from app.models import Account, AuditEvent, Child, ClinicalObservation, ClinicalVerification, CookieSession, Therapist, TherapistFeedback, TrainingGoal, TrainingPlan, TrainingSession, now
 from app.models import Utterance
 from app.security import hash_password
 from datetime import timedelta
@@ -46,8 +46,8 @@ def student_auth(client, code="HERO01"):
     return {"X-CSRF-Token": response.json()["csrfToken"]}
 
 
-def start_activity(client, headers, game="monster_adventure", mode="demo"):
-    """5라운드 활동을 시작한다(기존 모험 API는 2026-10-04 제거)."""
+def start_activity(client, headers, game="daegu_crossing", mode="demo"):
+    """대구대 건너기 5라운드 활동을 시작한다(이전 게임 4종은 제거)."""
     response = client.post("/api/activities", headers=headers, json={"game": game, "mode": mode})
     assert response.status_code == 200, response.text
     return response.json()
@@ -58,9 +58,45 @@ def utterance(started, item=None, round_index=1, attempt=1, **fields):
     return {"roundIndex": round_index, "itemId": item["itemId"], "attemptIndex": attempt, **fields}
 
 
-GOOD_BEAM = {"durationMs": 5000, "voicedMs": 4000, "activeMs": 4000, "bestRunMs": 4000, "fricationMs": 4000,
-             "sustainSegmentsMs": [1600, 1600, 1600], "pauseTotalMs": 900, "onsetFricationMs": 500,
-             "voicedAfterFricationMs": 300, "energyMean01": 0.5}
+GOOD_ONSET = {"durationMs": 700, "activeMs": 500, "onsetFricationMs": 90, "voicedAfterFricationMs": 300,
+              "noiseFloorDb": -60, "meanRmsDb": -35}
+SHORT_ONSET = {**GOOD_ONSET, "onsetFricationMs": 30}
+
+
+def finish_crossing(client, headers, sid, current):
+    """현재 위치에서 첫 시도 성공으로 남은 줄을 모두 건너 마지막 응답을 돌려준다."""
+    for _ in range(40):
+        if current.get("sessionComplete"):
+            return current
+        item = current.get("nextItem") or current["firstItem"]
+        response = client.post(f"/api/activities/{sid}/utterances", headers=headers,
+                               json={"roundIndex": current["roundIndex"], "itemId": item["itemId"],
+                                     "attemptIndex": current["nextAttemptIndex"], "acoustic": GOOD_ONSET})
+        assert response.status_code == 200, response.text
+        current = response.json()
+    raise AssertionError("건너기 회기가 끝나지 않았습니다")
+
+
+def legacy_session(sessions, code="HERO01", game="monster_adventure", status="active"):
+    """삭제된 이전 게임 회기가 남은 옛 DB를 흉내 내 회기 행을 직접 만들고 id를 돌려준다."""
+    with sessions() as db:
+        child = db.scalar(select(Child).where(Child.play_code == code))
+        goal = db.scalar(select(TrainingGoal).where(TrainingGoal.child_id == child.id, TrainingGoal.status == "active"))
+        plan = TrainingPlan(goal_id=goal.id, child_id=child.id, plan_json={"stages": []})
+        db.add(plan)
+        db.flush()
+        item = {"itemId": "legacy-item", "displayText": "사과", "level": "word", "game": game}
+        state = {"activityGame": game, "roundIndex": 1, "stageIndex": 0, "roundAttempt": 1, "roundAttemptsUsed": 0,
+                 "roundSuccesses": 0, "roundEvaluated": 0, "listenAgainCount": 0, "difficulty": 2,
+                 "difficultyIncreases": 0, "lowStreak": 0, "difficultyDecreased": False, "totalAttempts": 0,
+                 "xp": 0, "roundStartedAt": now().isoformat(), "currentCue": "NONE", "currentItem": item,
+                 "roundDefinition": {}, "magicBeamRound": False}
+        session = TrainingSession(child_id=child.id, goal_id=goal.id, plan_id=plan.id, mode="real", status=status,
+                                  play_token_hash="0" * 64, runtime_state=state,
+                                  summary_json={"totalXp": 0, "heroLevel": 1, "badges": [], "monsterCards": []} if status == "completed" else {})
+        db.add(session)
+        db.commit()
+        return session.id
 
 
 @pytest.mark.parametrize("acoustic", [
@@ -120,8 +156,9 @@ def test_no_speech_does_not_consume_retry_state(api):
     assert any(e["type"] == "NO_SPEECH" for e in response.json()["events"])
     with sessions() as db:
         state = db.get(TrainingSession, started["sessionId"]).runtime_state
-        assert state["listenAgainCount"] == 0
-        assert state["roundAttempt"] == 1 and state["roundAttemptsUsed"] == 0
+        # 무발화는 평가 시도·남은 기회를 쓰지 않는다(전송 순번 roundAttempt만 늘어난다).
+        assert state["itemAttemptsUsed"] == 0 and state["roundAttemptsUsed"] == 0 and state["totalAttempts"] == 0
+        assert response.json()["triesLeft"] == 3
 
 
 def test_utterance_analysis_dashboard_feedback(api):
@@ -136,8 +173,7 @@ def test_utterance_analysis_dashboard_feedback(api):
     started = start_activity(client, play_headers)
     result = client.post(f"/api/activities/{started['sessionId']}/utterances", headers=play_headers,
                          json=utterance(started, transcript="바나나", recognizer="demo_script",
-                                        acoustic={"durationMs": 900, "voicedMs": 900, "meanRmsDb": -20, "peakRmsDb": -12,
-                                                  "source": "microphone"}, elapsedSec=8))
+                                        acoustic={**SHORT_ONSET, "source": "microphone"}, elapsedSec=8))
     assert result.status_code == 200, result.text
     assert any(e["type"] == "TARGET_RETRY" for e in result.json()["events"])
     headers = auth(client)
@@ -149,6 +185,7 @@ def test_utterance_analysis_dashboard_feedback(api):
     assert feedback.status_code == 200
     assert feedback.json()["analysis"]["final_result"] == "success"
     play_headers = student_auth(client)
+    finish_crossing(client, play_headers, started["sessionId"], result.json())
     assert client.post(f"/api/play/sessions/{started['sessionId']}/complete", headers=play_headers,
                        json={"elapsedSec": 8}).status_code == 200
     headers = auth(client)
@@ -164,38 +201,9 @@ def test_utterance_analysis_dashboard_feedback(api):
         assert db.scalar(select(TrainingGoal).where(TrainingGoal.child_id == child["id"], TrainingGoal.status == "active")).version == initial_goal
 
 
-@pytest.mark.parametrize("action,expected", [("accept", "accepted"), ("modify", "modified"), ("reject", "rejected")])
-def test_recommendation_requires_therapist_and_persists_decision(api, action, expected):
-    client, sessions = api
-    headers = auth(client)
-    with sessions() as db:
-        child = db.scalar(select(Child).where(Child.child_code == "C-0001"))
-        goal = db.scalar(select(TrainingGoal).where(TrainingGoal.child_id == child.id, TrainingGoal.status == "active"))
-        source = db.scalar(select(TrainingSession).where(TrainingSession.child_id == child.id))
-        recommendation = AIRecommendation(child_id=child.id, session_id=source.id, goal_id=goal.id,
-                                          rule_id=f"test-{action}", observation="반복 관찰", evidence=[],
-                                          suggestion_text="음절부터 시작", suggested_goal={"level": "syllable"},
-                                          rationale="테스트", confidence="low")
-        db.add(recommendation)
-        db.commit()
-        rec_id, child_id, previous_version = recommendation.id, child.id, goal.version
-    body = {"action": action, "note": "치료사 검토"}
-    if action == "modify":
-        body["modifiedGoal"] = {"level": "word", "sessionDurationMin": 15}
-    assert client.post(f"/api/recommendations/{rec_id}/decision", json=body).status_code == 403
-    response = client.post(f"/api/recommendations/{rec_id}/decision", headers=headers, json=body)
-    assert response.status_code == 200, response.text
-    assert response.json()["recommendation"]["status"] == expected
-    with sessions() as db:
-        assert db.get(AIRecommendation, rec_id).status == expected
-        assert db.scalar(select(TherapistFeedback).where(TherapistFeedback.recommendation_id == rec_id)).action == action
-        active = db.scalar(select(TrainingGoal).where(TrainingGoal.child_id == child_id, TrainingGoal.status == "active"))
-        assert active.version == previous_version + (action != "reject")
-
-
 def test_cookie_role_idor_csrf_and_logout(api):
     client, sessions = api
-    assert client.post("/api/activities", json={"game": "magic_beam"}).status_code == 401
+    assert client.post("/api/activities", json={"game": "daegu_crossing"}).status_code == 401
     assert client.get("/api/dashboard/overview").status_code == 401
     assert client.post("/api/auth/login", json={"username": "HERO01", "password": "wrong"}).status_code == 401
     login = client.post("/api/auth/login", json={"username": "HERO01", "password": "speechhero", "admin": True})
@@ -208,18 +216,16 @@ def test_cookie_role_idor_csrf_and_logout(api):
     assert client.get("/api/admin/health").status_code == 403
     assert client.get("/api/dashboard/overview").status_code == 403
     assert client.get("/api/play/children/HERO02/profile").status_code == 404
-    with sessions() as db:
-        other = db.scalar(select(Child).where(Child.play_code == "HERO02"))
-        other_session = db.scalar(select(TrainingSession).where(TrainingSession.child_id == other.id))
+    other_session = legacy_session(sessions, "HERO02")
     # 다른 아동의 회기는 존재 여부도 드러내지 않는다.
-    assert client.post(f"/api/activities/{other_session.id}/utterances", headers=csrf,
+    assert client.post(f"/api/activities/{other_session}/utterances", headers=csrf,
                        json={"roundIndex": 1, "itemId": "x", "attemptIndex": 1}).status_code == 404
-    assert client.get(f"/api/activities/{other_session.id}").status_code == 404
-    assert client.post("/api/activities", json={"game": "magic_beam"}).status_code == 403
+    assert client.get(f"/api/activities/{other_session}").status_code == 404
+    assert client.post("/api/activities", json={"game": "daegu_crossing"}).status_code == 403
     assert client.post("/api/activities", headers={**csrf, "Origin": "https://evil.example"},
-                       json={"game": "magic_beam"}).status_code == 403
+                       json={"game": "daegu_crossing"}).status_code == 403
     assert client.post("/api/activities", headers={**csrf, "Host": "evil.example", "Origin": "http://evil.example"},
-                       json={"game": "magic_beam"}).status_code == 403
+                       json={"game": "daegu_crossing"}).status_code == 403
     assert client.post("/api/auth/logout", headers=csrf).status_code == 204
     assert client.get("/api/auth/me").status_code == 401
 
@@ -247,45 +253,12 @@ def test_expired_session_and_unassigned_therapist(api):
     assert client.get("/api/admin/health").status_code == 403
 
 
-def test_last_round_uncertain_skip_completes_session(api):
-    client, sessions = api
-    headers = student_auth(client)
-    started = start_activity(client, headers, game="magic_beam", mode="real")
-    item, round_index, attempt = started["firstItem"], 1, 1
-    for _ in range(25):  # 5라운드에 닿을 때까지 진행한다(라운드마다 필요한 시도 수가 다르다).
-        if round_index == 5:
-            break
-        result = client.post(f"/api/activities/{started['sessionId']}/utterances", headers=headers,
-                             json=utterance(started, item, round_index, attempt, acoustic=GOOD_BEAM))
-        assert result.status_code == 200, result.text
-        body = result.json()
-        item, round_index, attempt = body["nextItem"], body["currentRound"]["index"], body["nextAttemptIndex"]
-    assert round_index == 5 and attempt == 1
-    with sessions() as db:
-        attempts_before = db.get(TrainingSession, started["sessionId"]).runtime_state["totalAttempts"]
-    events = []
-    poor = {"activeMs": 1200, "durationMs": 1300, "bestRunMs": 900, "fricationMs": 900,
-            "noiseFloorDb": -60, "meanRmsDb": -56, "snrDb": 50}
-    for _ in range(3):
-        result = client.post(f"/api/activities/{started['sessionId']}/utterances", headers=headers,
-                             json=utterance(started, item, 5, acoustic=poor))
-        assert result.status_code == 200, result.text
-        events.append(result.json())
-    assert not events[0]["sessionComplete"]
-    assert not events[1]["sessionComplete"]
-    assert events[2]["sessionComplete"]
-    assert {event["type"] for event in events[2]["events"]} >= {"ITEM_ADVANCE", "SESSION_COMPLETE"}
-    with sessions() as db:
-        # 불확실은 평가 시도 수에 들어가지 않는다.
-        assert db.get(TrainingSession, started["sessionId"]).runtime_state["totalAttempts"] == attempts_before
-
-
 def test_clinical_observation_and_append_only_verification(api):
     client, sessions = api
     play_headers = student_auth(client)
     started = start_activity(client, play_headers)
     response = client.post(f"/api/activities/{started['sessionId']}/utterances", headers=play_headers,
-                           json=utterance(started, transcript="바나나", acoustic={"durationMs": 900}))
+                           json=utterance(started, acoustic=SHORT_ONSET))
     assert response.status_code == 200
     assert client.get(f"/api/sessions/{started['sessionId']}/timeline").status_code == 403
     therapist_headers = auth(client)
@@ -325,17 +298,6 @@ def test_login_rate_limit_and_admin_role_from_database(api):
     assert login.json()["role"] == "ADMIN"
     assert client.get("/api/admin/health").status_code == 200
     assert client.get("/api/dashboard/overview").status_code == 403
-
-
-def test_character_home_requires_student_and_tap_csrf(api):
-    client, _ = api
-    assert client.get("/api/me/home").status_code == 401
-    student = student_auth(client)
-    assert client.get("/api/me/home").status_code == 200
-    assert client.post("/api/me/character/tap").status_code == 403
-    assert client.post("/api/me/character/tap", headers=student).json()["tapCount"] == 1
-    auth(client)
-    assert client.get("/api/me/home").status_code == 403
 
 
 def test_secure_cookie_flag_in_production_setting(api, monkeypatch):
@@ -378,41 +340,6 @@ def test_nonfinite_json_is_rejected(api, literal):
     assert 400 <= response.status_code < 500
 
 
-def test_activity_recommendation_requires_verified_real_evidence_and_therapist_acceptance(api):
-    client, sessions = api
-    # 임상 근거는 seed가 아닌 실제 아동의 실제 음성 회기에서만 나온다.
-    _student, created = real_child_auth(client)
-    child_id = created["id"]
-    therapist = auth(client)
-    no_data = client.post(f"/api/children/{child_id}/activity-recommendations", headers=therapist).json()
-    assert no_data["status"] == "INSUFFICIENT_DATA"
-    student = child_login(client, created)
-    assert client.post(f"/api/children/{child_id}/activity-recommendations", headers=student).status_code == 403
-    start = client.post("/api/activities", headers=student, json={"game": "magic_beam", "mode": "real"}).json()
-    result = client.post(f"/api/activities/{start['sessionId']}/utterances", headers=student,
-                         json={"roundIndex": 1, "itemId": start["firstItem"]["itemId"],
-                               "acoustic": {"durationMs": 1300, "activeMs": 1200, "voicedMs": 1200,
-                                            "bestRunMs": 1200, "fricationMs": 1200,
-                                            "noiseFloorDb": -60, "meanRmsDb": -35}})
-    assert result.status_code == 200
-    therapist = auth(client)
-    observation = client.get(f"/api/sessions/{start['sessionId']}/timeline").json()["observations"][0]
-    assert client.post(f"/api/observations/{observation['id']}/decision", headers=therapist,
-                       json={"action": "confirm"}).status_code == 200
-    proposed = client.post(f"/api/children/{child_id}/activity-recommendations", headers=therapist).json()
-    assert proposed["status"] == "PENDING"
-    rec = proposed["recommendation"]
-    assert rec["clinical_purpose"] and rec["reason"] and rec["evidence"]
-    assert rec["confidence"] == "LOW"
-    with sessions() as db:
-        assert db.get(Child, child_id).collection_json.get("assignedActivity") is None
-    assert client.post(f"/api/activity-recommendations/{rec['id']}/decision", headers=therapist,
-                       json={"action": "accept"}).status_code == 200
-    with sessions() as db:
-        assert db.get(Child, child_id).collection_json["assignedActivity"] == rec["activity"]
-        assert db.get(ActivityRecommendation, rec["id"]).status == "ACCEPTED"
-
-
 def real_child_auth(client):
     """seed가 아닌 실제 아동을 치료사가 등록하고, 그 아동으로 로그인한다. 임상 근거 테스트는 이 아동을 쓴다."""
     therapist = auth(client)
@@ -426,3 +353,26 @@ def child_login(client, child):
     response = client.post("/api/auth/login", json={"username": child["play_code"], "password": child["initialPassword"]})
     assert response.status_code == 200
     return {"X-CSRF-Token": response.json()["csrfToken"]}
+
+
+@pytest.mark.parametrize("game", ["magic_beam", "monster_adventure"])
+@pytest.mark.parametrize("status", ["active", "completed"])
+def test_removed_game_session_from_old_db_is_a_clean_409(api, game, status):
+    """이전 게임(매직빔 등) 회기가 남은 DB에서도 놀이 API는 500이 아니라 409로 거절한다."""
+    client, sessions = api
+    sid = legacy_session(sessions, game=game, status=status)
+    headers = student_auth(client)
+    body = {"roundIndex": 1, "itemId": "legacy-item", "attemptIndex": 1}
+    assert client.get(f"/api/activities/{sid}").status_code == 409
+    assert client.post(f"/api/activities/{sid}/utterances", headers=headers, json=body).status_code == 409
+    assert client.post(f"/api/activities/{sid}/claim", headers=headers, json={"takeover": True}).status_code == 409
+    assert client.post(f"/api/activities/{sid}/laps", headers=headers).status_code == 409
+    assert client.post(f"/api/play/sessions/{sid}/complete", headers=headers, json={"elapsedSec": 1}).status_code == 409
+    with sessions() as db:
+        assert db.get(TrainingSession, sid).status == status
+        assert not db.scalars(select(Utterance).where(Utterance.session_id == sid)).all()
+    # 치료사 화면은 옛 회기를 그대로 읽을 수 있다.
+    therapist = auth(client)
+    assert client.get(f"/api/sessions/{sid}", headers=therapist).status_code == 200
+    summary = client.get(f"/api/sessions/{sid}/clinical-summary", headers=therapist)
+    assert summary.status_code == 200 and summary.json()["rounds"] == []

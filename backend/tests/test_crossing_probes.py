@@ -6,7 +6,7 @@ from sqlalchemy import select
 
 from app.games.crossing import build_probes, build_stages, is_probe_observation
 from app.models import ActivityLease, ClinicalObservation, GameEvent, ProgressMetric, TrainingGoal, TrainingPlan, TrainingSession, now
-from test_api_flow import api, auth, real_child_auth, student_auth
+from test_api_flow import api, auth, legacy_session, real_child_auth, student_auth
 from test_daegu_crossing import GOOD, POOR, QUIET, RETRY, assert_public, finish_lap, goal, request, send, start
 
 
@@ -53,10 +53,10 @@ def test_probe_requires_a_completed_lap_and_other_child_is_404(api):
 
 
 def test_probe_rejects_non_crossing_activity(api):
-    client, _ = api
+    client, sessions = api
     headers = student_auth(client)
-    current = client.post("/api/activities", headers=headers, json={"game": "monster_adventure"}).json()
-    assert open_probes(client, headers, current["sessionId"]).status_code == 409
+    # 옛 DB에 남은 이전 게임 회기.
+    assert open_probes(client, headers, legacy_session(sessions, game="monster_adventure")).status_code == 409
 
 
 def test_probe_start_is_once_only_blocks_laps_and_resumes_without_model(api):

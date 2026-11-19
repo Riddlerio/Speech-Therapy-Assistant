@@ -43,9 +43,9 @@ flowchart LR
 | 대화 턴 200 | 기존 `status, turnIndex, clientRequestId, text, nextTurnIndex, sessionComplete` 유지. `nextActivity: "daegu_crossing" \| null`만 추가 |
 | 대화 202 | 기존 처리 중 응답 유지. 완료한 요청 재전송은 저장한 같은 문구·전환 값을 반환 |
 | 활동 시작 | `POST /api/activities`, 요청 `{game:"daegu_crossing", mode:"real"\|"demo"}`. 응답 타입 `DaeguCrossingStart` |
-| 시작·재개 응답 | `sessionId, game, mode, heroName, rounds, currentRound, firstItem, nextAttemptIndex`와 아래 진행 필드. 재개 타입은 `DaeguCrossingSnapshot`. 완료 상태에서는 `firstItem/currentRound=null`. 재개 경로의 `leaseToken, completedRounds` 보존 |
+| 시작·재개 응답 | `sessionId, game, mode, heroName, rounds, currentRound, firstItem, nextAttemptIndex`와 아래 진행 필드. 재개 타입은 `DaeguCrossingSnapshot`. 완료 상태에서는 `firstItem/currentRound=null`. 재개 경로의 `leaseToken, completedRounds` 보존(건너기 화면은 아직 lease를 claim하지 않는다. 서버 API와 테스트만 있다) |
 | 진행 필드 | `roundIndex` 1~5, `itemIndexInRound` 1~2, `stripeIndex` 1~10, `triesLeft` 0~3, `modelCue` boolean, `sessionComplete` boolean(이번 판의 끝), `lap` 1~3, `maxLaps` 3(2026-10-07) |
-| 발화 요청 | 기존 `POST /api/activities/{sessionId}/utterances`. `roundIndex, itemId, attemptIndex, transcript, acoustic, recognizer, attack:"basic"`. lease가 있으면 `X-Activity-Lease` 헤더 |
+| 발화 요청 | 기존 `POST /api/activities/{sessionId}/utterances`. `roundIndex, itemId, attemptIndex, transcript, acoustic, recognizer`. lease가 있으면 `X-Activity-Lease` 헤더 |
 | 발화 응답 | 타입 `DaeguCrossingResponse`: `result: "success"\|"retry"\|"uncertain"\|"no_speech"`, `events, nextItem, nextAttemptIndex, currentRound`와 진행 필드 |
 | 다음 판 | `POST /api/activities/{sessionId}/laps`(요청 본문 없음, lease가 있으면 `X-Activity-Lease`). 판을 마친 같은 회기에서 첫 줄부터 다시 시작하고 시작 응답과 같은 형식 + `events`(`LAP_START, ROUND_START, TARGET_PRESENTED`)를 준다. 판을 다 건너지 않았거나 3판을 넘거나 끝난 회기면 409 |
 | 새 낱말 확인 시작 | `POST /api/activities/{sessionId}/probes`(본문 없음, 같은 lease·소유·상태 검사). 판 완료 뒤 한 번만 시작한다. 다른 아동 404, 진행 중·중복·끝난 회기 409. 이후 `/laps`는 409. 시작 응답과 같은 모양이지만 낱말 없으면 `firstItem/currentRound=null` |
@@ -69,7 +69,7 @@ flowchart LR
 
 - 아동 화면은 발화가 조작 수단입니다. DEMO 모드의 `Space`는 발성 시간 입력 대체이며 화면에 표시됩니다.
 - 세션 중 정책은 기존 목표 범위에서 조정합니다. 목표 자체는 치료사 결정으로만 새 버전을 만듭니다.
-- 추천은 자동 적용되지 않습니다. 치료사가 수락하거나 사유를 기록해 거절합니다.
+- 다음 회기 제안은 자동 적용되지 않습니다. 치료사가 수정한 뒤 승인합니다.
 - 원본 음성은 저장하지 않습니다. 텍스트는 설정한 보존 기간 이후 시작 시 비웁니다.
 - 실제 음성 모드는 Web Speech API에 의존합니다. 임상 진단이나 실시간 음향 진단은 범위 밖입니다.
 

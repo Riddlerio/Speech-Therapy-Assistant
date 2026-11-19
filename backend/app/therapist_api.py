@@ -1,9 +1,8 @@
-"""치료사 화면이 쓰는 API 라우트: 아동·목표 관리, 대시보드, 추천·활동 제안, 회기 상세, 관찰 검증, 발화 교정, 규칙.
+"""치료사 화면이 쓰는 API 라우트: 아동·목표 관리, 대시보드, 회기 상세, 관찰 검증, 발화 교정, 규칙.
 main.py에는 앱 설정·로그인·아동 놀이 흐름만 남기고, 치료사 기능은 이 파일 하나에서 읽을 수 있게 나눴다."""
 import secrets
 
 from fastapi import APIRouter, Depends, HTTPException, Response
-from pydantic.alias_generators import to_camel
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
@@ -11,18 +10,15 @@ from .db import get_db
 from .models import (AIRecommendation, ActivityRecommendation, Account, AuditEvent, ClinicalObservation, ClinicalVerification, Child, GameEvent, HoyaChatSession, HoyaChatTurn, ProgressMetric, SpeechAnalysis,
                      Therapist, TherapistFeedback, TherapistRule, TrainingDecision, TrainingGoal,
                      TrainingPlan, TrainingSession, Utterance, now)
-from .schemas import (ActivityRecommendationDecisionInput, ChildInput, FeedbackInput, GoalInput, ObservationDecisionInput,
-                      RecommendationDecisionInput)
+from .schemas import ChildInput, FeedbackInput, GoalInput, ObservationDecisionInput
 from .security import hash_password
 from .auth import owned_child, require_therapist
 from .analysis.progress import recompute
-from .clinical.activity_recommendation import propose_activity
 from .games.rounds import GAME_ROUNDS
 from .games import crossing
 from .adventure import service as adventure_service
 from .therapist_planning.evidence import latest_decisions
-from .serializers import (activity_rec_data, child_data, clinical_eligible, create_goal, current_goal, goal_data,
-                          legacy_recommendation_allowed, observation_data, public, rec_data, rec_payload)
+from .serializers import child_data, clinical_eligible, create_goal, current_goal, goal_data, observation_data, public
 
 router = APIRouter(prefix="/api")
 
@@ -85,7 +81,7 @@ def add_goal(child_id: str, body: GoalInput, db: Session = Depends(get_db), ther
 
 @router.delete("/children/{child_id}/speech-data", status_code=204)
 def delete_speech_data(child_id: str, db: Session = Depends(get_db), therapist: Therapist = Depends(require_therapist)):
-    """아동의 회기·발화·분석·관찰·검증·활동 제안·호야 대화를 참조 순서대로 모두 지운다(204).
+    """아동의 회기·발화·분석·관찰·검증·(이전) 활동 제안·호야 대화를 참조 순서대로 모두 지운다(204).
     보호자 요청 등으로 음성 파생 자료를 삭제할 때 쓰며 삭제 사실은 감사 기록으로 남긴다."""
     owned_child(db, child_id, therapist)
     ids = db.scalars(select(TrainingSession.id).where(TrainingSession.child_id == child_id)).all()
@@ -118,90 +114,17 @@ def delete_speech_data(child_id: str, db: Session = Depends(get_db), therapist: 
 
 @router.get("/dashboard/overview")
 def overview(db: Session = Depends(get_db), therapist: Therapist = Depends(require_therapist)):
-    """담당 아동·최근 회기 10개·대기 중인 legacy 추천을 한 번에 돌려준다.
+    """담당 아동(현재 목표 포함)과 최근 회기 10개를 한 번에 돌려준다.
     치료사 대시보드 첫 화면에서 쓴다."""
     children = db.scalars(select(Child).where(Child.therapist_id == therapist.id)).all()
     child_ids = [c.id for c in children]
     sessions = db.scalars(select(TrainingSession).where(TrainingSession.child_id.in_(child_ids)).order_by(TrainingSession.started_at.desc()).limit(10)).all() if child_ids else []
-    pending = db.scalars(select(AIRecommendation).where(AIRecommendation.child_id.in_(child_ids), AIRecommendation.status == "pending")).all() if child_ids else []
-    # 수정 전에 저장된 DEMO 연습 기반 추천(과거 행)은 대기 수와 목록에서 뺀다. 생성 경계만으로는 과거 행을 막지 못한다.
-    pending = [r for r in pending if legacy_recommendation_allowed(db.get(TrainingSession, r.session_id))]
-    return {"activeChildren": [{**child_data(c), "currentGoal": goal_data(current_goal(db, c.id)), "pendingRecommendations": sum(r.child_id == c.id for r in pending)} for c in children], "recentSessions": [{"id": s.id, "childId": s.child_id, "mode": s.mode, "isSeed": s.is_seed, "startedAt": s.started_at, "status": s.status} for s in sessions], "pendingRecommendations": [rec_payload(db, r) for r in pending]}
-
-
-@router.get("/children/{child_id}/recommendations")
-def recommendations(child_id: str, status: str | None = None, db: Session = Depends(get_db), therapist: Therapist = Depends(require_therapist)):
-    """아동의 legacy 목표 추천을 최신순으로 돌려준다(상태로 거를 수 있음).
-    추천 검토 화면에서 출처(provenance)와 함께 보여 준다."""
-    owned_child(db, child_id, therapist)
-    query = select(AIRecommendation).where(AIRecommendation.child_id == child_id)
-    if status:
-        query = query.where(AIRecommendation.status == status)
-    return [rec_payload(db, r) for r in db.scalars(query.order_by(AIRecommendation.created_at.desc())).all()]
-
-
-@router.get("/children/{child_id}/activity-recommendations")
-def activity_recommendations(child_id: str, db: Session = Depends(get_db), therapist: Therapist = Depends(require_therapist)):
-    """아동의 활동 제안 이력을 최신순으로 돌려준다.
-    치료사가 지난 제안과 결정을 볼 때 쓴다."""
-    owned_child(db, child_id, therapist)
-    rows = db.scalars(select(ActivityRecommendation).where(ActivityRecommendation.child_id == child_id)
-                      .order_by(ActivityRecommendation.created_at.desc())).all()
-    return [activity_rec_data(row) for row in rows]
-
-
-@router.post("/children/{child_id}/activity-recommendations")
-def generate_activity_recommendation(child_id: str, db: Session = Depends(get_db), therapist: Therapist = Depends(require_therapist)):
-    """대기 중인 활동 제안이 있으면 그것을, 없으면 확인 관찰로 새 제안을 만들어 돌려준다.
-    자료가 부족하면 INSUFFICIENT_DATA를 돌려주며 제안은 치료사 결정 전까지 PENDING이다."""
-    owned_child(db, child_id, therapist)
-    pending = db.scalar(select(ActivityRecommendation).where(ActivityRecommendation.child_id == child_id,
-                                                               ActivityRecommendation.status == "PENDING"))
-    if pending:
-        return {"status": "PENDING", "recommendation": activity_rec_data(pending)}
-    proposal = propose_activity(db, child_id)
-    if proposal is None:
-        return {"status": "INSUFFICIENT_DATA", "recommendation": None}
-    rec = ActivityRecommendation(child_id=child_id, activity=proposal["activity"],
-                                 clinical_purpose=proposal["clinicalPurpose"], reason=proposal["reason"],
-                                 evidence=proposal["evidence"], confidence=proposal["confidence"])
-    db.add(rec)
-    db.commit()
-    return {"status": "PENDING", "recommendation": activity_rec_data(rec)}
-
-
-@router.post("/activity-recommendations/{recommendation_id}/decision")
-def decide_activity_recommendation(recommendation_id: str, body: ActivityRecommendationDecisionInput,
-                                   db: Session = Depends(get_db), therapist: Therapist = Depends(require_therapist)):
-    """활동 제안을 수락·수정·거절하고, 거절이 아니면 아동의 배정 활동을 바꾼다.
-    치료사 결정만 아동 화면에 반영되게 하는 경계이며 결정은 감사 기록으로 남긴다."""
-    rec = db.get(ActivityRecommendation, recommendation_id)
-    if rec is None:
-        raise HTTPException(404)
-    child = owned_child(db, rec.child_id, therapist)
-    if rec.status != "PENDING":
-        raise HTTPException(409, "이미 처리한 제안입니다")
-    if body.action == "modify" and (body.modified_game is None or not body.note.strip()):
-        raise HTTPException(422, "수정할 게임과 이유가 필요합니다")
-    if body.action == "reject" and not body.note.strip():
-        raise HTTPException(422, "거절 사유가 필요합니다")
-    if body.action != "reject":
-        child.collection_json = {**(child.collection_json or {}),
-                                 "assignedActivity": body.modified_game if body.action == "modify" else rec.activity}
-    rec.status = {"accept": "ACCEPTED", "modify": "MODIFIED", "reject": "REJECTED"}[body.action]
-    rec.selected_activity = None if body.action == "reject" else body.modified_game if body.action == "modify" else rec.activity
-    rec.decision_note = body.note
-    rec.decided_at = now()
-    rec.decided_by = therapist.id
-    db.add(AuditEvent(actor_id=therapist.id, action=f"RECOMMENDATION_{rec.status}",
-                      resource_id=rec.id, result="SUCCESS"))
-    db.commit()
-    return activity_rec_data(rec)
+    return {"activeChildren": [{**child_data(c), "currentGoal": goal_data(current_goal(db, c.id))} for c in children], "recentSessions": [{"id": s.id, "childId": s.child_id, "mode": s.mode, "isSeed": s.is_seed, "startedAt": s.started_at, "status": s.status} for s in sessions]}
 
 
 @router.get("/sessions/{session_id}")
 def session_detail(session_id: str, db: Session = Depends(get_db), therapist: Therapist = Depends(require_therapist)):
-    """회기 정보·목표·계획·발화와 분석·결정·이벤트·지표·인사이트·추천·활성 규칙을 돌려준다.
+    """회기 정보·목표·계획·발화와 분석·결정·이벤트·지표·인사이트·활성 규칙을 돌려준다.
     치료사의 회기 상세 화면에서 쓴다."""
     session = db.get(TrainingSession, session_id)
     if not session:
@@ -211,10 +134,9 @@ def session_detail(session_id: str, db: Session = Depends(get_db), therapist: Th
     decisions = db.scalars(select(TrainingDecision).where(TrainingDecision.session_id == session.id).order_by(TrainingDecision.created_at)).all()
     events = db.scalars(select(GameEvent).where(GameEvent.session_id == session.id).order_by(GameEvent.created_at)).all()
     metrics = db.scalars(select(ProgressMetric).where(ProgressMetric.session_id == session.id)).all()
-    recs = db.scalars(select(AIRecommendation).where(AIRecommendation.session_id == session.id)).all()
     goal = db.get(TrainingGoal, session.goal_id)
     rules = db.scalars(select(TherapistRule).where(TherapistRule.child_id == session.child_id, TherapistRule.active == True)).all()
-    return {"session": {"id": session.id, "mode": session.mode, "activityGame": session.runtime_state.get("activityGame"), "isSeed": session.is_seed, "status": session.status, "startedAt": session.started_at, "endedAt": session.ended_at, "durationSec": session.summary_json.get("durationSec"), "goalVersion": goal.version, "summary": session.summary_json}, "goal": goal_data(goal), "plan": db.get(TrainingPlan, session.plan_id).plan_json, "utterances": [{"id": u.id, "itemText": u.item_text, "level": u.level, "game": u.game, "recognizer": u.recognizer, "stageIndex": u.stage_index, "acoustic": u.acoustic, "createdAt": u.created_at, "transcript": u.transcript, "attemptIndex": u.attempt_index, "analysis": public(db.scalar(select(SpeechAnalysis).where(SpeechAnalysis.utterance_id == u.id)), ["ai_score", "ai_result", "final_score", "final_result", "target_status", "substitute_symbol", "pattern_tags", "therapist_override", "rule_applied_id", "method"])} for u in utterances], "decisions": [public(d, ["id", "decision_type", "reason_codes", "reason_text", "inputs_snapshot", "from_level", "to_level"]) for d in decisions], "events": [public(e, ["id", "type", "payload", "therapist_text", "utterance_id", "created_at"]) for e in events], "metrics": [public(m, ["attempts", "successes", "retries", "hints", "first_try_success_rate", "mean_score", "level_down_count"]) for m in metrics], "insight": session.insight_json, "recommendations": [rec_payload(db, r) for r in recs], "activeRules": [public(r, ["id", "rule_type", "params"]) for r in rules]}
+    return {"session": {"id": session.id, "mode": session.mode, "activityGame": session.runtime_state.get("activityGame"), "isSeed": session.is_seed, "status": session.status, "startedAt": session.started_at, "endedAt": session.ended_at, "durationSec": session.summary_json.get("durationSec"), "goalVersion": goal.version, "summary": session.summary_json}, "goal": goal_data(goal), "plan": db.get(TrainingPlan, session.plan_id).plan_json, "utterances": [{"id": u.id, "itemText": u.item_text, "level": u.level, "game": u.game, "recognizer": u.recognizer, "stageIndex": u.stage_index, "acoustic": u.acoustic, "createdAt": u.created_at, "transcript": u.transcript, "attemptIndex": u.attempt_index, "analysis": public(db.scalar(select(SpeechAnalysis).where(SpeechAnalysis.utterance_id == u.id)), ["ai_score", "ai_result", "final_score", "final_result", "target_status", "substitute_symbol", "pattern_tags", "therapist_override", "rule_applied_id", "method"])} for u in utterances], "decisions": [public(d, ["id", "decision_type", "reason_codes", "reason_text", "inputs_snapshot", "from_level", "to_level"]) for d in decisions], "events": [public(e, ["id", "type", "payload", "therapist_text", "utterance_id", "created_at"]) for e in events], "metrics": [public(m, ["attempts", "successes", "retries", "hints", "first_try_success_rate", "mean_score", "level_down_count"]) for m in metrics], "insight": session.insight_json, "activeRules": [public(r, ["id", "rule_type", "params"]) for r in rules]}
 
 
 @router.get("/sessions/{session_id}/timeline")
@@ -315,35 +237,6 @@ def decide_observation(observation_id: str, body: ObservationDecisionInput, db: 
                       resource_id=observation.id, result="SUCCESS"))
     db.commit()
     return observation_data(observation, session)
-
-
-@router.post("/recommendations/{recommendation_id}/decision")
-def decide_recommendation(recommendation_id: str, body: RecommendationDecisionInput, db: Session = Depends(get_db), therapist: Therapist = Depends(require_therapist)):
-    """legacy 목표 추천을 수락·수정·거절하고, 수락·수정이면 새 목표 버전을 만든다.
-    치료사 결정을 피드백으로 남기며 DEMO 연습에서 나온 추천은 거절만 할 수 있다."""
-    rec = db.get(AIRecommendation, recommendation_id)
-    if not rec:
-        raise HTTPException(404)
-    child = owned_child(db, rec.child_id, therapist)
-    if rec.status != "pending":
-        raise HTTPException(409, "이미 처리한 추천입니다")
-    if body.action not in ("accept", "modify", "reject") or (body.action == "reject" and not body.note.strip()):
-        raise HTTPException(422, "결정 또는 거절 사유가 필요합니다")
-    if body.action != "reject" and not legacy_recommendation_allowed(db.get(TrainingSession, rec.session_id)):
-        # 수정 전에 저장된 DEMO 연습 기반 추천은 목표를 바꾸지 못한다. 거절(기록)만 할 수 있다.
-        raise HTTPException(409, "DEMO 연습에서 나온 추천은 목표에 반영할 수 없습니다. 거절만 할 수 있습니다")
-    goal = None
-    if body.action != "reject":
-        patch = rec.suggested_goal if body.action == "accept" else body.modified_goal
-        if patch is None:
-            raise HTTPException(422, "수정 목표가 필요합니다")
-        fields = {key: patch[to_camel(key)] if to_camel(key) in patch else patch[key] for key in GoalInput.model_fields if key in patch or to_camel(key) in patch}
-        goal = create_goal(db, child, fields, "recommendation" if body.action == "accept" else "recommendation_modified", rec.id)
-    rec.status, rec.decided_at = {"accept": "accepted", "modify": "modified", "reject": "rejected"}[body.action], now()
-    feedback = TherapistFeedback(therapist_id=therapist.id, child_id=child.id, kind="recommendation_decision", recommendation_id=rec.id, action=body.action, payload=body.model_dump(), note=body.note, resulting_goal_id=goal.id if goal else None)
-    db.add(feedback)
-    db.commit()
-    return {"recommendation": rec_data(rec), "feedback": {"id": feedback.id, "action": feedback.action}, "newGoal": goal_data(goal) if goal else None}
 
 
 @router.post("/utterances/{utterance_id}/feedback")

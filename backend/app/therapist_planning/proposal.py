@@ -5,9 +5,15 @@ from .evidence import MIN_EVALUABLE
 
 START_LEVELS = ("phoneme", "syllable", "word", "short_sentence")
 TARGET_LEVELS = ("syllable", "word", "short_sentence")
-MAIN_GAME_BY_LEVEL = {"phoneme": "sky_climb", "syllable": "monster_adventure", "word": "monster_adventure",
-                      "short_sentence": "conversation_quest"}
-GAMES = ("sky_climb", "monster_adventure", "conversation_quest")
+CROSSING_LEVELS = ("syllable", "word")
+
+
+def crossing_supported(goal: dict, start: str) -> bool:
+    """대구대 건너기로 이 목표·시작 단계를 연습할 수 있는지 본다(어두 /ㅅ/, 목표와 시작 단계가 음절·낱말).
+    games/crossing.build_stages가 받는 목표와 같은 범위라서, 아동 화면에서 실제로 시작할 수 있는 게임만 제안한다.
+    """
+    return (goal["targetPhoneme"] == "ㅅ" and goal["wordPosition"] == "initial"
+            and goal["level"] in CROSSING_LEVELS and start in CROSSING_LEVELS)
 
 
 def _level_row(metrics: dict, level: str) -> dict | None:
@@ -17,9 +23,9 @@ def _level_row(metrics: dict, level: str) -> dict | None:
     return next((row for row in metrics["byLevel"] if row["level"] == level), None)
 
 
-def propose_plan(goal: dict, metrics: dict, activity_hint: str | None) -> dict:
+def propose_plan(goal: dict, metrics: dict) -> dict:
     """근거가 부족하면 유지, 목표 단계 성공률이 50% 미만이면 한 단계 낮게 시작, 80% 이상이면 다음 단계 검토 안내를 이유(rationale)와 함께 만든다.
-    대화 → 게임 → 대화 3단계 계획 양식을 채워 돌려주며, 녹음 확인·검토 대기 안내도 덧붙인다. 계획 그래프의 제안 단계가 부른다.
+    게임은 대구대 건너기 하나뿐이다. 건너기가 받는 목표(crossing_supported)면 대화 → 건너기 → 대화 3단계를, 아니면 대화 한 단계만 제안한다.
     """
     target = goal["level"] if goal["level"] in TARGET_LEVELS else "word"
     minimum = goal["minLevel"] if goal["minLevel"] in START_LEVELS else "phoneme"
@@ -56,8 +62,11 @@ def propose_plan(goal: dict, metrics: dict, activity_hint: str | None) -> dict:
     if metrics["pendingReviewN"]:
         rationale.append({"code": "PENDING_REVIEW",
                           "text": f"검토 대기 관찰 {metrics['pendingReviewN']}건은 근거에서 제외했습니다. 확인하면 근거로 쓸 수 있습니다."})
-    # 기존 활동 제안(치료사 확인 근거 기반)이 있으면 그 게임을, 없으면 시작 단계에 맞는 게임을 쓴다.
-    game = activity_hint if activity_hint in GAMES else MAIN_GAME_BY_LEVEL[start]
+    conversation = {"stepType": "CONVERSATION", "activity": "hoya_conversation", "targetLevel": None, "parameters": {"durationMin": 2}}
+    # 건너기가 지원하지 않는 목표(다른 음소·위치·단계)에는 실행할 수 없는 게임 단계를 넣지 않는다.
+    steps = ([conversation,
+              {"stepType": "GAME", "activity": "daegu_crossing", "targetLevel": start, "parameters": {"trials": goal["repetitionTarget"]}},
+              dict(conversation)] if crossing_supported(goal, start) else [conversation])
     form = {
         "targetPhoneme": goal["targetPhoneme"], "wordPosition": goal["wordPosition"],
         "startLevel": start, "targetLevel": target,
@@ -65,10 +74,7 @@ def propose_plan(goal: dict, metrics: dict, activity_hint: str | None) -> dict:
         "preferredCue": goal["preferredCue"],
         "priorityTargets": list(goal["priorityTargets"]), "excludedWords": list(goal["excludedWords"]),
         "conversationTheme": "", "therapistNote": "",
-        "steps": [
-            {"stepType": "CONVERSATION", "activity": "hoya_conversation", "targetLevel": None, "parameters": {"durationMin": 2}},
-            {"stepType": "GAME", "activity": game, "targetLevel": start, "parameters": {"trials": goal["repetitionTarget"]}},
-            {"stepType": "CONVERSATION", "activity": "hoya_conversation", "targetLevel": None, "parameters": {"durationMin": 2}},
-        ],
+        "steps": steps,
     }
-    return {"status": status, "form": form, "rationale": rationale, "activityHint": activity_hint}
+    # activityHint는 응답 모양 호환용이다. 이전 활동 제안 기능이 없어져 항상 None이다.
+    return {"status": status, "form": form, "rationale": rationale, "activityHint": None}

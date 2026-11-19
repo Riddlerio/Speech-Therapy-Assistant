@@ -3,18 +3,9 @@
 """
 
 from sqlalchemy import select, delete
-from math import isfinite
 
 from ..models import Utterance, SpeechAnalysis, TrainingDecision, ProgressMetric, ClinicalObservation
 from ..games.crossing import is_probe_observation
-
-
-def _num(acoustic: dict, key: str) -> float:
-    """음향 측정값 dict에서 key 값을 꺼내되, 정상적인 숫자가 아니면 0으로 바꾼다.
-    아동 화면이 보낸 값에 NaN·문자열이 섞여도 지표 계산이 깨지지 않게 한다.
-    """
-    value = acoustic.get(key)
-    return value if type(value) in (int, float) and isfinite(value) else 0
 
 
 def recompute(db, session, goal, elapsed_sec=0):
@@ -34,12 +25,11 @@ def recompute(db, session, goal, elapsed_sec=0):
     for _, a in rows:
         counts[a.final_result] = counts.get(a.final_result, 0) + 1
     attempts = counts["success"] + counts["retry"]
-    voiced = [_num(u.acoustic or {}, "bestRunMs") for u, a in rows if u.game == "magic_beam" and a.final_result in {"success", "retry"}]
-    scores = [a.final_score for u, a in rows if u.game != "magic_beam" and a.final_result in {"success", "retry"}]
-    ai_scores = [a.ai_score for u, a in rows if u.game != "magic_beam" and a.ai_result in {"success", "retry"}]
-    presented = {u.item_id for u, a in rows if u.game != "magic_beam" and a.final_result in {"success", "retry"}}
-    first = sum(1 for u, a in rows if u.game != "magic_beam" and u.attempt_index == 1 and a.final_result == "success")
-    metric = ProgressMetric(child_id=session.child_id, session_id=session.id, goal_id=goal.id, phoneme=goal.target_phoneme, position=goal.word_position, level="all", attempts=attempts, successes=counts["success"], retries=counts["retry"], no_speech=counts["no_speech"], hints=sum(d.decision_type == "HINT" for d in decisions), first_try_success_rate=round(100 * first / max(1, len(presented)), 1), success_rate=round(100 * counts["success"] / max(1, attempts), 1), mean_score=round(sum(scores) / max(1, len(scores)), 1), ai_mean_score=round(sum(ai_scores) / max(1, len(ai_scores)), 1), level_down_count=sum(d.decision_type == "LEVEL_DOWN" for d in decisions), level_up_count=sum(d.decision_type == "LEVEL_UP" for d in decisions), duration_sec=elapsed_sec, max_beam_ms=max(voiced, default=0))
+    scores = [a.final_score for u, a in rows if a.final_result in {"success", "retry"}]
+    ai_scores = [a.ai_score for u, a in rows if a.ai_result in {"success", "retry"}]
+    presented = {u.item_id for u, a in rows if a.final_result in {"success", "retry"}}
+    first = sum(1 for u, a in rows if u.attempt_index == 1 and a.final_result == "success")
+    metric = ProgressMetric(child_id=session.child_id, session_id=session.id, goal_id=goal.id, phoneme=goal.target_phoneme, position=goal.word_position, level="all", attempts=attempts, successes=counts["success"], retries=counts["retry"], no_speech=counts["no_speech"], hints=sum(d.decision_type == "HINT" for d in decisions), first_try_success_rate=round(100 * first / max(1, len(presented)), 1), success_rate=round(100 * counts["success"] / max(1, attempts), 1), mean_score=round(sum(scores) / max(1, len(scores)), 1), ai_mean_score=round(sum(ai_scores) / max(1, len(ai_scores)), 1), level_down_count=sum(d.decision_type == "LEVEL_DOWN" for d in decisions), level_up_count=sum(d.decision_type == "LEVEL_UP" for d in decisions), duration_sec=elapsed_sec, max_beam_ms=0)
     db.add(metric)
     db.flush()
     return metric
