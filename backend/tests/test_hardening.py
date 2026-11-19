@@ -9,33 +9,18 @@ from sqlalchemy import select
 from app import main as api_module
 from app import maintenance
 from app.games.rounds import GAME_ROUNDS, public_round
-from app.models import Child, ClinicalObservation, TrainingPlan, TrainingSession, Utterance, now
-from test_api_flow import api, auth, child_login, real_child_auth, student_auth
+from app.models import ClinicalObservation, TrainingSession, Utterance, now
+from test_api_flow import api, auth, real_child_auth, student_auth
 
 
 GOOD = {"noiseFloorDb": -60, "meanRmsDb": -35}
+ONSET = {"durationMs": 700, "activeMs": 500, "onsetFricationMs": 90, "voicedAfterFricationMs": 300}
 
 
-def _start(client, headers, game, mode="real"):
+def _start(client, headers, game="daegu_crossing", mode="real"):
     response = client.post("/api/activities", headers=headers, json={"game": game, "mode": mode})
     assert response.status_code == 200, response.text
     return response.json()
-
-
-def _jump(sessions, session_id, round_index):
-    """테스트용으로 서버 상태를 특정 라운드의 첫 시도로 옮긴다."""
-    with sessions() as db:
-        session = db.get(TrainingSession, session_id)
-        state = dict(session.runtime_state)
-        definition = GAME_ROUNDS[state["activityGame"]][round_index - 1]
-        item = db.get(TrainingPlan, session.plan_id).plan_json["stages"][round_index - 1]["items"][0]
-        state.update(roundIndex=round_index, stageIndex=round_index - 1, currentItem=item, roundAttempt=1,
-                     roundAttemptsUsed=0, roundSuccesses=0, roundEvaluated=0, listenAgainCount=0,
-                     roundStartedAt=now().isoformat(), difficulty=2,
-                     roundDefinition={**public_round(definition, 2), "independence": "INDEPENDENT"})
-        session.runtime_state = state
-        db.commit()
-        return item
 
 
 def _say(client, headers, session_id, round_index, item, acoustic, attempt=1, transcript=None):
@@ -59,7 +44,7 @@ def _past_legacy(sessions, session_id):
 def test_removed_legacy_adventure_routes_are_gone(api):
     client, _ = api
     headers = student_auth(client)
-    started = _start(client, headers, "magic_beam", "demo")
+    started = _start(client, headers, mode="demo")
     assert client.post("/api/play/start", headers=headers, json={"playCode": "HERO01", "mode": "demo"}).status_code in {404, 405}
     assert client.post(f"/api/play/sessions/{started['sessionId']}/utterances", headers=headers,
                        json={"itemId": started["firstItem"]["itemId"], "acoustic": {"durationMs": 900}}).status_code in {404, 405}
@@ -68,17 +53,16 @@ def test_removed_legacy_adventure_routes_are_gone(api):
 def test_activity_endpoint_accepts_activity_session(api):
     client, _ = api
     headers = student_auth(client)
-    started = _start(client, headers, "magic_beam", "demo")
+    started = _start(client, headers, mode="demo")
     assert client.get(f"/api/activities/{started['sessionId']}", headers=headers).status_code == 200
-    events = _say(client, headers, started["sessionId"], 1, started["firstItem"],
-                  {"durationMs": 1300, "activeMs": 1200, "bestRunMs": 1200, "fricationMs": 1200})
-    assert "ROUND_CLEAR" in events
+    events = _say(client, headers, started["sessionId"], 1, started["firstItem"], ONSET)
+    assert "TARGET_SUCCESS" in events
 
 
 def test_activity_endpoint_rejects_past_legacy_session(api):
     client, sessions = api
     headers = student_auth(client)
-    started = _start(client, headers, "magic_beam", "demo")
+    started = _start(client, headers, mode="demo")
     _past_legacy(sessions, started["sessionId"])
     assert client.get(f"/api/activities/{started['sessionId']}", headers=headers).status_code == 409
     response = client.post(f"/api/activities/{started['sessionId']}/utterances", headers=headers,
@@ -103,7 +87,7 @@ def test_unknown_session_is_404_on_every_play_route(api):
 def test_malformed_activity_state_is_409_not_500(api, damage):
     client, sessions = api
     headers = student_auth(client)
-    started = _start(client, headers, "magic_beam", "demo")
+    started = _start(client, headers, mode="demo")
     with sessions() as db:
         session = db.get(TrainingSession, started["sessionId"])
         session.runtime_state = {**session.runtime_state, **damage}
@@ -114,7 +98,7 @@ def test_malformed_activity_state_is_409_not_500(api, damage):
     assert response.status_code == 409
 
 
-# ---------------------------------------------------------------- 2. Monster Adventure R4 의미
+# ---------------------------------------------------------------- 2. 라운드 의미
 
 def test_round_labels_do_not_claim_untrained_words():
     for rounds in GAME_ROUNDS.values():
@@ -122,47 +106,25 @@ def test_round_labels_do_not_claim_untrained_words():
             assert definition.item_source == "TRAINING_BANK"
             text = definition.child_title + definition.child_prompt + definition.clinical_focus
             assert "미훈련" not in text and "처음 보는" not in text and "novel" not in text.lower()
-    assert public_round(GAME_ROUNDS["monster_adventure"][3])["itemSource"] == "TRAINING_BANK"
-
-
-def test_monster_round_items_come_from_training_bank_and_do_not_repeat_in_session(api):
-    from app.training.content import BANK
-    client, sessions = api
-    headers = student_auth(client)
-    started = _start(client, headers, "monster_adventure", "demo")
-    with sessions() as db:
-        session = db.get(TrainingSession, started["sessionId"])
-        stages = db.get(TrainingPlan, session.plan_id).plan_json["stages"]
-    texts = [stage["items"][0]["displayText"] for stage in stages]
-    assert texts[0] in BANK["ㅅ"]["syllable"]
-    assert all(text in BANK["ㅅ"]["word"] for text in texts[1:4])
-    assert texts[4] in BANK["ㅅ"]["short_sentence"]
-    assert len(set(texts[1:4])) == 3  # R2·R3·R4 단어가 같은 세션 안에서 겹치지 않는다.
-    assert stages[3]["round"]["itemSource"] == "TRAINING_BANK"
+            assert public_round(definition)["endHoldMs"] == definition.end_hold_ms == 700
 
 
 # ---------------------------------------------------------------- 3. 실제 마이크 음향 규칙
 
 CASES = [
-    # game, round, acoustic, expected event
-    ("magic_beam", 3, {"durationMs": 2800, "activeMs": 2600, "bestRunMs": 2500, "fricationMs": 2600, "interruptionCount": 0}, "TARGET_SUCCESS"),
-    ("magic_beam", 3, {"durationMs": 2800, "activeMs": 2600, "bestRunMs": 2500, "fricationMs": 2600, "interruptionCount": 3}, "TARGET_RETRY"),
-    ("magic_beam", 4, {"durationMs": 3000, "activeMs": 1800, "bestRunMs": 600, "fricationMs": 1800, "sustainSegmentsMs": [600, 600, 600]}, "TARGET_SUCCESS"),
-    ("magic_beam", 4, {"durationMs": 2000, "activeMs": 1200, "bestRunMs": 600, "fricationMs": 1200, "sustainSegmentsMs": [600, 600]}, "TARGET_RETRY"),
-    ("magic_beam", 5, {"durationMs": 1200, "activeMs": 900, "bestRunMs": 500, "fricationMs": 500, "onsetFricationMs": 500, "voicedAfterFricationMs": 300}, "TARGET_SUCCESS"),
-    ("magic_beam", 5, {"durationMs": 1200, "activeMs": 900, "bestRunMs": 500, "fricationMs": 500, "onsetFricationMs": 500, "voicedAfterFricationMs": 0}, "TARGET_RETRY"),
-    ("sky_climb", 3, {"durationMs": 2000, "activeMs": 1800, "bestRunMs": 1600, "energyMean01": 0.5}, "TARGET_SUCCESS"),
-    ("sky_climb", 3, {"durationMs": 2000, "activeMs": 1800, "bestRunMs": 1600, "energyMean01": 0.9}, "TARGET_RETRY"),
+    ({"onsetFricationMs": 90, "voicedAfterFricationMs": 300}, "TARGET_SUCCESS"),
+    ({"onsetFricationMs": 30, "voicedAfterFricationMs": 300}, "TARGET_RETRY"),
+    ({"onsetFricationMs": 90, "voicedAfterFricationMs": 0}, "TARGET_RETRY"),
 ]
 
 
-@pytest.mark.parametrize("game,round_index,acoustic,expected", CASES)
-def test_microphone_round_rules_through_api(api, game, round_index, acoustic, expected):
+@pytest.mark.parametrize("acoustic,expected", CASES)
+def test_microphone_round_rules_through_api(api, acoustic, expected):
     client, sessions = api
     headers = student_auth(client)
-    started = _start(client, headers, game)
-    item = _jump(sessions, started["sessionId"], round_index)
-    events = _say(client, headers, started["sessionId"], round_index, item, {**GOOD, **acoustic})
+    started = _start(client, headers)
+    events = _say(client, headers, started["sessionId"], 1, started["firstItem"],
+                  {**GOOD, "durationMs": 700, "activeMs": 500, **acoustic})
     assert expected in events
     with sessions() as db:
         observation = db.scalars(select(ClinicalObservation).where(
@@ -170,77 +132,26 @@ def test_microphone_round_rules_through_api(api, game, round_index, acoustic, ex
         assert observation.evidence["acoustic"]["source"] == "microphone"
 
 
-RE_ONSET = [
-    ("short pause", {"sustainSegmentsMs": [1100, 1100], "pauseTotalMs": 150}, "TARGET_RETRY"),
-    ("natural pause and restart", {"sustainSegmentsMs": [1100, 1100], "pauseTotalMs": 1200}, "TARGET_SUCCESS"),
-    ("long pause", {"sustainSegmentsMs": [1100, 1100], "pauseTotalMs": 5000}, "TARGET_RETRY"),
-    ("no restart", {"sustainSegmentsMs": [1100], "pauseTotalMs": 0}, "TARGET_RETRY"),
-]
-
-
-@pytest.mark.parametrize("label,extra,expected", RE_ONSET, ids=[case[0] for case in RE_ONSET])
-def test_sky_climb_re_onset(api, label, extra, expected):
-    client, sessions = api
-    headers = student_auth(client)
-    started = _start(client, headers, "sky_climb")
-    item = _jump(sessions, started["sessionId"], 4)
-    acoustic = {**GOOD, "durationMs": 3600, "activeMs": 2200, "bestRunMs": 1100, **extra}
-    events = _say(client, headers, started["sessionId"], 4, item, acoustic)
-    assert expected in events
-    assert "TARGET_RETRY" in events or "ROUND_CLEAR" in events  # 재시도도 실패 연출이 아니다.
-
-
-def test_re_onset_round_allows_a_natural_pause_inside_one_utterance():
-    definition = GAME_ROUNDS["sky_climb"][3]
-    assert definition.rule == "RE_ONSET"
-    # 자연스러운 쉼(약 1.2초)이 발화 종료 유예보다 짧아 한 발화 안에서 측정된다. 다른 라운드 유예는 700ms 그대로다.
-    assert definition.end_hold_ms >= 2000
-    assert public_round(definition)["endHoldMs"] == definition.end_hold_ms
-    assert all(r.end_hold_ms == 700 for game in ("monster_adventure", "conversation_quest") for r in GAME_ROUNDS[game])
-
-
-def test_re_onset_no_speech_and_uncertain_are_neutral(api):
-    client, sessions = api
-    headers = student_auth(client)
-    started = _start(client, headers, "sky_climb")
-    item = _jump(sessions, started["sessionId"], 4)
-    silent = _say(client, headers, started["sessionId"], 4, item, {**GOOD, "durationMs": 900, "activeMs": 0})
-    assert "NO_SPEECH" in silent and "TARGET_RETRY" not in silent
-    poor = _say(client, headers, started["sessionId"], 4, item,
-                {"noiseFloorDb": -60, "meanRmsDb": -56, "durationMs": 3600, "activeMs": 2200,
-                 "sustainSegmentsMs": [1100, 1100], "pauseTotalMs": 1200})
-    assert "LISTEN_AGAIN" in poor and "TARGET_RETRY" not in poor
-    with sessions() as db:
-        state = db.get(TrainingSession, started["sessionId"]).runtime_state
-        assert state["roundAttempt"] == 1 and state["totalAttempts"] == 0
-
-
 # ---------------------------------------------------------------- 4. DEMO 관찰 검토 의미
 
 def test_demo_observation_is_marked_and_review_is_not_clinical_verification(api):
     client, _ = api
     student = student_auth(client)
-    started = _start(client, student, "magic_beam", "demo")
-    _say(client, student, started["sessionId"], 1, started["firstItem"],
-         {"durationMs": 1300, "activeMs": 1200, "bestRunMs": 1200, "fricationMs": 1200})
+    started = _start(client, student, mode="demo")
+    _say(client, student, started["sessionId"], 1, started["firstItem"], ONSET)
     therapist = auth(client)
     observation = client.get(f"/api/sessions/{started['sessionId']}/timeline", headers=therapist).json()["observations"][0]
     assert observation["is_demo"] is True and observation["clinical_eligible"] is False
     decided = client.post(f"/api/observations/{observation['id']}/decision", headers=therapist,
                           json={"action": "confirm"}).json()
     assert decided["verification_state"] == "DEMO_CONFIRMED"
-    with api[1]() as db:
-        child_id = db.query(Child).filter(Child.child_code == "C-0001").one().id
-    proposal = client.post(f"/api/children/{child_id}/activity-recommendations", headers=therapist).json()
-    assert proposal["status"] == "INSUFFICIENT_DATA"
 
 
 def test_real_observation_is_clinically_eligible(api):
     client, _ = api
     student, _child = real_child_auth(client)
-    started = _start(client, student, "magic_beam")
-    _say(client, student, started["sessionId"], 1, started["firstItem"],
-         {**GOOD, "durationMs": 1300, "activeMs": 1200, "bestRunMs": 1200, "fricationMs": 1200})
+    started = _start(client, student)
+    _say(client, student, started["sessionId"], 1, started["firstItem"], {**GOOD, **ONSET})
     therapist = auth(client)
     observation = client.get(f"/api/sessions/{started['sessionId']}/timeline", headers=therapist).json()["observations"][0]
     assert observation["is_demo"] is False and observation["clinical_eligible"] is True
@@ -249,16 +160,17 @@ def test_real_observation_is_clinically_eligible(api):
     assert decided["verification_state"] == "CONFIRMED"
 
 
-# ---------------------------------------------------------------- 8. 임상 요약 표본 수와 추천
+# ---------------------------------------------------------------- 8. 임상 요약 표본 수
 
 def test_summary_separates_evaluable_from_uncertain_and_no_speech(api):
     client, _ = api
     student, _child = real_child_auth(client)
-    started = _start(client, student, "magic_beam")
+    started = _start(client, student)
     session_id, item = started["sessionId"], started["firstItem"]
+    # 건너기는 중립 발화에도 전송 순번(attemptIndex)이 늘어난다.
     _say(client, student, session_id, 1, item, {**GOOD, "durationMs": 900, "activeMs": 0})
-    _say(client, student, session_id, 1, item, {"noiseFloorDb": -60, "meanRmsDb": -56, "durationMs": 1200, "activeMs": 1000})
-    _say(client, student, session_id, 1, item, {**GOOD, "durationMs": 1300, "activeMs": 1200, "bestRunMs": 300, "fricationMs": 1200})
+    _say(client, student, session_id, 1, item, {"noiseFloorDb": -60, "meanRmsDb": -56, "durationMs": 1200, "activeMs": 1000}, attempt=2)
+    _say(client, student, session_id, 1, item, {**GOOD, **ONSET, "onsetFricationMs": 30}, attempt=3)
     therapist = auth(client)
     row = client.get(f"/api/sessions/{session_id}/clinical-summary", headers=therapist).json()["rounds"][0]
     assert row["totalObservedN"] == 3
@@ -269,26 +181,6 @@ def test_summary_separates_evaluable_from_uncertain_and_no_speech(api):
     assert "n" not in row
     empty = client.get(f"/api/sessions/{session_id}/clinical-summary", headers=therapist).json()["rounds"][1]
     assert empty["totalObservedN"] == 0 and empty["verifiedRate"] is None  # 자료 없음은 0%가 아니다.
-
-
-def test_sound_recommendation_ignores_confirmed_uncertain_observations(api):
-    client, sessions = api
-    student, created = real_child_auth(client)
-    for _ in range(2):
-        started = _start(client, student, "magic_beam")
-        # 음질 불량 발화의 짧은 bestRunMs가 '지속이 짧다'는 근거로 쓰이면 안 된다.
-        _say(client, student, started["sessionId"], 1, started["firstItem"],
-             {"noiseFloorDb": -60, "meanRmsDb": -56, "durationMs": 1200, "activeMs": 1000, "bestRunMs": 200})
-        therapist = auth(client)
-        for observation in client.get(f"/api/sessions/{started['sessionId']}/timeline", headers=therapist).json()["observations"]:
-            assert observation["ai_result"] == "uncertain"
-            client.post(f"/api/observations/{observation['id']}/decision", headers=therapist,
-                        json={"action": "confirm"}).raise_for_status()
-        student = child_login(client, created)
-    therapist = auth(client)
-    child_id = created["id"]
-    proposal = client.post(f"/api/children/{child_id}/activity-recommendations", headers=therapist).json()
-    assert proposal["recommendation"]["activity"] != "magic_beam"
 
 
 # ---------------------------------------------------------------- 5. 로그인

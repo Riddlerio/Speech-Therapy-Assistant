@@ -1,5 +1,5 @@
 """여러 모듈이 같이 쓰는 훈련 단계(음소~자발화) 열거형을 정의한다.
-목표 단계 비교·다음 단계 추천(analysis/recommendation.py)에서 순서를 알기 위해 쓴다.
+목표 단계 비교(serializers.create_goal)에서 순서를 알기 위해 쓴다.
 """
 
 from enum import StrEnum

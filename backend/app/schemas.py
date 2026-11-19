@@ -22,7 +22,7 @@ class DemoLoginInput(StrictApiModel):
 
 class GoalInput(ApiModel):
     """치료사가 정하는 훈련 목표 값과 기본값.
-    목표 생성·추천 수락 때 필드 목록과 기본값의 기준으로도 쓴다."""
+    목표 생성 때 필드 목록과 기본값의 기준으로도 쓴다."""
     target_phoneme: Literal["ㅅ", "ㅈ", "ㄹ"] = "ㅅ"
     target_sound: str = "사"
     word_position: Literal["initial", "medial", "final"] = "initial"
@@ -40,9 +40,9 @@ class GoalInput(ApiModel):
 
 
 class StartActivityInput(ApiModel):
-    """아동이 고른 게임과 모드(real/demo).
+    """아동이 고른 게임(대구대 건너기만 지원)과 모드(real/demo).
     /api/activities로 새 5라운드 활동을 시작할 때 쓴다."""
-    game: Literal["magic_beam", "sky_climb", "monster_adventure", "conversation_quest", "daegu_crossing"]
+    game: Literal["daegu_crossing"]
     mode: Literal["real", "demo"] = "demo"
 
 
@@ -65,7 +65,6 @@ class UtteranceInput(StrictApiModel):
     recognizer: str = "demo_script"
     acoustic: AcousticSummary = Field(default_factory=AcousticSummary)
     elapsed_sec: int = Field(default=0, ge=0, le=600)
-    attack: Literal["basic", "magic_beam"] = "basic"
 
     @field_validator("alternatives")
     @classmethod
@@ -83,14 +82,6 @@ class CompleteInput(ApiModel):
     elapsed_sec: int = 0
 
 
-class RecommendationDecisionInput(ApiModel):
-    """legacy 목표 추천에 대한 치료사 결정(수락·수정·거절).
-    /api/recommendations/{id}/decision에서 쓰며 허용 동작은 라우트에서 검사한다."""
-    action: str
-    modified_goal: dict | None = None
-    note: str = ""
-
-
 class FeedbackInput(ApiModel):
     """발화 하나에 대한 치료사 교정·메모.
     /api/utterances/{id}/feedback에서 쓰며 동작에 따라 아동별 규칙이 생길 수 있다."""
@@ -106,12 +97,4 @@ class ObservationDecisionInput(StrictApiModel):
     /api/observations/{id}/decision에서 쓰며 모르는 필드는 거부한다."""
     action: Literal["confirm", "correct", "reject"]
     corrected_result: Literal["success", "retry", "uncertain", "no_speech"] | None = None
-    note: str = Field(default="", max_length=500)
-
-
-class ActivityRecommendationDecisionInput(StrictApiModel):
-    """활동 제안에 대한 치료사 수락·수정·거절.
-    /api/activity-recommendations/{id}/decision에서 쓰며 모르는 필드는 거부한다."""
-    action: Literal["accept", "modify", "reject"]
-    modified_game: Literal["magic_beam", "sky_climb", "monster_adventure", "conversation_quest"] | None = None
     note: str = Field(default="", max_length=500)

@@ -44,10 +44,10 @@ Phase 0에서 사용자(제품 소유자)가 승인했다(2026-09-30). 이후 �
 | `src/pages/**` | SAFE_TO_REDESIGN | `/play`와 `/therapist/login` 링크를 유지한다 |
 | `src/character/**` | 삭제됨(2026-10-04) | legacy 모험 제거(로드맵 5절 3번)와 함께 `Character.tsx`·`tts.ts`를 지웠다. 폴더가 없다 |
 | `src/tiger/**` | SAFE_WITH_INTERFACE_CONSTRAINTS | `<Hoya3D action className>`, `HoyaAction` 17개 값(THINKING 포함) 처리, `HoyaFallback`과 `data-hoya-fallback="true"`, `ACTION_TEXT` 문구(테스트가 확인), fallback에 "3D" 문구를 쓰지 않을 것, `canUseWebGL`, `HoyaErrorBoundary`, context loss fallback, 높이는 부모가 정하는 구조를 유지한다. 내부 `Tiger` 메시는 교체할 수 있다. GLB loader를 도입하거나 의존성을 추가하려면 사용자 승인이 필요하다(2026-10-04 승인: three 내장 `GLTFLoader`로 `public/assets/dudu/dudu.glb`를 읽는다. `EXT_texture_webp`·`KHR_mesh_quantization`만 쓰고 meshopt·Draco·KTX2 디코더는 쓰지 않는다. 로딩 실패 시 절차형 모델로 돌아간다) |
-| `src/child/**`(화면층) | SAFE_WITH_INTERFACE_CONSTRAINTS | sessionStorage 키(`speechHero.code`, `speechHero.activity`, `speechHero.result`. legacy 모험용 `speechHero.play`는 2026-10-04 삭제), API 호출, `detectCapabilities`·`supportsRealMode`·`missingText` 게이트, Space와 pointer 입력 핸들러, TTS 중 마이크 차단 ref(`modelSpeaking`, `submitting`), `HoyaActionController`의 dispatch 지점, `aria-live` 영역, DEMO 고지 문구를 유지한다 |
-| `src/game/**` | SAFE_WITH_INTERFACE_CONSTRAINTS | V2 게임 장면은 새 코드로 작성한다. legacy 상태 기계(`beamTransition`, `towerTransition`)와 `BeamCanvas`는 사용처가 legacy 모험뿐이라 2026-10-04 함께 삭제했다(로드맵 5절 3번) |
+| `src/child/**`(화면층) | SAFE_WITH_INTERFACE_CONSTRAINTS | sessionStorage 키(`speechHero.code`, `speechHero.csrf`. `speechHero.activity`·`speechHero.result`는 모험 4종과 함께 2026-11-19 삭제), API 호출, `detectCapabilities`·`supportsRealMode`·`missingText` 게이트, Space와 pointer 입력 핸들러, TTS 중 마이크 차단 ref(`modelSpeaking`, `submitting`), `aria-live` 영역, DEMO 고지 문구를 유지한다 |
+| `src/game/**` | SAFE_WITH_INTERFACE_CONSTRAINTS | V2 게임 장면은 새 코드로 작성한다. legacy 상태 기계(`beamTransition`, `towerTransition`)와 `BeamCanvas`는 2026-10-04, 빛의 마법 장면(`magicBeam/`)은 모험 4종과 함께 2026-11-19 삭제했다. 지금 남은 게임은 `crossing/`뿐이다 |
 | `public/assets/**` | SAFE_TO_REDESIGN(신규) | 같은 출처에서 제공한다. 에셋 출처와 라이선스, 대구대 마스코트 IP는 사용자가 확인한다 |
-| `src/child/**`(음성 로직), `hoyaChatController.ts`, `src/control/**`, `src/speech/**` | HIGH_RISK_TO_TOUCH | 캡처→파이프라인→인식기→제출 순서, `CALIBRATION_MS`, `mapSignalToHoya`(THINKING을 반환하지 않음). 수정하려면 사용자 승인과 해당 테스트가 필요하다 |
+| `src/child/**`(음성 로직), `hoyaChatController.ts`, `src/control/**`, `src/speech/**` | HIGH_RISK_TO_TOUCH | 캡처→파이프라인→인식기→제출 순서, `CALIBRATION_MS`. (`mapSignalToHoya`·`HoyaActionController`는 쓰던 활동 화면과 함께 2026-11-19 삭제) 수정하려면 사용자 승인과 해당 테스트가 필요하다 |
 
 ## 5. 승인된 정리 작업(Phase 0.5) — 2026-10-04 실행
 
@@ -227,3 +227,27 @@ npm.cmd audit
 **회귀(2026-10-07):** typecheck·build(배포 파일 자격 증명 검사 포함), 프런트 343개, 백엔드 574개, DEMO API smoke 3항목, diff 검사 통과. npm audit 취약점 0개. 백엔드는 Windows 정책을 변경하지 않고 uv 기본 Python 3.14와 기존 설치 의존성의 PYTHONPATH로 검사했다. 실제 마이크·아이폰·스피커·LLM·임상 타당성 검증은 미실행이다.
 
 **브라우저 확인:** 새 시연 DB와 별도 포트 8003·5175에서 Edge 헤드리스 1280px·390px 각각 연습 10카드 → 그만 → 확인 3카드 → 마무리 → 치료사 상세·분석을 점검하고 스크린샷을 확인했다. 확인 단계의 음성·정오·칭찬은 없고 연습 집계·마무리 낱말에 섞이지 않았다. 가로 넘침·화면/API 오류 0, 기존 favicon 404만 관측했다. 이 검사는 실제 기기·마이크 확인을 대신하지 않는다.
+
+## 15. 모험 4종 제거 (2026-11-19, 사용자 승인)
+
+**승인:** 사용자가 시연 흐름(두두 대화 → 대구대 건너기 → 마무리, 치료사 화면)만 남기고 예전 모험 4종(빛의 마법·하늘 오르기·몬스터 모험·두두와 소풍)과 그 부속 기능을 지우기로 했다(2026-11-19). 4종은 동작했지만 시연 흐름에서 들어가는 버튼이 없었다.
+
+**지운 것**
+- 아동 화면: 두두의 집, 탐험 지도, 활동·보상 화면, 매직빔 공격 선택, 빛의 마법 장면과 검토 화면(`magic-beam-review.html`), `src/control/HoyaActionController.ts`·`mapSignalToHoya`.
+- 치료사 화면: 매직빔 스킬 승인, 활동 제안, 기존 목표 추천(R1–R5)과 대시보드의 대기 추천 수.
+- 서버: 4종 라운드 정의·판정 규칙, 라운드 보상·배지·재료·제작, 스킬 API, 기존 추천·인사이트·활동 제안, `/api/me/home`·`/character/tap`·`/adventure`·`/activities/active`.
+
+**지킨 것**
+- DB 표와 열은 바꾸지 않았다(마이그레이션 없음). 쓰던 코드만 지웠고 기존 행은 남는다. 음성 자료 삭제·리허설 초기화는 예전 행도 계속 정리한다.
+- 예전 DB에 남은 4종 회기: 놀이 API는 409, 치료사 조회는 200.
+- 건너기·대화의 요청·응답, lease(claim·heartbeat·pause), `analyze`(speech) 시그니처, `AcousticSummary`, 소유권·CSRF.
+- 두두 대화의 판정은 대화 퀘스트 5라운드 정의 대신 같은 CONVERSATION 규칙을 `hoya/evidence.py`에 직접 둔다. 결과는 같다.
+
+**바뀐 계약**
+- 계획의 GAME·PRACTICE 활동은 `daegu_crossing` 하나다. 서버 제안은 목표가 어두 /ㅅ/·음절 또는 낱말일 때만 대화 → 건너기 → 대화이고, 아니면 대화 한 단계다. 예전 4종 값은 저장된 계획을 읽고 복제할 때만 받는다. `activityHint`는 항상 null이다.
+- `UtteranceInput.attack`, 대시보드 `pendingRecommendations`, 회기 상세 `recommendations`를 지웠다.
+- 샘플 데이터: HERO01 과거 회기가 건너기 4회기로 바뀌었다. HERO02(/ㄹ/)·HERO03(/ㅈ/)은 샘플 회기가 없다.
+- CI smoke는 빛의 마법 5라운드 대신 건너기 10줄로 인증·CSRF·관찰을 확인한다.
+- 치료사 규칙(ACCEPT_SUBSTITUTION·ACCEPT_WORD_VARIANT): 이 규칙은 예전 게임 기록용이며 현재 대구대 건너기·대화 판정에는 쓰이지 않는다. `speech/pipeline.analyze`를 부르는 곳이 없다.
+- 건너기 화면은 아직 lease를 claim하지 않는다(claim·heartbeat·pause API와 테스트만 유지).
+- `/api/play/children/{code}/profile`은 `heroName`만 준다(레벨·xp·배지·카드·지도 진행 삭제).

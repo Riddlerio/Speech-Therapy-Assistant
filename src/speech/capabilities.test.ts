@@ -17,16 +17,14 @@ describe('실제 음성 기능 판별', () => {
 
   it('음성 인식이 없어도 지속 발성 게임은 실제 음성으로 할 수 있다', () => {
     const capabilities = detectCapabilities(browser())
-    expect(supportsRealMode('magic_beam', capabilities)).toBe(true)
-    expect(supportsRealMode('sky_climb', capabilities)).toBe(true)
-    expect(supportsRealMode('monster_adventure', capabilities)).toBe(false)
+    expect(supportsRealMode('daegu_crossing', capabilities)).toBe(true)
     expect(supportsRealMode('conversation_quest', capabilities)).toBe(false)
     expect(missingCapabilities('conversation_quest', capabilities)).toEqual(['ASR_AVAILABLE'])
   })
 
   it('마이크가 없으면 어떤 게임도 실제 음성으로 시작하지 않는다', () => {
     const capabilities = detectCapabilities({ AudioContext: fn, SpeechRecognition: fn })
-    for (const game of ['magic_beam', 'sky_climb', 'monster_adventure', 'conversation_quest'] as const) {
+    for (const game of ['daegu_crossing', 'conversation_quest'] as const) {
       expect(supportsRealMode(game, capabilities)).toBe(false)
     }
   })

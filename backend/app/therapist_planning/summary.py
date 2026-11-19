@@ -30,8 +30,7 @@ LEVEL_LABELS = {"phoneme": "음소", "syllable": "음절", "word": "단어", "sh
 POSITION_LABELS = {"initial": "어두", "medial": "어중", "final": "어말"}
 CUE_LABELS = {"none": "단서 없음", "visual_mouth": "입 모양 보기", "auditory_model": "소리 들려주기",
               "tactile_description": "촉각 설명"}
-ACTIVITY_LABELS = {"hoya_conversation": "두두와 대화", "magic_beam": "빛의 마법", "sky_climb": "하늘 오르기",
-                   "monster_adventure": "몬스터 모험", "conversation_quest": "두두와 소풍"}
+ACTIVITY_LABELS = {"hoya_conversation": "두두와 대화", "daegu_crossing": "대구대 건너기"}
 # 관찰 기록의 단서 종류(src/therapist/insights.ts CUE_NAMES와 같음).
 CUE_TYPE_LABELS = {"NONE": "단서 없음", "AUDITORY_MODEL": "소리 시범", "PICTURE": "그림 단서", "PICTURE_PROMPT": "그림 단서",
                    "VISUAL": "시각 단서", "AUDITORY": "청각 단서", "MODEL": "모델 제시", "COMBINED": "복합 단서",

@@ -7,7 +7,6 @@ from typing import Any, TypedDict
 
 from langgraph.graph import END, START, StateGraph
 
-from ..clinical.activity_recommendation import propose_activity
 from ..models import TrainingGoal
 from .evidence import calculate_metrics, filter_verified, latest_decisions, load_observations, recent_real_sessions
 from .proposal import propose_plan
@@ -30,12 +29,11 @@ class PlanningDeps:
 
 
 class PlanningState(TypedDict, total=False):
-    """그래프 단계 사이에 전달되는 상태(목표, 확인된 근거, 검토 건수, 지표, 활동 힌트, 제안, 요약과 그 출처, 거절 사유)."""
+    """그래프 단계 사이에 전달되는 상태(목표, 확인된 근거, 검토 건수, 지표, 제안, 요약과 그 출처, 거절 사유)."""
     goal: dict
     verified: list[dict]
     review: dict
     metrics: dict
-    activity_hint: str | None
     proposal: dict
     summary: dict
     summary_source: str
@@ -85,14 +83,8 @@ def calculate(state: PlanningState, config) -> PlanningState:
 
 
 def generate_plan_proposal(state: PlanningState, config) -> PlanningState:
-    """4단계: 근거가 충분하면 기존 활동 추천을 힌트로 받아(화면에 보인 근거 범위 안일 때만) 다음 회기 계획 초안을 만든다."""
-    deps = _deps(config)
-    hint = propose_activity(deps.db, deps.child_id) if state["metrics"]["sufficient"] else None
-    # 활동 제안은 화면에 보인 근거 범위(최근 실제 회기 5개) 안의 관찰에만 기댈 때만 쓴다.
-    window = {row["observationId"] for row in state["verified"]}
-    in_window = hint and all(item["observationId"] in window for item in hint["evidence"])
-    activity = hint["activity"] if in_window else None
-    return {"activity_hint": activity, "proposal": propose_plan(state["goal"], state["metrics"], activity)}
+    """4단계: 목표와 확인된 지표로 다음 회기 계획 초안을 만든다(proposal.propose_plan)."""
+    return {"proposal": propose_plan(state["goal"], state["metrics"])}
 
 
 def generate_summary(state: PlanningState, config) -> PlanningState:

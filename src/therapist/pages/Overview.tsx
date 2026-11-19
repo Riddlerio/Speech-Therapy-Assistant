@@ -7,12 +7,12 @@ import { sessionSourceText, sessionStatusText } from '../clinicalLabels'
 import { LEVEL_LABELS } from '../planning'
 import { formatDateTime } from '../formatTime'
 
-export interface CaseloadChild { id: string; hero_name: string; child_code: string; age_band: string; currentGoal?: { target_phoneme: string; level: string } | null; pendingRecommendations: number }
+export interface CaseloadChild { id: string; hero_name: string; child_code: string; age_band: string; currentGoal?: { target_phoneme: string; level: string } | null }
 
 /** 치료사 홈: 누구를 볼지 고른다. 아동을 누르면 4영역 작업 공간으로 간다. */
 export function CaseloadList({ children }: { children: CaseloadChild[] }) {
   if (!children.length) return <p>담당 아동이 없습니다. 아래에서 등록하세요.</p>
-  return <section className="grid" aria-label={`담당 아동 ${children.length}명`}>{children.map(child => <Link className="card" key={child.id} to={`/therapist/children/${child.id}`}><h2>{child.hero_name} · {child.child_code}</h2><p>{child.age_band}세 · 목표 /{child.currentGoal?.target_phoneme}/ · {LEVEL_LABELS[child.currentGoal?.level || ''] || child.currentGoal?.level}</p>{child.pendingRecommendations > 0 && <p>대기 중인 추천 {child.pendingRecommendations}건</p>}</Link>)}</section>
+  return <section className="grid" aria-label={`담당 아동 ${children.length}명`}>{children.map(child => <Link className="card" key={child.id} to={`/therapist/children/${child.id}`}><h2>{child.hero_name} · {child.child_code}</h2><p>{child.age_band}세 · 목표 /{child.currentGoal?.target_phoneme}/ · {LEVEL_LABELS[child.currentGoal?.level || ''] || child.currentGoal?.level}</p></Link>)}</section>
 }
 
 export default function Overview() {

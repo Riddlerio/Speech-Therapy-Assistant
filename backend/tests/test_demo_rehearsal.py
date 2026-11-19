@@ -19,9 +19,7 @@ from app.models import (Account, ActivityLease, ActivityRecommendation, AuditEve
 from app.security import verify_password
 from app.seed import seed
 from app.therapist_planning.proposal import propose_plan
-from app.clinical.activity_recommendation import propose_activity
-from test_api_flow import api, auth
-from test_therapist_planning import add_child, add_session
+from test_api_flow import api
 
 UTC = timezone.utc
 TODAY = datetime(2026, 10, 5, 0, 30, tzinfo=UTC)
@@ -280,28 +278,23 @@ def test_cli_requires_demo_mode_new_file_and_provision_marker(tmp_path, monkeypa
     assert not any(result["deleted"].values())
 
 
-def test_hidden_magic_beam_is_not_a_new_activity_recommendation(api):
-    client, sessions = api
-    child = add_child(client, auth(client), "추천 검사")
-    sid = add_session(sessions, child, ["success", "retry"], level="SOUND")
-    with sessions() as db:
-        for row in db.scalars(select(ClinicalObservation).where(ClinicalObservation.session_id == sid)).all():
-            row.evidence = {"acoustic": {"bestRunMs": 1000}}
-        db.commit()
-        assert propose_activity(db, child)["activity"] == "sky_climb"
-
-
-@pytest.mark.parametrize("hint", [None, "magic_beam"])
-def test_phoneme_fallback_does_not_propose_hidden_game(hint):
-    goal = {"level": "syllable", "minLevel": "phoneme", "targetPhoneme": "ㅅ", "wordPosition": "initial",
+@pytest.mark.parametrize("phoneme,position,level,min_level,success_rate,game", [
+    ("ㅅ", "initial", "syllable", "phoneme", 20, False),  # 음소 단계로 낮춰 시작하면 건너기를 쓸 수 없다.
+    ("ㅅ", "initial", "word", "syllable", 20, True),
+    ("ㅅ", "initial", "short_sentence", "syllable", 60, False),
+    ("ㄹ", "initial", "word", "syllable", 60, False),
+    ("ㅅ", "medial", "word", "syllable", 60, False),
+])
+def test_proposal_only_uses_crossing_when_it_can_run(phoneme, position, level, min_level, success_rate, game):
+    goal = {"level": level, "minLevel": min_level, "targetPhoneme": phoneme, "wordPosition": position,
             "sessionDurationMin": 10, "repetitionTarget": 20, "preferredCue": "auditory_model",
             "priorityTargets": [], "excludedWords": []}
     metrics = {"sufficient": True, "evaluableN": 5, "verifiedN": 5, "uncertainN": 0, "noSpeechN": 0,
-               "pendingReviewN": 0, "byLevel": [{"level": "syllable", "evaluableN": 5, "successRate": 20}]}
-    proposal = propose_plan(goal, metrics, hint)
-    assert proposal["form"]["startLevel"] == "phoneme"
-    assert proposal["form"]["steps"][1]["activity"] == "sky_climb"
-
+               "pendingReviewN": 0, "byLevel": [{"level": level, "evaluableN": 5, "successRate": success_rate}]}
+    proposal = propose_plan(goal, metrics)
+    activities = [step["activity"] for step in proposal["form"]["steps"]]
+    assert activities == (["hoya_conversation", "daegu_crossing", "hoya_conversation"] if game else ["hoya_conversation"])
+    assert proposal["activityHint"] is None
 
 
 @pytest.mark.parametrize("damage", ["clinical_state", "other_therapist"])

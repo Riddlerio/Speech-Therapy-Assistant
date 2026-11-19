@@ -11,7 +11,6 @@ export const goalTrends = (id: string, token: string) => api<GoalTrends>(`/child
 export const sessionInsights = (id: string) => api<SessionInsights>(`/sessions/${id}/insights`)
 export const sessionDetail = (id: string, token: string) => api<any>(`/sessions/${id}`, {}, token)
 export const saveGoal = (id: string, goal: Record<string, unknown>, token: string) => api<any>(`/children/${id}/goals`, { method: 'POST', body: JSON.stringify(goal) }, token)
-export const decision = (id: string, body: Record<string, unknown>, token: string) => api<any>(`/recommendations/${id}/decision`, { method: 'POST', body: JSON.stringify(body) }, token)
 export const feedback = (id: string, body: Record<string, unknown>, token: string) => api<any>(`/utterances/${id}/feedback`, { method: 'POST', body: JSON.stringify(body) }, token)
 
 // 회기 계획(documents/02_architecture/therapist-workflow.md 6절). 경로 이름은 계약에 고정되어 있다.

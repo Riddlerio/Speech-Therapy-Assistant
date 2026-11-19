@@ -33,7 +33,8 @@ Phase 0 감사에서 찾은, 코드에 고정된 행동·임상·제품 기준�
 | ASR 종료 timeout 3000ms, 대체 후보 5개 | `src/speech/webSpeechRecognizer.ts` | 인식 | TECHNICAL_LIMIT |
 | '네 차례' 차임 뒤 듣기: 차임 끝 290ms + 조용히 160ms = 450ms, 기기 출력 지연(`outputLatency`)만큼 더, 최대 1000ms | `src/child/demoFx.tsx`의 `TURN_CUE_MS`·`turnCueWait` | 차임이 마이크에 들어가 아이 말로 잡히지 않게 듣기를 늦춤(2026-10-05 Phase 4) | TECHNICAL_LIMIT(헤드리스 시간 측정. 실제 스피커·방 울림은 리허설에서 확인) |
 | 귀 쫑긋 380ms, 머리 세로 +15%(절차형 모델은 귀 +32%) | `src/tiger/duduPerk.ts` | '네 차례' 연출(임상 무관) | PRODUCT_HEURISTIC |
-| 게임 4종 반응 시간(`onsetLatencyMs`)은 듣기가 열린 때('네 차례!')부터 | `src/child/ActivitySession.tsx` | 측정 요약(판정·지표에 쓰지 않음) | PRODUCT_HEURISTIC |
+
+2026-11-19 삭제(동결 계약 §15): 게임 4종 반응 시간(`src/child/ActivitySession.tsx`) 행.
 
 ## 2. 음질·음향(백엔드, 일부는 TS에 중복)
 
@@ -47,37 +48,27 @@ Phase 0 감사에서 찾은, 코드에 고정된 행동·임상·제품 기준�
 
 | 값 | 위치 | 용도 | 출처 |
 |---|---|---|---|
-| 빔 목표 기본 1500ms | `speech/pipeline.py` | 빔 목표 | UNKNOWN |
-| 키보드 입력: run ≥ 0.8 × 목표 | `speech/pipeline.py`의 `analyze` | DEMO 통과 | UNKNOWN |
-| run ≥ 0.8 × 목표이고 frication ≥ 0.6 × active | `speech/pipeline.py`, `games/evaluation.py`(중복) | 마찰음 통과 | UNKNOWN |
 | 유사 음소 비용 0.5, 목표 음소 가중치 ×3 | `speech/pipeline.py` | 점수 | UNKNOWN |
 | 합격 점수: accuracy 85, balanced 75, speed 70 | `speech/pipeline.py` | 단어 성공 | UNKNOWN(치료사가 `pass_threshold`로 덮어쓸 수 있음) |
+
+2026-11-19 삭제(동결 계약 §15): 빔 목표·키보드 run·빔 마찰음 통과 행. 남은 두 행의 `speech/pipeline.py`의 `analyze`는 지금 어느 판정에서도 부르지 않는다.
 
 ## 4. 5라운드 엔진(V2)
 
 | 값 | 위치 | 용도 | 출처 |
 |---|---|---|---|
-| CONTINUITY: 끊김 ≤ 1 | `games/evaluation.py`의 `evaluate_round` | 라운드 통과 | UNKNOWN |
-| PULSES: 목표(500ms) 이상 구간 ≥ 3개 | `games/evaluation.py`, `games/rounds.py` | 라운드 통과 | UNKNOWN |
-| TRANSITION: onset ≥ 400ms이고 voicedAfter ≥ 200ms | `games/evaluation.py`, `games/rounds.py` | 라운드 통과 | UNKNOWN |
-| ENERGY_BAND 0.35–0.75 | `games/evaluation.py` | 라운드 통과 | UNKNOWN |
-| RE_ONSET: 쉼 300–2200ms, 구간 ≥ 2개 | `games/rounds.py`, `games/evaluation.py` | 쉼 후 재개 | 상한은 TECHNICAL_LIMIT(종료 유예보다 짧아야 함), 하한은 UNKNOWN |
-| 종료 유예: RE_ONSET 2500ms, 기본 700ms, PULSES 1200ms | `games/rounds.py`(TS `vad.ts`와 `public_round`에 손으로 옮긴 사본 있음) | 발화 끝 판정 | TECHNICAL_LIMIT |
-| 라운드 목표: 빔 1000/1500/2000/500/400, 하늘 1000/1500/1500/1000/2500 | `games/rounds.py`의 `GAME_ROUNDS` | 라운드 목표 | UNKNOWN |
-| 라운드별 시도 횟수: 3/3/3/3/3, 3/4/3/5/6, 3/3/3/3/2, 2×5 | `games/rounds.py` | 시도 수 | UNKNOWN |
 | 제한 시간 60초(대화 90초) | `games/rounds.py` | 라운드 timeout | UNKNOWN |
-| 난이도 배율 1 + 0.15×(d−2), 800–3500ms 범위, d는 1–5, 시작값 2 | `games/rounds.py`의 `effective_round`, `main.py`의 `start_activity` | 난이도 조정 | UNKNOWN |
-| 성공 비율 ≥ 2/3이고 올림 < 2회면 올림. 성공 비율 ≤ 1/3이 2회면 한 번만 내림 | `games/rounds.py`의 `next_difficulty` | 난이도 규칙 | UNKNOWN |
-| 다시 듣기 ≥ 2회면 중립 건너뛰기 | `main.py`의 `activity_utterance` | 불확실 처리 | UNKNOWN |
 | 대구대 건너기 ONSET_FRICATION: 시작 마찰 ≥ 60ms(2026-10-06 70→60)이고 마찰 뒤 유성 ≥ 80ms. 시작 마찰을 잴 때 앞부분 60ms(2026-10-06 40→60)·도중 20ms 꺼짐을 봐준다. 잡음보다 15dB 미만이면 불확실(공용 음질 기준 8dB보다 엄격) | `games/evaluation.py`의 `ONSET_FRICATION_MS`·`VOICED_AFTER_FRICATION_MS`·`ONSET_MIN_SNR_DB`. 화면 사본 `src/game/crossing/crossingFlow.ts`의 `ONSET_RULE` | 줄 통과(음향 근사) | PRODUCT_HEURISTIC. 2026-10-05 성인 1명 PC 마이크 실측 2회(정답 확인 포함): 바른 '사' 60~99ms, '차·자' 39~59ms. 2026-10-06 아이폰에서 바르게 말한 '사과'가 자주 '다시'가 되어 한 칸 내림(사용자 요청). 3프레임 '차·자'가 가끔 통과할 수 있음. 임상 검증 아님([MIC_MEASUREMENT](../05_demo/MIC_MEASUREMENT_2026-10-05.md)) |
 | 대구대 건너기 진행: 5라운드 × 2줄, 줄당 최대 3번 시도, 불확실·무발화는 시도를 쓰지 않고 같은 줄에서 연속 3번이면 중립 이동 | `games/crossing.py` | 진행 | PRODUCT_HEURISTIC(사용자 결정 2026-10-05) |
 | 건너기 화면 발화 감지: 시작 여유 9dB, 바닥 -56dB, 앞부분 되살리기 최대 400ms, 시작 마찰 앞 40ms·도중 20ms 봐주기 | `src/game/crossing/onsetPipeline.ts` | 조용한 /ㅅ/ 감지 | PRODUCT_HEURISTIC(실측: 조용한 '스'를 놓침, 숨소리 한 프레임에 시작 마찰 0) |
 | 건너기 속도: 말풍선 접근 5000ms·말하기 창 4000ms에서 시작, 최소 2500/2500. 최근 8번 중 7번 성공이면 0.5초씩(한 번에 하나), 2번 연속 어려우면 느리게 | `src/game/crossing/crossingFlow.ts`의 `nextPace` | 속도 조절 | UNKNOWN |
 | '딱 맞았어!' 창: 카드가 동그라미에 든 뒤 1.5초 안에 말 시작 | `src/child/DaeguCrossing.tsx`의 `ON_TIME_MS` | 화면 연출(임상 자료 아님) | PRODUCT_HEURISTIC |
 
+2026-11-19 삭제(동결 계약 §15): CONTINUITY·PULSES·TRANSITION·ENERGY_BAND·RE_ONSET 규칙, 종료 유예(RE_ONSET·PULSES), 빔·하늘 라운드 목표와 게임별 시도 횟수, 난이도 배율·조정(`effective_round`·`next_difficulty`), 다시 듣기 건너뛰기(`main.py`) 행. 건너기의 중립 이동은 위 대구대 건너기 진행 행을 따른다.
+
 ## 5. legacy 훈련 정책(기존 모험)
 
-2026-10-04 기존 모험과 함께 `training/policy.py`·`plan_generator.py`를 삭제했다. 아래 값은 과거 회기 해석을 위한 기록이다. 배지 규칙(마지막 줄)만 완료 처리에서 계속 쓴다.
+2026-10-04 기존 모험과 함께 `training/policy.py`·`plan_generator.py`를 삭제했다. 아래 값은 과거 회기 해석을 위한 기록이다.
 
 | 값 | 위치 | 용도 | 출처 |
 |---|---|---|---|
@@ -88,7 +79,8 @@ Phase 0 감사에서 찾은, 코드에 고정된 행동·임상·제품 기준�
 | XP 10(첫 시도 +5), 노력 2 | `training/policy.py` | 보상 | PRODUCT_HEURISTIC(암묵적) |
 | 시도 ≥ repetition_target이거나 시간 도달이면 종료 | `training/policy.py` | 세션 종료 | UNKNOWN |
 | 이전 levelDownCount ≥ 2면 warm-up. 음절 3개와 항목 5개, 빔 3개. 시간 > 5분이면 3단계 | `training/plan_generator.py` | 실행 계획 | UNKNOWN |
-| 배지: 빔 ≥ 3, 노력 ≥ 5. 레벨 = xp // 100 | `training/rewards.py`, `main.py` | 보상 | PRODUCT_HEURISTIC(암묵적) |
+
+2026-11-19 삭제(동결 계약 §15): 배지·레벨 행(`training/rewards.py`).
 
 ## 6. 목표 기본값
 
@@ -101,11 +93,9 @@ Phase 0 감사에서 찾은, 코드에 고정된 행동·임상·제품 기준�
 
 | 값 | 위치 | 용도 | 출처 |
 |---|---|---|---|
-| R1: 재시도 > 0.4이거나 단계 내림 있음. R2: 이번 회기 첫 시도 ≥ 80이고, 최근 완료 세션 3개 중 같은 단계 세션에서도 1회 이상 ≥ 80. R3: 시도 ≥ 3이고 평균 < 60. R4: 힌트/항목 > 0.3. R5: fallback. 최대 2개 | `analysis/recommendation.py`의 `recommend` | legacy 추천 | UNKNOWN |
-| confidence: 최근 완료 세션 3개를 조회한 뒤 같은 단계이면서 activity가 아닌 세션만 남김. R1은 1 + (그중 재시도율 > 0.4인 세션 수), 나머지 규칙은 1 + (남은 세션 수). 합이 ≥ 3이면 high, ≥ 2면 medium, 그 외 low | `analysis/recommendation.py`의 `recommend` | legacy 신뢰도 | UNKNOWN |
-| insight 차이 ≥ 15%p | `analysis/insights.py` | insight 문장 | UNKNOWN |
-| 최근 10건. SOUND ≥ 2건이고 평균 bestRun < 1500이면 빔. 단어 ≥ 2건이고 성공 ≤ 50%면 몬스터. 검증 ≥ 5건이면 MEDIUM | `clinical/activity_recommendation.py`의 `propose_activity` | 활동 제안 | UNKNOWN |
 | 관찰 confidence: 결과가 uncertain/no_speech면 UNCERTAIN. DEMO나 target_observed면 LOW. 음질 GOOD이면 MEDIUM, 그 외 LOW | `clinical/observation_builder.py`의 `build_observation` | 관찰 신뢰도 | UNKNOWN |
+
+2026-11-19 삭제(동결 계약 §15): legacy 추천·신뢰도(`analysis/recommendation.py`), insight(`analysis/insights.py`), 활동 제안(`clinical/activity_recommendation.py`) 행.
 
 ## 8. 치료사 회기 계획
 
@@ -174,5 +164,5 @@ Phase 0 감사에서 찾은, 코드에 고정된 행동·임상·제품 기준�
 ## 10. 변경할 때의 규칙
 
 - 값을 바꾸면 이 표를 함께 고친다. 출처를 RESEARCH_SUPPORTED로 올리려면 근거 문서의 해당 절을 인용해야 한다.
-- Python과 TS 사본(음질, 종료 유예, 빔 규칙)은 한쪽만 바꾸지 않는다.
+- Python과 TS 사본(음질, 건너기 시작 마찰)은 한쪽만 바꾸지 않는다.
 - 임상에 영향을 주는 값(`CLINICAL_SENSITIVE`)을 바꾸려면 사용자 승인이 필요하다.

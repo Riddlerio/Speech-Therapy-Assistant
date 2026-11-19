@@ -5,13 +5,13 @@ from sqlalchemy import func, select, text
 
 from app.serializers import clinical_eligible
 from app.models import (AIRecommendation, ActivityRecommendation, AuditEvent, Child, ClinicalObservation, ClinicalVerification,
-                        SpeechAnalysis, TrainingSession, Utterance)
-from test_api_flow import api, auth, real_child_auth, student_auth
+                        RoundMaterialReward, SpeechAnalysis, TrainingSession, Utterance)
+from test_api_flow import api, auth, finish_crossing, real_child_auth, student_auth
 
 
 GOOD = {"durationMs": 1300, "activeMs": 1200, "voicedMs": 1200, "noiseFloorDb": -60, "meanRmsDb": -35}
-SUCCESS = {**GOOD, "bestRunMs": 1200, "fricationMs": 1200}
-RETRY = {**GOOD, "bestRunMs": 300, "fricationMs": 1200}
+SUCCESS = {**GOOD, "onsetFricationMs": 90, "voicedAfterFricationMs": 300}
+RETRY = {**GOOD, "onsetFricationMs": 30, "voicedAfterFricationMs": 300}
 UNCERTAIN = {"durationMs": 1200, "activeMs": 1000, "noiseFloorDb": -60, "meanRmsDb": -55}
 
 
@@ -40,7 +40,7 @@ def _round1(client, therapist, session_id):
 def test_confirmed_uncertain_is_not_counted_as_failure(api):
     client, _ = api
     student, created = real_child_auth(client)
-    started = client.post("/api/activities", headers=student, json={"game": "magic_beam", "mode": "real"}).json()
+    started = client.post("/api/activities", headers=student, json={"game": "daegu_crossing", "mode": "real"}).json()
     _post(client, student, started["sessionId"], started["firstItem"]["itemId"], 1, UNCERTAIN)
     therapist, observations = _decide_all(client, started["sessionId"], {"action": "confirm"})
     assert [row["ai_result"] for row in observations] == ["uncertain"]
@@ -53,7 +53,7 @@ def test_confirmed_uncertain_is_not_counted_as_failure(api):
 def test_correction_to_uncertain_or_no_speech_is_excluded_from_rate(api):
     client, _ = api
     student, created = real_child_auth(client)
-    started = client.post("/api/activities", headers=student, json={"game": "magic_beam", "mode": "real"}).json()
+    started = client.post("/api/activities", headers=student, json={"game": "daegu_crossing", "mode": "real"}).json()
     _post(client, student, started["sessionId"], started["firstItem"]["itemId"], 1, RETRY)
     _post(client, student, started["sessionId"], started["firstItem"]["itemId"], 2, RETRY)
     results = iter(["uncertain", "no_speech"])
@@ -69,12 +69,12 @@ def test_correction_to_uncertain_or_no_speech_is_excluded_from_rate(api):
 def test_rate_uses_only_success_and_retry_as_denominator(api):
     client, _ = api
     student, created = real_child_auth(client)
-    started = client.post("/api/activities", headers=student, json={"game": "magic_beam", "mode": "real"}).json()
+    started = client.post("/api/activities", headers=student, json={"game": "daegu_crossing", "mode": "real"}).json()
     session_id, item_id = started["sessionId"], started["firstItem"]["itemId"]
-    _post(client, student, session_id, item_id, 1, UNCERTAIN)  # 다시 듣기: 시도 번호 유지
-    _post(client, student, session_id, item_id, 1, RETRY)
-    result = _post(client, student, session_id, item_id, 2, SUCCESS)
-    assert any(event["type"] == "ROUND_CLEAR" for event in result["events"])
+    _post(client, student, session_id, item_id, 1, UNCERTAIN)  # 다시 듣기: 전송 순번만 늘고 기회는 쓰지 않는다.
+    _post(client, student, session_id, item_id, 2, RETRY)
+    result = _post(client, student, session_id, item_id, 3, SUCCESS)
+    assert any(event["type"] == "ITEM_ADVANCE" for event in result["events"])
     therapist, observations = _decide_all(client, session_id, {"action": "confirm"})
     assert sorted(row["ai_result"] for row in observations) == ["retry", "success", "uncertain"]
     row = _round1(client, therapist, session_id)
@@ -84,34 +84,25 @@ def test_rate_uses_only_success_and_retry_as_denominator(api):
     assert row["verifiedRate"] == 50.0
 
 
-def test_confirmed_conversation_target_observation_is_not_zero_percent(api):
-    client, _ = api
-    student, created = real_child_auth(client)
-    started = client.post("/api/activities", headers=student,
-                          json={"game": "conversation_quest", "mode": "real"}).json()
-    _post(client, student, started["sessionId"], started["firstItem"]["itemId"], 1, SUCCESS, transcript="사과")
-    therapist, observations = _decide_all(client, started["sessionId"], {"action": "confirm"})
-    assert [row["ai_result"] for row in observations] == ["target_observed"]
-    row = _round1(client, therapist, started["sessionId"])
-    assert row["verifiedObservedN"] == 1
-    assert row["verifiedEvaluatedN"] == 0
-    assert row["verifiedRate"] is None
-
-
 def test_speech_data_deletion_removes_derived_clinical_records(api):
     client, sessions = api
     student, created = real_child_auth(client)
-    started = client.post("/api/activities", headers=student, json={"game": "magic_beam", "mode": "real"}).json()
+    started = client.post("/api/activities", headers=student, json={"game": "daegu_crossing", "mode": "real"}).json()
     _post(client, student, started["sessionId"], started["firstItem"]["itemId"], 1, SUCCESS)
     therapist, observations = _decide_all(client, started["sessionId"], {"action": "confirm"})
     with sessions() as db:
         child_id = created["id"]
-        other_id = db.query(Child).filter(Child.child_code == "C-0002").one().id
+        other_id = db.query(Child).filter(Child.child_code == "C-0001").one().id
         other_before = db.scalar(select(func.count()).select_from(ClinicalObservation)
                                  .where(ClinicalObservation.child_id == other_id))
     assert other_before > 0
-    proposed = client.post(f"/api/children/{child_id}/activity-recommendations", headers=therapist).json()
-    assert proposed["status"] == "PENDING"
+    # 옛 DB에 남은 활동 제안·목표 추천·재료 지급 행도 함께 지워져 외래키를 막지 않는다.
+    _past_recommendation(sessions, child_id, started["sessionId"])
+    with sessions() as db:
+        db.add(ActivityRecommendation(child_id=child_id, activity="sky_climb", clinical_purpose="과거 행", reason="과거 행",
+                                      confidence="LOW", evidence=[{"sessionId": started["sessionId"]}]))
+        db.add(RoundMaterialReward(child_id=child_id, session_id=started["sessionId"], round_index=2, material="rice"))
+        db.commit()
 
     response = client.delete(f"/api/children/{child_id}/speech-data", headers=therapist)
     assert response.status_code == 204
@@ -121,6 +112,8 @@ def test_speech_data_deletion_removes_derived_clinical_records(api):
         assert not db.scalars(select(ClinicalVerification).where(
             ClinicalVerification.observation_id.in_([row["id"] for row in observations]))).all()
         assert not db.scalars(select(ActivityRecommendation).where(ActivityRecommendation.child_id == child_id)).all()
+        assert not db.scalars(select(AIRecommendation).where(AIRecommendation.child_id == child_id)).all()
+        assert not db.scalars(select(RoundMaterialReward).where(RoundMaterialReward.child_id == child_id)).all()
         assert not db.scalars(select(TrainingSession).where(TrainingSession.child_id == child_id)).all()
         assert db.scalar(select(func.count()).select_from(Utterance)
                          .where(Utterance.session_id == started["sessionId"])) == 0
@@ -165,7 +158,7 @@ def _session(sessions, session_id):
         return db.get(TrainingSession, session_id)
 
 
-def _start(client, headers, mode, game="magic_beam"):
+def _start(client, headers, mode, game="daegu_crossing"):
     response = client.post("/api/activities", headers=headers, json={"game": game, "mode": mode})
     assert response.status_code == 200, response.text
     return response.json()
@@ -214,7 +207,8 @@ def test_seed_real_session_is_not_planning_or_activity_evidence(api):
     context = client.get(f"/api/children/{child_id}/planning-context", headers=therapist).json()
     assert context["metrics"]["verifiedN"] == 0 and context["metrics"]["window"]["realSessionN"] == 0
     assert context["evidenceAvailability"]["demoExcludedN"] >= 1
-    assert client.post(f"/api/children/{child_id}/activity-recommendations", headers=therapist).json()["status"] == "INSUFFICIENT_DATA"
+    proposal = client.post(f"/api/children/{child_id}/session-plan-proposal", headers=therapist).json()
+    assert proposal["proposal"]["status"] == "INSUFFICIENT_DATA"
     assert _round1(client, therapist, started["sessionId"])["verifiedN"] == 0
 
 
@@ -228,10 +222,11 @@ def test_real_child_real_session_is_still_clinical_evidence(api):
     assert context["metrics"]["verifiedN"] == 1 and context["metrics"]["window"]["realSessionN"] == 1
 
 
-# ---- legacy 추천(D안): 기존 모험은 2026-10-04 제거됐다. 과거 추천 행의 표시·결정 규칙은 그대로 지킨다 ----
+# ---- legacy 추천: 추천 기능은 제거됐다. 건너기 회기는 추천 행을 만들지 않는다 ----
 
 def _completed(client, headers, mode):
     started = _start(client, headers, mode)
+    finish_crossing(client, headers, started["sessionId"], started)
     response = client.post(f"/api/play/sessions/{started['sessionId']}/complete", headers=headers, json={"elapsedSec": 30})
     assert response.status_code == 200, response.text
     return started["sessionId"]
@@ -258,23 +253,6 @@ def test_five_round_activity_never_creates_legacy_recommendation(api, mode):
     client, sessions = api
     headers, _child = real_child_auth(client)
     assert _recommendations(sessions, _completed(client, headers, mode)) == []
-
-
-def test_legacy_recommendation_exposes_provenance_and_dashboard_skips_demo_practice(api):
-    client, sessions = api
-    headers, child = real_child_auth(client)
-    demo = _completed(client, headers, "demo")
-    real = _completed(client, headers, "real")
-    _past_recommendation(sessions, child["id"], demo)
-    _past_recommendation(sessions, child["id"], real)
-    therapist = auth(client)
-    rows = client.get(f"/api/children/{child['id']}/recommendations", headers=therapist).json()
-    by_session = {row["session_id"]: row for row in rows}
-    assert by_session[demo]["provenance"] == {"sessionMode": "demo", "sessionIsSeed": False, "clinicalEligible": False, "demoPractice": True}
-    assert by_session[real]["provenance"]["clinicalEligible"] is True
-    overview = client.get("/api/dashboard/overview", headers=therapist).json()
-    card = next(row for row in overview["activeChildren"] if row["id"] == child["id"])
-    assert card["pendingRecommendations"] == sum(row["session_id"] == real and row["status"] == "pending" for row in rows)
 
 
 def test_provenance_audit_counts_legacy_rows_without_writing(api):
@@ -355,60 +333,3 @@ def test_seed_provenance_repair_previews_without_writing_then_fixes_only_seed_ch
     again = repair.main(["--database", str(database)])
     assert (again["trainingSessions"], again["chatSessions"], again["observationStates"]) == (0, 0, {})
     backup.unlink()
-
-
-def _metric_session(db, child_id, mode, is_seed, first_try, status="completed", days_ago=1):
-    from datetime import timedelta
-    from app.models import ProgressMetric, TrainingGoal, TrainingPlan, now
-    goal = db.scalar(select(TrainingGoal).where(TrainingGoal.child_id == child_id, TrainingGoal.status == "active"))
-    plan = TrainingPlan(goal_id=goal.id, child_id=child_id, plan_json={})
-    db.add(plan)
-    db.flush()
-    session = TrainingSession(child_id=child_id, goal_id=goal.id, plan_id=plan.id, mode=mode, is_seed=is_seed,
-                              play_token_hash="x" * 64, status=status, started_at=now() - timedelta(days=days_ago))
-    db.add(session)
-    db.flush()
-    metric = ProgressMetric(child_id=child_id, session_id=session.id, goal_id=goal.id, phoneme="ㅅ", position="initial",
-                            attempts=10, successes=9, first_try_success_rate=first_try, success_rate=90)
-    db.add(metric)
-    db.flush()
-    return session, goal, metric
-
-
-@pytest.mark.parametrize("previous_mode,expect_r2", [("demo", False), ("real", True)])
-def test_r2_compares_only_sessions_of_the_same_provenance(api, previous_mode, expect_r2):
-    from app.analysis.recommendation import recommend
-    client, sessions = api
-    _headers, child = real_child_auth(client)
-    with sessions() as db:
-        # 이전 회기(DEMO 또는 실제)와 이번 실제 회기 모두 첫 시도 성공률 90%. R2 기준값(80)은 바꾸지 않는다.
-        _metric_session(db, child["id"], previous_mode, False, 90.0, days_ago=2)
-        current, goal, metric = _metric_session(db, child["id"], "real", False, 90.0, status="active", days_ago=0)
-        rules = {rec.rule_id for rec in recommend(db, current, goal, metric)}
-    assert ("R2" in rules) is expect_r2
-
-
-def test_demo_practice_recommendation_can_only_be_rejected(api):
-    client, sessions = api
-    headers, child = real_child_auth(client)
-    demo = _completed(client, headers, "demo")
-    rec_id = _past_recommendation(sessions, child["id"], demo, {"level": "short_sentence"})
-    therapist = auth(client)
-    versions = lambda: [g["version"] for g in client.get(f"/api/children/{child['id']}/goals", headers=therapist).json()]
-    before = versions()
-    for body in ({"action": "accept"}, {"action": "modify", "modifiedGoal": {"level": "word"}}):
-        assert client.post(f"/api/recommendations/{rec_id}/decision", headers=therapist, json=body).status_code == 409
-    assert versions() == before
-    rejected = client.post(f"/api/recommendations/{rec_id}/decision", headers=therapist, json={"action": "reject", "note": "DEMO 연습"})
-    assert rejected.status_code == 200 and rejected.json()["newGoal"] is None and versions() == before
-
-
-def test_seed_showcase_recommendation_can_still_be_accepted(api):
-    client, sessions = api
-    with sessions() as db:
-        child = db.scalar(select(Child).where(Child.play_code == "HERO01"))
-        session = db.scalar(select(TrainingSession).where(TrainingSession.child_id == child.id, TrainingSession.is_seed.is_(True)))
-        child_id, session_id = child.id, session.id
-    rec_id = _past_recommendation(sessions, child_id, session_id, {"level": "syllable"})
-    response = client.post(f"/api/recommendations/{rec_id}/decision", headers=auth(client), json={"action": "accept"})
-    assert response.status_code == 200
