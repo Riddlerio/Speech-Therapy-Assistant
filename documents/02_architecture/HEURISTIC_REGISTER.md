@@ -22,25 +22,25 @@ Phase 0 감사에서 찾은, 코드에 고정된 행동·임상·제품 기준�
 
 | 값 | 위치 | 용도 | 출처 |
 |---|---|---|---|
-| 시작 여유 12dB, 종료 여유 6dB, 바닥 -50dB, 시작 유지 60ms, 종료 유예 700ms, 계속 100ms, 최대 8000ms | `src/speech/vad.ts`의 `DEFAULT_VAD` | VAD | TECHNICAL_LIMIT / UNKNOWN |
-| 초기 잡음 바닥 -60dB, 중앙값 보정 | `src/speech/vad.ts` | VAD | TECHNICAL_LIMIT |
-| 보정 1000ms | `src/speech/micUtterance.ts`의 `CALIBRATION_MS` | 잡음 기준 | TECHNICAL_LIMIT |
-| fftSize 2048, frame 20ms | `src/speech/audioCapture.ts` | 캡처 | TECHNICAL_LIMIT |
-| HF 대역 4000–8000Hz, 클리핑 \|s\| ≥ 0.99 | `src/speech/features.ts` | 특징 추출 | UNKNOWN |
-| HF 비율 0.35, centroid 3000Hz, 여유 6dB, 간격 120ms | `src/speech/thresholds.ts` | 마찰음·지속 판정 | UNKNOWN(주석에 "보정 전 기본값"이라고 적혀 있음) |
-| centroid < 2000Hz이면 유성음 | `src/speech/fricativeDetector.ts` | 전이 판정 | UNKNOWN |
-| 가청 +6dB, 에너지 평활 0.75/0.25, 30dB 척도, 구간 최대 30개 | `src/speech/sustainTracker.ts` | 지속·에너지 | UNKNOWN |
-| ASR 종료 timeout 3000ms, 대체 후보 5개 | `src/speech/webSpeechRecognizer.ts` | 인식 | TECHNICAL_LIMIT |
-| '네 차례' 차임 뒤 듣기: 차임 끝 290ms + 조용히 160ms = 450ms, 기기 출력 지연(`outputLatency`)만큼 더, 최대 1000ms | `src/child/demoFx.tsx`의 `TURN_CUE_MS`·`turnCueWait` | 차임이 마이크에 들어가 아이 말로 잡히지 않게 듣기를 늦춤(2026-10-05 Phase 4) | TECHNICAL_LIMIT(헤드리스 시간 측정. 실제 스피커·방 울림은 리허설에서 확인) |
-| 귀 쫑긋 380ms, 머리 세로 +15%(절차형 모델은 귀 +32%) | `src/tiger/duduPerk.ts` | '네 차례' 연출(임상 무관) | PRODUCT_HEURISTIC |
+| 시작 여유 12dB, 종료 여유 6dB, 바닥 -50dB, 시작 유지 60ms, 종료 유예 700ms, 계속 100ms, 최대 8000ms | `frontend/src/speech/vad.ts`의 `DEFAULT_VAD` | VAD | TECHNICAL_LIMIT / UNKNOWN |
+| 초기 잡음 바닥 -60dB, 중앙값 보정 | `frontend/src/speech/vad.ts` | VAD | TECHNICAL_LIMIT |
+| 보정 1000ms | `frontend/src/speech/micUtterance.ts`의 `CALIBRATION_MS` | 잡음 기준 | TECHNICAL_LIMIT |
+| fftSize 2048, frame 20ms | `frontend/src/speech/audioCapture.ts` | 캡처 | TECHNICAL_LIMIT |
+| HF 대역 4000–8000Hz, 클리핑 \|s\| ≥ 0.99 | `frontend/src/speech/features.ts` | 특징 추출 | UNKNOWN |
+| HF 비율 0.35, centroid 3000Hz, 여유 6dB, 간격 120ms | `frontend/src/speech/thresholds.ts` | 마찰음·지속 판정 | UNKNOWN(주석에 "보정 전 기본값"이라고 적혀 있음) |
+| centroid < 2000Hz이면 유성음 | `frontend/src/speech/fricativeDetector.ts` | 전이 판정 | UNKNOWN |
+| 가청 +6dB, 에너지 평활 0.75/0.25, 30dB 척도, 구간 최대 30개 | `frontend/src/speech/sustainTracker.ts` | 지속·에너지 | UNKNOWN |
+| ASR 종료 timeout 3000ms, 대체 후보 5개 | `frontend/src/speech/webSpeechRecognizer.ts` | 인식 | TECHNICAL_LIMIT |
+| '네 차례' 차임 뒤 듣기: 차임 끝 290ms + 조용히 160ms = 450ms, 기기 출력 지연(`outputLatency`)만큼 더, 최대 1000ms | `frontend/src/child/demoFx.tsx`의 `TURN_CUE_MS`·`turnCueWait` | 차임이 마이크에 들어가 아이 말로 잡히지 않게 듣기를 늦춤(2026-10-05 Phase 4) | TECHNICAL_LIMIT(헤드리스 시간 측정. 실제 스피커·방 울림은 리허설에서 확인) |
+| 귀 쫑긋 380ms, 머리 세로 +15%(절차형 모델은 귀 +32%) | `frontend/src/tiger/duduPerk.ts` | '네 차례' 연출(임상 무관) | PRODUCT_HEURISTIC |
 
-2026-11-19 삭제(동결 계약 §15): 게임 4종 반응 시간(`src/child/ActivitySession.tsx`) 행.
+2026-11-19 삭제(동결 계약 §15): 게임 4종 반응 시간(`frontend/src/child/ActivitySession.tsx`) 행.
 
 ## 2. 음질·음향(백엔드, 일부는 TS에 중복)
 
 | 값 | 위치 | 용도 | 출처 |
 |---|---|---|---|
-| 클리핑 ≥ 0.01, 길이 < 300 또는 > 8000ms, SNR < 8이면 POOR. 잡음 바닥 > -35이면 NOISY. SNR ≥ 15이면 GOOD | `backend/app/pronunciation/audio_quality.py`의 `assess_audio_quality`(TS 사본 `src/speech/audioQuality.ts`와 이미 어긋남) | 음질 게이트 | UNKNOWN |
+| 클리핑 ≥ 0.01, 길이 < 300 또는 > 8000ms, SNR < 8이면 POOR. 잡음 바닥 > -35이면 NOISY. SNR ≥ 15이면 GOOD | `backend/app/pronunciation/audio_quality.py`의 `assess_audio_quality`(TS 사본 `frontend/src/speech/audioQuality.ts`와 이미 어긋남) | 음질 게이트 | UNKNOWN |
 | bestRun ≤ duration + 200ms, frication ≤ active + 40ms | `pronunciation/acoustic.py`의 `AcousticSummary` 검증 | 입력 정합성 | TECHNICAL_LIMIT |
 | 0–60000ms, dB -160–20, SNR -100–180 | `pronunciation/acoustic.py` | schema 범위 | TECHNICAL_LIMIT |
 
@@ -58,11 +58,11 @@ Phase 0 감사에서 찾은, 코드에 고정된 행동·임상·제품 기준�
 | 값 | 위치 | 용도 | 출처 |
 |---|---|---|---|
 | 제한 시간 60초(대화 90초) | `games/rounds.py` | 라운드 timeout | UNKNOWN |
-| 대구대 건너기 ONSET_FRICATION: 시작 마찰 ≥ 60ms(2026-10-06 70→60)이고 마찰 뒤 유성 ≥ 80ms. 시작 마찰을 잴 때 앞부분 60ms(2026-10-06 40→60)·도중 20ms 꺼짐을 봐준다. 잡음보다 15dB 미만이면 불확실(공용 음질 기준 8dB보다 엄격) | `games/evaluation.py`의 `ONSET_FRICATION_MS`·`VOICED_AFTER_FRICATION_MS`·`ONSET_MIN_SNR_DB`. 화면 사본 `src/game/crossing/crossingFlow.ts`의 `ONSET_RULE` | 줄 통과(음향 근사) | PRODUCT_HEURISTIC. 2026-10-05 성인 1명 PC 마이크 실측 2회(정답 확인 포함): 바른 '사' 60~99ms, '차·자' 39~59ms. 2026-10-06 아이폰에서 바르게 말한 '사과'가 자주 '다시'가 되어 한 칸 내림(사용자 요청). 3프레임 '차·자'가 가끔 통과할 수 있음. 임상 검증 아님([MIC_MEASUREMENT](../05_demo/MIC_MEASUREMENT_2026-10-05.md)) |
+| 대구대 건너기 ONSET_FRICATION: 시작 마찰 ≥ 60ms(2026-10-06 70→60)이고 마찰 뒤 유성 ≥ 80ms. 시작 마찰을 잴 때 앞부분 60ms(2026-10-06 40→60)·도중 20ms 꺼짐을 봐준다. 잡음보다 15dB 미만이면 불확실(공용 음질 기준 8dB보다 엄격) | `games/evaluation.py`의 `ONSET_FRICATION_MS`·`VOICED_AFTER_FRICATION_MS`·`ONSET_MIN_SNR_DB`. 화면 사본 `frontend/src/game/crossing/crossingFlow.ts`의 `ONSET_RULE` | 줄 통과(음향 근사) | PRODUCT_HEURISTIC. 2026-10-05 성인 1명 PC 마이크 실측 2회(정답 확인 포함): 바른 '사' 60~99ms, '차·자' 39~59ms. 2026-10-06 아이폰에서 바르게 말한 '사과'가 자주 '다시'가 되어 한 칸 내림(사용자 요청). 3프레임 '차·자'가 가끔 통과할 수 있음. 임상 검증 아님([MIC_MEASUREMENT](../05_demo/MIC_MEASUREMENT_2026-10-05.md)) |
 | 대구대 건너기 진행: 5라운드 × 2줄, 줄당 최대 3번 시도, 불확실·무발화는 시도를 쓰지 않고 같은 줄에서 연속 3번이면 중립 이동 | `games/crossing.py` | 진행 | PRODUCT_HEURISTIC(사용자 결정 2026-10-05) |
-| 건너기 화면 발화 감지: 시작 여유 9dB, 바닥 -56dB, 앞부분 되살리기 최대 400ms, 시작 마찰 앞 40ms·도중 20ms 봐주기 | `src/game/crossing/onsetPipeline.ts` | 조용한 /ㅅ/ 감지 | PRODUCT_HEURISTIC(실측: 조용한 '스'를 놓침, 숨소리 한 프레임에 시작 마찰 0) |
-| 건너기 속도: 말풍선 접근 5000ms·말하기 창 4000ms에서 시작, 최소 2500/2500. 최근 8번 중 7번 성공이면 0.5초씩(한 번에 하나), 2번 연속 어려우면 느리게 | `src/game/crossing/crossingFlow.ts`의 `nextPace` | 속도 조절 | UNKNOWN |
-| '딱 맞았어!' 창: 카드가 동그라미에 든 뒤 1.5초 안에 말 시작 | `src/child/DaeguCrossing.tsx`의 `ON_TIME_MS` | 화면 연출(임상 자료 아님) | PRODUCT_HEURISTIC |
+| 건너기 화면 발화 감지: 시작 여유 9dB, 바닥 -56dB, 앞부분 되살리기 최대 400ms, 시작 마찰 앞 40ms·도중 20ms 봐주기 | `frontend/src/game/crossing/onsetPipeline.ts` | 조용한 /ㅅ/ 감지 | PRODUCT_HEURISTIC(실측: 조용한 '스'를 놓침, 숨소리 한 프레임에 시작 마찰 0) |
+| 건너기 속도: 말풍선 접근 5000ms·말하기 창 4000ms에서 시작, 최소 2500/2500. 최근 8번 중 7번 성공이면 0.5초씩(한 번에 하나), 2번 연속 어려우면 느리게 | `frontend/src/game/crossing/crossingFlow.ts`의 `nextPace` | 속도 조절 | UNKNOWN |
+| '딱 맞았어!' 창: 카드가 동그라미에 든 뒤 1.5초 안에 말 시작 | `frontend/src/child/DaeguCrossing.tsx`의 `ON_TIME_MS` | 화면 연출(임상 자료 아님) | PRODUCT_HEURISTIC |
 
 2026-11-19 삭제(동결 계약 §15): CONTINUITY·PULSES·TRANSITION·ENERGY_BAND·RE_ONSET 규칙, 종료 유예(RE_ONSET·PULSES), 빔·하늘 라운드 목표와 게임별 시도 횟수, 난이도 배율·조정(`effective_round`·`next_difficulty`), 다시 듣기 건너뛰기(`main.py`) 행. 건너기의 중립 이동은 위 대구대 건너기 진행 행을 따른다.
 
@@ -115,13 +115,13 @@ Phase 0 감사에서 찾은, 코드에 고정된 행동·임상·제품 기준�
 | 최대 30턴, 제공자 timeout 8초, stale 30초 | `config.py` | 대화 제한 | TECHNICAL_LIMIT / UNKNOWN |
 | 응답 120자, 질문 부호 ≤ 1개, 최근 5턴 context | `hoya/validator.py`, `hoya/prompt/*` | 응답 형식 | UNKNOWN |
 | 같은 UNCERTAIN이 반복되면 SIMPLIFY. TARGET_NOT_OBSERVED가 반복되면 단서 허용 | `hoya/policy.py` | 전략 | UNKNOWN |
-| "음..." 지연 750ms | `src/child/hoyaChatController.ts`의 `HOYA_THINKING_FILLER_DELAY_MS` | UX | UNKNOWN |
+| "음..." 지연 750ms | `frontend/src/child/hoyaChatController.ts`의 `HOYA_THINKING_FILLER_DELAY_MS` | UX | UNKNOWN |
 | 게임 전환: 목표 관찰(TARGET_OBSERVED) 턴 ≥ 10이고 서버 시간 ≥ 120초, 또는 ≥ 300초, 또는 무발화 연속 4턴(3턴째에 쉬운 질문 먼저). 관찰 횟수는 발음 정확도가 아니다 | `hoya/transitions.py` | 대화 → 대구대 건너기 안내 | PRODUCT_HEURISTIC(사용자 데모 흐름 승인 2026-10-05: 약 10번·약 5분) |
 | 시작 문구 "안녕~ 만나서 반가워! {별명}아/야. 나는 두두야. 오늘 뭐 하고 놀았어?"(받침에 따라 아/야), 전환 문구 "우리 게임 해 볼까? 아래 '대구대 건너기'를 눌러 볼래?" | `hoya/providers/demo_provider.py`의 `opening_text`, `hoya/transitions.py`의 `TRANSITION_TEXT` | 대본 | PRODUCT_HEURISTIC |
 | DEMO /ㅅ/ 대본(2026-10-06): 아이 말의 주제에 반응한 뒤 /ㅅ/ 낱말이 나오기 쉬운 질문을 한다. 순서는 주제 질문 → 같은 주제로 이어 가는 질문 → 어디에나 맞는 질문이고, 최근 3번 안에 한 질문과 아이가 방금 말한 낱말을 묻는 질문은 건너뛴다. 같은 주제 반응은 연달아 하지 않는다. 목표 관찰이면 알려진 낱말을 바르게 다시 들려준다("맞아, 사과!") | `hoya/providers/demo_provider.py`의 `TOPICS`·`S_FOLLOW_UPS`·`S_ANYWHERE`·`RECENT_QUESTIONS` | 자연스러운 /ㅅ/ 유도 | PRODUCT_HEURISTIC(사용자 지적: 대놓고 고르게 하는 질문은 부자연스럽다, 2026-10-05·아이폰 시험 2026-10-06) |
 | DEMO 돕기: 이번 말과 바로 앞 말에 목표 음소가 없을 때(서버 대화 근거와 같은 규칙) 4턴째부터 돕는다. 같은 낱말로 고르기 → 빈칸 → 먼저 들려주기(치료사 허용 시) 순서로 단서를 늘린다. 첫 3턴에는 서버가 ALLOWED_CUE를 줄 때 먼저 들려주기만 한 번 한다. 낱말은 지금 주제·바로 앞 질문과 이어지는 것을 먼저 고르고, '소리'는 문장이 어색해 돕는 낱말에서 뺀다. 무발화 3번(그림 고르기)·불확실 2번(고르기)은 정책(SIMPLIFY) 그대로라 첫 3턴에도 나올 수 있다 | `hoya/providers/demo_provider.py`의 `HELP_FROM_TURN`·`S_HINTS`·`HELP_SKIP` | 도움이 필요할 때만 단서 | PRODUCT_HEURISTIC |
-| 두두 음성 파일: 말의 모든 문장이 목록에 있을 때만 파일 재생(아니면 전부 브라우저 음성), 문장 사이 120ms | `src/speech/duduClips.ts`, `shared/dudu_voice_lines.json` | 목소리 일관성 | PRODUCT_HEURISTIC |
-| 입 모양 맞추기: 40ms 간격 소리 크기, 최대보다 30dB 아래는 닫힘, 0~9 단계 | `scripts/build-voice-envelopes.mjs`, `shared/dudu_voice_envelopes.json`, `src/tiger/duduFace.ts` | 말하는 입 연출(임상 무관) | PRODUCT_HEURISTIC |
+| 두두 음성 파일: 말의 모든 문장이 목록에 있을 때만 파일 재생(아니면 전부 브라우저 음성), 문장 사이 120ms | `frontend/src/speech/duduClips.ts`, `shared/dudu_voice_lines.json` | 목소리 일관성 | PRODUCT_HEURISTIC |
+| 입 모양 맞추기: 40ms 간격 소리 크기, 최대보다 30dB 아래는 닫힘, 0~9 단계 | `frontend/scripts/build-voice-envelopes.mjs`, `shared/dudu_voice_envelopes.json`, `frontend/src/tiger/duduFace.ts` | 말하는 입 연출(임상 무관) | PRODUCT_HEURISTIC |
 
 ## 9-1. 대구대 건너기 리듬 (2026-10-05)
 
@@ -129,15 +129,15 @@ Phase 0 감사에서 찾은, 코드에 고정된 행동·임상·제품 기준�
 
 | 값 | 위치 | 용도 | 출처 |
 |---|---|---|---|
-| 카드 1장 = 4박 한 마디. 1~3박에 '똑'(90ms), 4박에 카드 착지 | `src/game/crossing/rhythm.ts`의 `bar` | 말할 때 알리기 | PRODUCT_HEURISTIC |
-| 대상별 빠른 설정(치료사가 눌러 값만 채우고 저장은 따로): 기능적 조음음운장애 84·켬, 발달지연·지적장애 76·켬, 아동기 말실행증·말더듬·마비말장애 76·끔 | `shared/daegu_crossing_rationale.json`의 `presets`, `src/therapist/GameSettingsPanel.tsx` | 치료사 설정 도움 | PRODUCT_HEURISTIC(근거 문서 2절의 권장. 임상 검증 아님) |
+| 카드 1장 = 4박 한 마디. 1~3박에 '똑'(90ms), 4박에 카드 착지 | `frontend/src/game/crossing/rhythm.ts`의 `bar` | 말할 때 알리기 | PRODUCT_HEURISTIC |
+| 대상별 빠른 설정(치료사가 눌러 값만 채우고 저장은 따로): 기능적 조음음운장애 84·켬, 발달지연·지적장애 76·켬, 아동기 말실행증·말더듬·마비말장애 76·끔 | `shared/daegu_crossing_rationale.json`의 `presets`, `frontend/src/therapist/GameSettingsPanel.tsx` | 치료사 설정 도움 | PRODUCT_HEURISTIC(근거 문서 2절의 권장. 임상 검증 아님) |
 | 시작 84BPM. 치료사 설정 76~100(기본 84, 빨라지기 켬) | `rhythm.ts`의 `DEFAULT_RHYTHM`·`BPM`, `backend/app/game_settings/service.py` | 빠르기 | PRODUCT_HEURISTIC(느리게 시작하는 원리는 DTTC·ReST, 값 자체의 근거는 없음) |
 | 최근 8번 중 7번 성공이면 +4BPM(최대 100, 빨라지기 끄면 시작값), 연속 2번 성공이 아니면 −4BPM(최소 72). 바뀌면 기록을 비움 | `rhythm.ts`의 `nextBpm` | 빠르기 맞춤 | PRODUCT_HEURISTIC |
 | 마이크 열림 = 3박 '똑' + 여운 160ms + 출력 지연(최대 400ms). 착지보다 늦지 않음 | `rhythm.ts`의 `bar` | 박 소리가 마이크에 잡히지 않게 | TECHNICAL_LIMIT |
 | 듣기 창 = 착지 + 4박(말이 시작됐으면 최대 4초) | `rhythm.ts`의 `WINDOW_BEATS` | 대답 시간 | PRODUCT_HEURISTIC |
 | '딱 맞았어!' = 착지 앞 300ms~뒤 400ms. 화면에만 보이고 저장하지 않음 | `rhythm.ts`의 `PERFECT_EARLY_MS`·`PERFECT_LATE_MS` | 동기 | PRODUCT_HEURISTIC |
 | 두두 부르기: 음성 파일을 착지 − 모음 시작('사!'는 200ms) − 40ms에 재생 | `rhythm.ts`의 `beatLeadMs` | 시범을 박에 맞춤 | PRODUCT_HEURISTIC |
-| 한 회기에 최대 3판(같은 회기에서 이어 감). 판마다 하늘·빛이 아침 → 점심 → 저녁 | `backend/app/games/crossing.py`의 `MAX_LAPS`, `src/game/crossing/crossingFlow.ts`의 `MAX_LAPS`·`lapTime` | 연습량 늘리기(한 판 약 10~20번 시도), 반복해도 새로워 보이게 | PRODUCT_HEURISTIC(회기당 50~70번 이상 연습이 권장된다는 근거가 있으나 3판이라는 값 자체의 근거는 없음, 2026-10-07 사용자 결정) |
+| 한 회기에 최대 3판(같은 회기에서 이어 감). 판마다 하늘·빛이 아침 → 점심 → 저녁 | `backend/app/games/crossing.py`의 `MAX_LAPS`, `frontend/src/game/crossing/crossingFlow.ts`의 `MAX_LAPS`·`lapTime` | 연습량 늘리기(한 판 약 10~20번 시도), 반복해도 새로워 보이게 | PRODUCT_HEURISTIC(회기당 50~70번 이상 연습이 권장된다는 근거가 있으나 3판이라는 값 자체의 근거는 없음, 2026-10-07 사용자 결정) |
 
 ## 9-2. 대구대 건너기 확인 비율·숙달 표시 (2026-10-06)
 

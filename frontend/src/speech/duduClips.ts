@@ -4,8 +4,8 @@
  * 문장(마침표·느낌표·물음표 단위)이 모두 목록에 있으면 파일을 이어 재생하고, 하나라도 없으면 브라우저 음성으로 말한다.
  * 목록은 shared/dudu_voice_lines.json에 있고, 백엔드 테스트가 DEMO 대화 대본의 모든 문장이 목록에 있는지 확인한다.
  */
-import DUDU_VOICE_LINES from '../../shared/dudu_voice_lines.json'
-import DUDU_VOICE_ENVELOPES from '../../shared/dudu_voice_envelopes.json'
+import DUDU_VOICE_LINES from '../../../shared/dudu_voice_lines.json'
+import DUDU_VOICE_ENVELOPES from '../../../shared/dudu_voice_envelopes.json'
 
 export const VOICE_CREDIT = '이 콘텐츠는 VOLI의 AI보이스를 활용하여 제작되었습니다. https://voli.ai'
 export const DUDU_CLIP_BASE = '/assets/voice/dudu/'

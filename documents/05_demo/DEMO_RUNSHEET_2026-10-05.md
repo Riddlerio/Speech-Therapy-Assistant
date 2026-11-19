@@ -78,7 +78,7 @@
   ```powershell
   New-Item -ItemType Directory -Force C:\speechhero\cert | Out-Null
   & "C:\Program Files\Git\usr\bin\openssl.exe" req -x509 -newkey rsa:2048 -nodes -keyout C:\speechhero\cert\key.pem -out C:\speechhero\cert\cert.pem -days 30 -subj "/CN=speechhero-local"
-  node scripts\serve-phone.mjs C:\speechhero\cert
+  cd frontend; node scripts\serve-phone.mjs C:\speechhero\cert
   ipconfig
   ```
 

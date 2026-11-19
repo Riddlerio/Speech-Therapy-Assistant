@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { childGameSettings, saveChildGameSettings } from '../api/therapist'
 import type { DaeguCrossingGameSettings, DaeguCrossingSettingsInput } from '../api/therapist'
-import RATIONALE from '../../shared/daegu_crossing_rationale.json'
+import RATIONALE from '../../../shared/daegu_crossing_rationale.json'
 import { formatDateTime } from './formatTime'
 import './crossingTherapist.css'
 

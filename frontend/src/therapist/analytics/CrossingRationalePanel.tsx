@@ -1,4 +1,4 @@
-import RATIONALE from '../../../shared/daegu_crossing_rationale.json'
+import RATIONALE from '../../../../shared/daegu_crossing_rationale.json'
 import './analytics.css'
 
 /**

@@ -31,8 +31,8 @@
 
 | 단계 | 어디서 | 파일 |
 |---|---|---|
-| 마이크 프레임 측정, 잡음 보정, 발화 시작·끝 | 브라우저 | `src/speech/` |
-| 시작 마찰·뒤 유성 구간 요약(원음은 보내지 않음) | 브라우저 | `src/game/crossing/onsetPipeline.ts` |
+| 마이크 프레임 측정, 잡음 보정, 발화 시작·끝 | 브라우저 | `frontend/src/speech/` |
+| 시작 마찰·뒤 유성 구간 요약(원음은 보내지 않음) | 브라우저 | `frontend/src/game/crossing/onsetPipeline.ts` |
 | 결과 판정: 성공·다시·불확실·무발화 | 서버 | `backend/app/games/evaluation.py` |
 | 진행(라운드·줄·판·새 낱말 확인) | 서버 | `backend/app/games/crossing.py` |
 | 관찰 기록 생성 | 서버 | `backend/app/clinical/observation_builder.py` |
@@ -44,23 +44,26 @@
 ## 2. 폴더 구조
 
 ```
-├─ index.html                 앱 진입점
-├─ dudu-review.html           (개발용) 두두 3D 동작 검토 화면
-├─ voice-mic-check.html       (개발용) 실기기 마이크·목소리 점검 화면
-├─ src/                       프런트엔드 (React + TypeScript)
-│  ├─ main.tsx, App.tsx       시작점과 화면 경로
-│  ├─ pages/                  첫 화면(Landing)
-│  ├─ api/                    서버 호출 (client, auth=CSRF 토큰, 활동·대화·치료사 API)
-│  ├─ child/                  아동 화면: 로그인(PlayEntry), 대화(HoyaChat), 건너기(DaeguCrossing), 마무리(DuduGoodbye)
-│  ├─ game/crossing/          건너기 규칙: 박자, 판정 연결, 다시 시도 도움말
-│  ├─ speech/                 마이크·음향 측정·음성 인식·두두 목소리
-│  ├─ control/                게임 종류(GameKind)·두두 동작(HoyaAction) 이름 타입
-│  ├─ tiger/                  두두 3D 캐릭터
-│  ├─ therapist/              치료사 화면: 목록, 아동 상세, 분석, 계획
-│  ├─ shared/                 공용 타입·훅(데모 모드, 움직임 줄이기)
-│  ├─ dev/                    개발용 마이크 점검 화면(voice-mic-check.html)
-│  ├─ build/                  빌드 시 보안 정책(CSP) 생성
-│  └─ styles/                 CSS (tokens.css는 생성 파일)
+├─ frontend/                  프런트엔드 (React + TypeScript + Vite). npm 명령은 여기서 실행
+│  ├─ package.json, vite.config.ts, tsconfig.json
+│  ├─ index.html              앱 진입점
+│  ├─ dudu-review.html        (개발용) 두두 3D 동작 검토 화면
+│  ├─ voice-mic-check.html    (개발용) 실기기 마이크·목소리 점검 화면
+│  ├─ src/main.tsx, App.tsx   시작점과 화면 경로
+│  ├─ src/pages/              첫 화면(Landing)
+│  ├─ src/api/                서버 호출 (client, auth=CSRF 토큰, 활동·대화·치료사 API)
+│  ├─ src/child/              아동 화면: 로그인(PlayEntry), 대화(HoyaChat), 건너기(DaeguCrossing), 마무리(DuduGoodbye)
+│  ├─ src/game/crossing/      건너기 규칙: 박자, 판정 연결, 다시 시도 도움말
+│  ├─ src/speech/             마이크·음향 측정·음성 인식·두두 목소리
+│  ├─ src/control/            게임 종류(GameKind)·두두 동작(HoyaAction) 이름 타입
+│  ├─ src/tiger/              두두 3D 캐릭터
+│  ├─ src/therapist/          치료사 화면: 목록, 아동 상세, 분석, 계획
+│  ├─ src/shared/             프런트 공용 타입·훅(데모 모드, 움직임 줄이기)
+│  ├─ src/dev/                개발용 마이크 점검 화면(voice-mic-check.html)
+│  ├─ src/build/              빌드 시 보안 정책(CSP) 생성
+│  ├─ src/styles/             CSS (tokens.css는 생성 파일)
+│  ├─ public/assets/          앱이 직접 제공하는 그림·음성·3D 모델·글꼴
+│  └─ scripts/                빌드 검사·디자인 토큰·음성 파형 생성·휴대폰 시험 서버
 ├─ backend/                   백엔드 (FastAPI + SQLAlchemy + SQLite)
 │  ├─ app/main.py             앱 생성·보안 미들웨어·로그인·아동 놀이 API
 │  ├─ app/therapist_api.py    치료사용 API (아동·목표·회기·관찰)
@@ -79,15 +82,13 @@
 │  ├─ scripts/                smoke 검사·시연 DB·계정 생성 도구
 │  └─ tests/                  pytest
 ├─ shared/                    프런트·백엔드가 함께 읽는 JSON 기준 자료
-├─ public/assets/             앱이 직접 제공하는 그림·음성·3D 모델·글꼴
-├─ scripts/                   빌드 검사·디자인 토큰·음성 파형 생성·휴대폰 시험 서버
 ├─ assets/dudu3d/             두두 3D 모델 제작 원본과 도구
 └─ documents/                 설계·근거·기록 문서 (실행에는 필요 없음)
 ```
 
 **코드를 처음 읽는다면 이 순서를 추천합니다.**
-1. `src/App.tsx` → 어떤 화면이 있는지
-2. `src/child/DaeguCrossing.tsx` → 게임이 서버와 주고받는 흐름
+1. `frontend/src/App.tsx` → 어떤 화면이 있는지
+2. `frontend/src/child/DaeguCrossing.tsx` → 게임이 서버와 주고받는 흐름
 3. `backend/app/main.py` → 아동 활동 API와 라운드 진행
 4. `backend/app/games/evaluation.py`, `games/crossing.py` → 판정과 진행 규칙
 5. `backend/app/therapist_api.py` → 치료사가 기록을 확인하는 API
@@ -98,7 +99,7 @@
 
 - `backend/app/hoya/prompt/system_prompt.md`와 루트 `shared/`는 코드가 경로로 읽으므로 위치를 옮기지 않습니다.
 - `shared/*.json`을 고치면 프런트(`npm test`)와 백엔드(`pytest`) 테스트를 둘 다 돌립니다.
-- `src/styles/tokens.css`, `shared/dudu_voice_envelopes.json`은 `scripts/`가 만드는 파일이라 직접 고치지 않습니다.
+- `frontend/src/styles/tokens.css`, `shared/dudu_voice_envelopes.json`은 `frontend/scripts/`가 만드는 파일이라 직접 고치지 않습니다(`frontend`에서 `node scripts/build-design-tokens.mjs` 등으로 다시 만듦).
 - 마이크·인증·대화 API 같은 핵심 경로는 [동결 계약](documents/02_architecture/FROZEN_CORE_CONTRACT.md)을 먼저 확인합니다.
 - `.github/README.md`를 만들면 GitHub 첫 화면에서 이 README를 가리므로 만들지 않습니다.
 
@@ -122,9 +123,10 @@
 필요: Node.js 22.12 이상, Python 3.14(CI 기준). 실제 마이크는 HTTPS 또는 localhost에서만 동작합니다.
 
 ```powershell
-# 1) 의존성 설치 (저장소 루트)
+# 1) 의존성 설치 (저장소 루트에서 시작)
+cd frontend
 npm.cmd ci
-cd backend
+cd ..\backend
 python -m venv .venv
 .venv\Scripts\python.exe -m pip install -r requirements.txt
 
@@ -139,7 +141,8 @@ $env:THERAPIST_SUMMARY_ENABLED = 'false'
 ```
 
 ```powershell
-# 3) 프런트엔드 실행 (다른 터미널, 저장소 루트)
+# 3) 프런트엔드 실행 (다른 터미널, 저장소 루트에서 시작)
+cd frontend
 npm.cmd run dev -- --port 5173 --strictPort
 ```
 
@@ -153,9 +156,11 @@ npm.cmd run dev -- --port 5173 --strictPort
 ## 5. 검사
 
 ```powershell
+cd frontend
 npm.cmd run typecheck
 npm.cmd test
 npm.cmd run build
+cd ..
 backend\.venv\Scripts\python.exe -m pytest backend/tests -q -p no:cacheprovider --basetemp backend/test-temp/ci
 backend\.venv\Scripts\python.exe backend/scripts/smoke_api.py http://127.0.0.1:8000
 ```

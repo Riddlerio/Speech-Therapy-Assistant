@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import cases from '../../shared/audio_quality_cases.json'
+import cases from '../../../shared/audio_quality_cases.json'
 import { assessAudioQuality } from './audioQuality'
 
 describe('공통 음질 경계', () => {

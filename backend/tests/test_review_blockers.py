@@ -297,7 +297,7 @@ def test_header_csp_matches_build_meta_policy():
 
 def test_built_dist_if_present_has_no_demo_credentials():
     """npm.cmd run build 결과가 있으면 배포 파일에 DEMO 자격 증명이 없는지 확인한다."""
-    root = ROOT / "dist"
+    root = ROOT / "frontend" / "dist"
     if not (root / "index.html").is_file():
         pytest.skip("dist가 없습니다. npm.cmd run build 후 실행됩니다.")
     for path in root.rglob("*"):

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import fixture from '../../shared/re_onset_mic_cases.json'
+import fixture from '../../../shared/re_onset_mic_cases.json'
 import type { Acoustic } from '../shared/types'
 import { assessAudioQuality } from './audioQuality'
 import { MicUtterancePipeline } from './micUtterance'

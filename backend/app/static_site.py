@@ -1,5 +1,5 @@
 """프로덕션에서 빌드된 프런트엔드(dist) 파일을 백엔드가 직접 서비스한다.
-`npm.cmd run build`로 만든 `dist`를 `FRONTEND_DIST`로 지정하면 uvicorn 하나로 API(`/api/...`)와 SPA(`/`, `/play/...`, `/therapist/...`)를 같은 origin에서 서비스한다.
+`frontend`에서 `npm.cmd run build`로 만든 `frontend/dist`를 `FRONTEND_DIST`로 지정하면 uvicorn 하나로 API(`/api/...`)와 SPA(`/`, `/play/...`, `/therapist/...`)를 같은 origin에서 서비스한다.
 HTML·정적 파일 응답에는 main.py의 보안 헤더 미들웨어가 HTTP 헤더로 CSP(frame-ancestors 포함)를 붙인다.
 """
 import json

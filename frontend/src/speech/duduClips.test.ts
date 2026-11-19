@@ -3,7 +3,7 @@ import { goodbyeLines } from '../child/DuduGoodbye'
 import { isName } from '../child/koreanText'
 import { listenAgainLine, MISS_LINE, modelLine, praiseLine, previewPlan, RETRY_LINE, retryLine } from '../game/crossing/crossingFlow'
 import { clipPlan, DUDU_CLIPS, splitSentences } from './duduClips'
-import ENVELOPES from '../../shared/dudu_voice_envelopes.json'
+import ENVELOPES from '../../../shared/dudu_voice_envelopes.json'
 
 describe('두두 음성 파일(VOLI 하람)', () => {
   it('문장은 마침표·느낌표·물음표에서 나누고, 따옴표·물결·쉼표는 문장 안에 둔다', () => {

@@ -2,7 +2,7 @@
 main.py가 GameEvent를 저장할 때 이 문장을 함께 저장해 치료사 화면의 회기 타임라인에 보여 준다.
 """
 
-# 치료사 화면의 사건 기록에 영어 코드가 그대로 보이지 않게 단계 이름을 한국어로 적는다(src/therapist/planning.ts LEVEL_LABELS와 같음).
+# 치료사 화면의 사건 기록에 영어 코드가 그대로 보이지 않게 단계 이름을 한국어로 적는다(frontend/src/therapist/planning.ts LEVEL_LABELS와 같음).
 LEVEL_TEXT = {"phoneme": "음소", "syllable": "음절", "word": "단어", "short_sentence": "짧은 문장", "spontaneous": "자발 발화"}
 
 

@@ -7,7 +7,7 @@
 import { childCrossingAnalytics } from '../../api/therapist'
 import type { CrossingAnalytics as ApiCrossingAnalytics } from '../../api/therapist'
 import { hasFinalConsonant } from '../../child/koreanText'
-import RATIONALE from '../../../shared/daegu_crossing_rationale.json'
+import RATIONALE from '../../../../shared/daegu_crossing_rationale.json'
 import { formatDate, formatDateTime } from '../formatTime'
 
 interface ProbeMetrics { reviewedN: number; confirmedSuccessN: number; confirmedRate: number | null }

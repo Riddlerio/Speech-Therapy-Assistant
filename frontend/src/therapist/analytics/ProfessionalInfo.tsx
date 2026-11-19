@@ -1,5 +1,5 @@
 import type { CrossingAnalytics } from '../../api/therapist'
-import RATIONALE from '../../../shared/daegu_crossing_rationale.json'
+import RATIONALE from '../../../../shared/daegu_crossing_rationale.json'
 import { CUE_LABELS } from '../planning'
 import CopyBox from './CopyBox'
 import { homePracticeDraft, masteryWindow, percent, soapDraft } from './crossingAnalytics'

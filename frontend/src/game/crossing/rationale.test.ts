@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import RATIONALE from '../../../shared/daegu_crossing_rationale.json'
+import RATIONALE from '../../../../shared/daegu_crossing_rationale.json'
 import { previewPlan, ROUND_TITLES } from './crossingFlow'
 import { BPM, DEFAULT_RHYTHM } from './rhythm'
 
