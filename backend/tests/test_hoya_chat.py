@@ -630,8 +630,8 @@ def test_dotenv_location_is_backend_env_regardless_of_cwd(tmp_path, monkeypatch)
 
 
 def test_frontend_source_has_no_llm_key():
-    for path in (ROOT / "src").rglob("*"):
+    for path in (ROOT / "frontend" / "src").rglob("*"):
         if path.suffix in {".ts", ".tsx"}:
             text = path.read_text(encoding="utf-8")
             assert "OPENAI_API_KEY" not in text and "VITE_OPENAI" not in text, path
-    assert not any((ROOT / "src").rglob(".env*"))
+    assert not any((ROOT / "frontend" / "src").rglob(".env*"))

@@ -63,7 +63,7 @@ R1 선택형 단어, R2 그림/열린 질문, R3 문장 틀을 이용한 구, R4
 
 ## 4. 아동 경험, 단서와 독립성
 
-`LOW`·`UNCERTAIN`은 [관찰 생성기](../../backend/app/clinical/observation_builder.py)의 근거 강도 표시이고 `NO_SPEECH`는 발화가 검출되지 않았다는 상태다. 모두 아동의 실패 판정과 다르다. 음질 불량이나 불확실한 인식은 `LISTEN_AGAIN`으로, 반복 불확실은 `UNCERTAIN_SKIP`과 `NEUTRAL_CONTINUE` 성격의 다음 항목 진행으로 처리한다. `NO_SPEECH`는 성공/재시도 분모에 넣지 않는다. V2의 `TARGET_RETRY`는 부드러운 단서(`gentle`)를 실어 보내고, 기존 모험 정책은 재시도·`HINT_REQUIRED`·단계 하향·항목 건너뛰기를 제공한다. [정책(2026-10-04 삭제 전 원문)](https://github.com/Riddlerio/s_project/blob/8e086b28062b37ba88ac9f8a7cff133f63cd15c7/backend/app/training/policy.py), [V2 처리](../../backend/app/main.py), [아동 화면](../../src/child/ActivitySession.tsx).
+`LOW`·`UNCERTAIN`은 [관찰 생성기](../../backend/app/clinical/observation_builder.py)의 근거 강도 표시이고 `NO_SPEECH`는 발화가 검출되지 않았다는 상태다. 모두 아동의 실패 판정과 다르다. 음질 불량이나 불확실한 인식은 `LISTEN_AGAIN`으로, 반복 불확실은 `UNCERTAIN_SKIP`과 `NEUTRAL_CONTINUE` 성격의 다음 항목 진행으로 처리한다. `NO_SPEECH`는 성공/재시도 분모에 넣지 않는다. V2의 `TARGET_RETRY`는 부드러운 단서(`gentle`)를 실어 보내고, 기존 모험 정책은 재시도·`HINT_REQUIRED`·단계 하향·항목 건너뛰기를 제공한다. [정책(2026-10-04 삭제 전 원문)](https://github.com/Riddlerio/s_project/blob/8e086b28062b37ba88ac9f8a7cff133f63cd15c7/backend/app/training/policy.py), [V2 처리](../../backend/app/main.py), [아동 화면](../../frontend/src/child/ActivitySession.tsx).
 
 현재 별도의 정교한 휴식 프로토콜이나 대체 응답 방식의 완성된 단계별 UI는 확인되지 않았다. 이를 이미 제공하는 기능으로 표시하지 않는다. 아동 화면은 놀이 피드백을, 치료사 화면은 불확실·무발화·DEMO와 평가 가능 표본을 분리한 근거를 보여 준다.
 
@@ -75,11 +75,11 @@ R1 선택형 단어, R2 그림/열린 질문, R3 문장 틀을 이용한 구, R4
 
 | 데이터 / 무엇인가 | 생성 위치·수집 목적 | 실제 판정 사용 | 치료사 화면의 해석 범위 |
 |---|---|---|---|
-| 20ms 마이크 프레임, RMS·peak, 고주파 비율, spectral centroid, clipping | [AudioCapture](../../src/speech/audioCapture.ts)·[features](../../src/speech/features.ts); 소리의 크기·스펙트럼·포화 추정 | VAD 시작/끝, 마찰 추정, 음질 요약의 입력 | 프레임 원본은 화면에 표시되지 않음. 기기·소음 영향 고려 |
-| `noiseFloorDb`, `meanRmsDb`, `peakRmsDb`, `meanHfRatio`, `meanCentroidHz`, `clippingRatio` | 첫 1초 보정과 [VAD](../../src/speech/vad.ts)의 발성 프레임 요약; 신호/배경 분리 | 평균 RMS−잡음 기준과 clipping은 음질 게이트. peak·고주파·중심은 근거 저장; peak 자체는 게임 통과 조건 아님 | 음향 근거 상세에서 볼 수 있으나 조음 정확도 단독 지표가 아님 |
-| `durationMs`, `voicedMs`, `activeMs`, `bestRunMs`, `fricationMs` | [MicUtterancePipeline](../../src/speech/micUtterance.ts)·[SustainTracker](../../src/speech/sustainTracker.ts); 발성 길이와 마찰 지속 | `SUSTAIN`, `FRICATION`, `CONTINUITY`, 음질의 너무 짧음/김 확인 | 시도별 지속·마찰 근거. `durationMs`는 끝 무음 유예를 제외 |
+| 20ms 마이크 프레임, RMS·peak, 고주파 비율, spectral centroid, clipping | [AudioCapture](../../frontend/src/speech/audioCapture.ts)·[features](../../frontend/src/speech/features.ts); 소리의 크기·스펙트럼·포화 추정 | VAD 시작/끝, 마찰 추정, 음질 요약의 입력 | 프레임 원본은 화면에 표시되지 않음. 기기·소음 영향 고려 |
+| `noiseFloorDb`, `meanRmsDb`, `peakRmsDb`, `meanHfRatio`, `meanCentroidHz`, `clippingRatio` | 첫 1초 보정과 [VAD](../../frontend/src/speech/vad.ts)의 발성 프레임 요약; 신호/배경 분리 | 평균 RMS−잡음 기준과 clipping은 음질 게이트. peak·고주파·중심은 근거 저장; peak 자체는 게임 통과 조건 아님 | 음향 근거 상세에서 볼 수 있으나 조음 정확도 단독 지표가 아님 |
+| `durationMs`, `voicedMs`, `activeMs`, `bestRunMs`, `fricationMs` | [MicUtterancePipeline](../../frontend/src/speech/micUtterance.ts)·[SustainTracker](../../frontend/src/speech/sustainTracker.ts); 발성 길이와 마찰 지속 | `SUSTAIN`, `FRICATION`, `CONTINUITY`, 음질의 너무 짧음/김 확인 | 시도별 지속·마찰 근거. `durationMs`는 끝 무음 유예를 제외 |
 | `sustainSegmentsMs`, `pauseCount`, `pauseTotalMs`, `maxPauseMs`, `interruptionCount`, `onsetFricationMs`, `voicedAfterFricationMs`, `energyMean01` | SustainTracker; 반복·쉼·전이·강도 변화를 요약 | `PULSES`, `RE_ONSET`, `CONTINUITY`, `TRANSITION`, `ENERGY_BAND` | 특정 라운드의 수행 단서. 시간·에너지 범위는 제품 기준 |
-| ASR `transcript`, recognizer | [WebSpeechRecognizer](../../src/speech/webSpeechRecognizer.ts); 말한 문장의 근사 텍스트 | 단어/대화 게임의 목표 음소 정렬·검출 | ASR이 잘못 들었거나 표준형으로 보정했을 수 있음. 인식기는 대체 후보도 반환하지만 현재 V2 화면은 대표 문장만 API로 보냄 |
+| ASR `transcript`, recognizer | [WebSpeechRecognizer](../../frontend/src/speech/webSpeechRecognizer.ts); 말한 문장의 근사 텍스트 | 단어/대화 게임의 목표 음소 정렬·검출 | ASR이 잘못 들었거나 표준형으로 보정했을 수 있음. 인식기는 대체 후보도 반환하지만 현재 V2 화면은 대표 문장만 API로 보냄 |
 | 목표 음소·위치·단어, 라운드·시도·단서·난이도 | [TrainingGoal·TrainingSession·ClinicalObservation](../../backend/app/models.py); 과제 맥락 보존 | 목표 위치의 문자 음소 정렬, 라운드별 규칙, 정책 | 모방·독립 산출·난이도 변화와 함께 결과 비교 |
 | AI 추정 결과·오류 태그·치료사 검증 | [speech pipeline](../../backend/app/speech/pipeline.py), 관찰 및 검증 API | `success`/`retry`만 평가 가능 표본; 확인/교정은 요약·활동 제안에 반영 | 원본 AI 추정과 치료사의 최종 해석을 구분 |
 
@@ -87,16 +87,16 @@ R1 선택형 단어, R2 그림/열린 질문, R3 문장 틀을 이용한 구, R4
 
 `아동 음성 → 브라우저 마이크 프레임 → RMS/스펙트럼 특징 → 첫 1초 잡음 보정 → VAD → 발성 프레임 통계 + 지속/쉼/마찰 추적 → AcousticSummary → (단어·대화 게임이면 Web Speech ASR) → 서버 음질 게이트와 게임 규칙/텍스트 정렬 → GameEvent·ClinicalObservation → 치료사 검토 → 다음 목표/활동 제안`.
 
-1. [AudioCapture](../../src/speech/audioCapture.ts)는 Web Audio 분석기에서 20ms 간격으로 프레임을 얻고, [features](../../src/speech/features.ts)는 RMS dB, peak dB, 고주파 비율, spectral centroid, clipping 등을 계산한다.
-2. [MicUtterancePipeline](../../src/speech/micUtterance.ts)은 시작 전 1초의 무음 RMS 중앙값으로 `noiseFloorDb`를 보정한다. [VAD](../../src/speech/vad.ts)는 발화 시작/종료를 정한다. `VOICE_END`의 `meanRmsDb`, `peakRmsDb`, `meanHfRatio`, `meanCentroidHz`, `clippingRatio`는 발성 신호 프레임으로 계산해 후행 무음·순간 peak가 섞이지 않게 한다. `durationMs`는 마지막 발성 프레임까지이며 종료 유예는 제외한다.
-3. [SustainTracker](../../src/speech/sustainTracker.ts)는 `bestRunMs`, `sustainSegmentsMs`, `maxPauseMs`, `fricationMs`, onset 뒤 유성 구간 등을 만든다. 음질 게이트는 `meanRmsDb−noiseFloorDb`, 길이, clipping을 사용한다. 음질이 부족하면 정오를 보류한다.
-4. [ActivitySession](../../src/child/ActivitySession.tsx)은 소리 시작/끝을 [SpeechGameSignal](../../src/control/speechGameSignal.ts)에 전달해 호야 행동을 바꾼다. 음향 요약은 API로 보낸다. Monster Adventure와 Conversation Quest에는 Web Speech ASR도 사용한다. DEMO의 키보드 음향값과 스크립트는 실제 음성 근거가 아니다.
+1. [AudioCapture](../../frontend/src/speech/audioCapture.ts)는 Web Audio 분석기에서 20ms 간격으로 프레임을 얻고, [features](../../frontend/src/speech/features.ts)는 RMS dB, peak dB, 고주파 비율, spectral centroid, clipping 등을 계산한다.
+2. [MicUtterancePipeline](../../frontend/src/speech/micUtterance.ts)은 시작 전 1초의 무음 RMS 중앙값으로 `noiseFloorDb`를 보정한다. [VAD](../../frontend/src/speech/vad.ts)는 발화 시작/종료를 정한다. `VOICE_END`의 `meanRmsDb`, `peakRmsDb`, `meanHfRatio`, `meanCentroidHz`, `clippingRatio`는 발성 신호 프레임으로 계산해 후행 무음·순간 peak가 섞이지 않게 한다. `durationMs`는 마지막 발성 프레임까지이며 종료 유예는 제외한다.
+3. [SustainTracker](../../frontend/src/speech/sustainTracker.ts)는 `bestRunMs`, `sustainSegmentsMs`, `maxPauseMs`, `fricationMs`, onset 뒤 유성 구간 등을 만든다. 음질 게이트는 `meanRmsDb−noiseFloorDb`, 길이, clipping을 사용한다. 음질이 부족하면 정오를 보류한다.
+4. [ActivitySession](../../frontend/src/child/ActivitySession.tsx)은 소리 시작/끝을 [SpeechGameSignal](../../frontend/src/control/speechGameSignal.ts)에 전달해 호야 행동을 바꾼다. 음향 요약은 API로 보낸다. Monster Adventure와 Conversation Quest에는 Web Speech ASR도 사용한다. DEMO의 키보드 음향값과 스크립트는 실제 음성 근거가 아니다.
 5. [evaluate_round](../../backend/app/games/evaluation.py)은 라운드 규칙에 따라 지속·마찰·쉼을 평가하거나, 단어는 [정규화→단순 한글 G2P→정렬](../../backend/app/speech/pipeline.py)로 근사 점수와 오류 태그를 만든다. 이것은 음성 파형의 직접적인 음소 정렬이나 학습된 발음 모델이 아니다. 대화는 목표 음소 관찰 여부를 정오와 분리한다.
 6. 서버는 `Utterance`, `SpeechAnalysis`, `GameEvent`, `ClinicalObservation`을 저장한다. 치료사는 화면에서 근거를 확인·교정·거부하고, 기존 모험 추천은 수락·수정·거절한다. V2 활동 제안도 치료사 결정 후 배정된다. 추천이 목표를 스스로 확정하지 않는다.
 
 ## 7. Clinical Observation과 치료사 검증
 
-**Observation ≠ Interpretation ≠ Clinical Decision.** `ClinicalObservation`은 어떤 과제·시도에서 무엇이 측정/추정됐는지의 구조화된 기록이다. `ai_result`, `ai_confidence`와 가능한 오류 태그는 해석 후보이고, 치료사의 `confirm`/`correct`/`reject`가 별도 `ClinicalVerification` 행에 저장된다. 원래 AI 결과를 덮어쓰지 않으므로 사후에 차이와 판단 이력을 볼 수 있다. `SpeechAnalysis`도 `ai_score`/`ai_result`와 `final_score`/`final_result`를 분리한다. [모델](../../backend/app/models.py), [검증 API](../../backend/app/main.py), [치료사 타임라인](../../src/therapist/ClinicalTimeline.tsx).
+**Observation ≠ Interpretation ≠ Clinical Decision.** `ClinicalObservation`은 어떤 과제·시도에서 무엇이 측정/추정됐는지의 구조화된 기록이다. `ai_result`, `ai_confidence`와 가능한 오류 태그는 해석 후보이고, 치료사의 `confirm`/`correct`/`reject`가 별도 `ClinicalVerification` 행에 저장된다. 원래 AI 결과를 덮어쓰지 않으므로 사후에 차이와 판단 이력을 볼 수 있다. `SpeechAnalysis`도 `ai_score`/`ai_result`와 `final_score`/`final_result`를 분리한다. [모델](../../backend/app/models.py), [검증 API](../../backend/app/main.py), [치료사 타임라인](../../frontend/src/therapist/ClinicalTimeline.tsx).
 
 현재 `provenance`에 실제 기록되는 값은 음향 `CLIENT_REPORTED`(브라우저가 계산해 제출), 목표·단서 `SYSTEM_MEASURED`, 결과 `AI_ESTIMATED`다. `THERAPIST_VERIFIED`와 `THERAPIST_ENTERED`라는 provenance 값은 이 코드에서 생성되지 않는다. 치료사의 확인/입력은 `ClinicalVerification`과 감사 이벤트에 별도로 남는다. **`ClinicalMeaningMapper`라는 별도 클래스/모듈은 현재 없다.** 의미 해석은 관찰 생성, 규칙 평가, 치료사 검토에 분산돼 있다.
 
@@ -196,4 +196,4 @@ R1 선택형 단어, R2 그림/열린 질문, R3 문장 틀을 이용한 구, R4
 - AI-Hub. [한국어 아동 음성 데이터](https://aihub.or.kr/aihubdata/data/view.do?dataSetSn=540) 및 [데이터 이용정책](https://aihub.or.kr/intrcn/guid/usagepolicy.do?currMenu=151&topMenu=105). 후보 데이터 내용과 접근 조건.
 - [The Korean Children Speech Sound Disorder (SSD) Dataset 연구](https://www.eksss.org/archive/view_article?pid=pss-16-3-87). *Phonetics and Speech Sciences*, 16(3), 2024. 한국어 아동 단어 음성 연구 후보; 원자료 허가는 별도 확인 필요.
 - K-Univ. [Speech Database of Typically Developing and Speech-Impaired Children](https://huggingface.co/datasets/K-Univ/Pathological-child-voice). 공개 배포 페이지에 기재된 내용과 이용 조건만 후보 판단에 사용.
-- 저장소 근거: [게임 정의·평가](../../backend/app/games/rounds.py), [음향·발화 분석](../../backend/app/speech/pipeline.py), [관찰·검증](../../backend/app/clinical/observation_builder.py), [브라우저 VAD](../../src/speech/vad.ts), [R4 마이크 fixture](../../shared/re_onset_mic_cases.json), [검증 기록(원문)](https://github.com/Riddlerio/s_project/blob/22eef9b993475537ec55859e1cca17dc15d02e73/docs/v2/VALIDATION_REPORT.md).
+- 저장소 근거: [게임 정의·평가](../../backend/app/games/rounds.py), [음향·발화 분석](../../backend/app/speech/pipeline.py), [관찰·검증](../../backend/app/clinical/observation_builder.py), [브라우저 VAD](../../frontend/src/speech/vad.ts), [R4 마이크 fixture](../../shared/re_onset_mic_cases.json), [검증 기록(원문)](https://github.com/Riddlerio/s_project/blob/22eef9b993475537ec55859e1cca17dc15d02e73/docs/v2/VALIDATION_REPORT.md).

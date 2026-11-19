@@ -1,4 +1,4 @@
-/* 자동 생성 파일: shared/design-tokens.json → node scripts/build-design-tokens.mjs. 직접 고치지 않는다. */
+/* 자동 생성 파일: shared/design-tokens.json → frontend에서 node scripts/build-design-tokens.mjs. 직접 고치지 않는다. */
 :root {
   --color-brand-forest: #0e6255;
   --color-brand-forest-deep: #09483f;

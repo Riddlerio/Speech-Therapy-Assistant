@@ -40,20 +40,20 @@ Phase 0에서 사용자(제품 소유자)가 승인했다(2026-09-30). 이후 �
 
 | 경로 | 등급 | 지켜야 할 제약 |
 |---|---|---|
-| `src/styles/**` | SAFE_TO_REDESIGN | tsx에서 쓰는 class 이름을 유지하거나 tsx와 함께 바꾼다: `child-screen`, `game-screen`, `target`, `small`, `big-button`, `card`, `grid`, `speech-bubble`, `quiet`, `therapist-screen`, `workspace-tabs`, `summary-grid`, `notice`, `muted`, `chart-wrap`. 치료사 class는 `workspace.test.tsx`가 확인한다. CSP 때문에 외부 폰트나 CDN은 쓸 수 없고 자체 호스팅해야 한다 |
-| `src/pages/**` | SAFE_TO_REDESIGN | `/play`와 `/therapist/login` 링크를 유지한다 |
-| `src/character/**` | 삭제됨(2026-10-04) | legacy 모험 제거(로드맵 5절 3번)와 함께 `Character.tsx`·`tts.ts`를 지웠다. 폴더가 없다 |
-| `src/tiger/**` | SAFE_WITH_INTERFACE_CONSTRAINTS | `<Hoya3D action className>`, `HoyaAction` 17개 값(THINKING 포함) 처리, `HoyaFallback`과 `data-hoya-fallback="true"`, `ACTION_TEXT` 문구(테스트가 확인), fallback에 "3D" 문구를 쓰지 않을 것, `canUseWebGL`, `HoyaErrorBoundary`, context loss fallback, 높이는 부모가 정하는 구조를 유지한다. 내부 `Tiger` 메시는 교체할 수 있다. GLB loader를 도입하거나 의존성을 추가하려면 사용자 승인이 필요하다(2026-10-04 승인: three 내장 `GLTFLoader`로 `public/assets/dudu/dudu.glb`를 읽는다. `EXT_texture_webp`·`KHR_mesh_quantization`만 쓰고 meshopt·Draco·KTX2 디코더는 쓰지 않는다. 로딩 실패 시 절차형 모델로 돌아간다) |
-| `src/child/**`(화면층) | SAFE_WITH_INTERFACE_CONSTRAINTS | sessionStorage 키(`speechHero.code`, `speechHero.csrf`. `speechHero.activity`·`speechHero.result`는 모험 4종과 함께 2026-11-19 삭제), API 호출, `detectCapabilities`·`supportsRealMode`·`missingText` 게이트, Space와 pointer 입력 핸들러, TTS 중 마이크 차단 ref(`modelSpeaking`, `submitting`), `aria-live` 영역, DEMO 고지 문구를 유지한다 |
-| `src/game/**` | SAFE_WITH_INTERFACE_CONSTRAINTS | V2 게임 장면은 새 코드로 작성한다. legacy 상태 기계(`beamTransition`, `towerTransition`)와 `BeamCanvas`는 2026-10-04, 빛의 마법 장면(`magicBeam/`)은 모험 4종과 함께 2026-11-19 삭제했다. 지금 남은 게임은 `crossing/`뿐이다 |
-| `public/assets/**` | SAFE_TO_REDESIGN(신규) | 같은 출처에서 제공한다. 에셋 출처와 라이선스, 대구대 마스코트 IP는 사용자가 확인한다 |
-| `src/child/**`(음성 로직), `hoyaChatController.ts`, `src/control/**`, `src/speech/**` | HIGH_RISK_TO_TOUCH | 캡처→파이프라인→인식기→제출 순서, `CALIBRATION_MS`. (`mapSignalToHoya`·`HoyaActionController`는 쓰던 활동 화면과 함께 2026-11-19 삭제) 수정하려면 사용자 승인과 해당 테스트가 필요하다 |
+| `frontend/src/styles/**` | SAFE_TO_REDESIGN | tsx에서 쓰는 class 이름을 유지하거나 tsx와 함께 바꾼다: `child-screen`, `game-screen`, `target`, `small`, `big-button`, `card`, `grid`, `speech-bubble`, `quiet`, `therapist-screen`, `workspace-tabs`, `summary-grid`, `notice`, `muted`, `chart-wrap`. 치료사 class는 `workspace.test.tsx`가 확인한다. CSP 때문에 외부 폰트나 CDN은 쓸 수 없고 자체 호스팅해야 한다 |
+| `frontend/src/pages/**` | SAFE_TO_REDESIGN | `/play`와 `/therapist/login` 링크를 유지한다 |
+| `frontend/src/character/**` | 삭제됨(2026-10-04) | legacy 모험 제거(로드맵 5절 3번)와 함께 `Character.tsx`·`tts.ts`를 지웠다. 폴더가 없다 |
+| `frontend/src/tiger/**` | SAFE_WITH_INTERFACE_CONSTRAINTS | `<Hoya3D action className>`, `HoyaAction` 17개 값(THINKING 포함) 처리, `HoyaFallback`과 `data-hoya-fallback="true"`, `ACTION_TEXT` 문구(테스트가 확인), fallback에 "3D" 문구를 쓰지 않을 것, `canUseWebGL`, `HoyaErrorBoundary`, context loss fallback, 높이는 부모가 정하는 구조를 유지한다. 내부 `Tiger` 메시는 교체할 수 있다. GLB loader를 도입하거나 의존성을 추가하려면 사용자 승인이 필요하다(2026-10-04 승인: three 내장 `GLTFLoader`로 `frontend/public/assets/dudu/dudu.glb`를 읽는다. `EXT_texture_webp`·`KHR_mesh_quantization`만 쓰고 meshopt·Draco·KTX2 디코더는 쓰지 않는다. 로딩 실패 시 절차형 모델로 돌아간다) |
+| `frontend/src/child/**`(화면층) | SAFE_WITH_INTERFACE_CONSTRAINTS | sessionStorage 키(`speechHero.code`, `speechHero.csrf`. `speechHero.activity`·`speechHero.result`는 모험 4종과 함께 2026-11-19 삭제), API 호출, `detectCapabilities`·`supportsRealMode`·`missingText` 게이트, Space와 pointer 입력 핸들러, TTS 중 마이크 차단 ref(`modelSpeaking`, `submitting`), `aria-live` 영역, DEMO 고지 문구를 유지한다 |
+| `frontend/src/game/**` | SAFE_WITH_INTERFACE_CONSTRAINTS | V2 게임 장면은 새 코드로 작성한다. legacy 상태 기계(`beamTransition`, `towerTransition`)와 `BeamCanvas`는 2026-10-04, 빛의 마법 장면(`magicBeam/`)은 모험 4종과 함께 2026-11-19 삭제했다. 지금 남은 게임은 `crossing/`뿐이다 |
+| `frontend/public/assets/**` | SAFE_TO_REDESIGN(신규) | 같은 출처에서 제공한다. 에셋 출처와 라이선스, 대구대 마스코트 IP는 사용자가 확인한다 |
+| `frontend/src/child/**`(음성 로직), `hoyaChatController.ts`, `frontend/src/control/**`, `frontend/src/speech/**` | HIGH_RISK_TO_TOUCH | 캡처→파이프라인→인식기→제출 순서, `CALIBRATION_MS`. (`mapSignalToHoya`·`HoyaActionController`는 쓰던 활동 화면과 함께 2026-11-19 삭제) 수정하려면 사용자 승인과 해당 테스트가 필요하다 |
 
 ## 5. 승인된 정리 작업(Phase 0.5) — 2026-10-04 실행
 
 사용자 승인(2026-09-30)에 따라 Phase 0 문서 PR과 분리해서 진행한다.
 
-- `src/character/dialogue.ts` 삭제. 사용처가 없고 루미·legacy 표현이 남아 있다. (실행 시 확인: PlaySession은 `lines.ko.ts`를 더 이상 쓰지 않아 함께 삭제했다.)
+- `frontend/src/character/dialogue.ts` 삭제. 사용처가 없고 루미·legacy 표현이 남아 있다. (실행 시 확인: PlaySession은 `lines.ko.ts`를 더 이상 쓰지 않아 함께 삭제했다.)
 - `backend/app/security.py`의 `issue_token` 삭제. 쿠키 인증 이후 쓰이지 않는다. `AuthToken` 모델과 표는 유지한다.
 - `backend/app/auth.py`의 `require_child_access` 삭제. 쓰이지 않고, 감사 기록과 테스트가 없으며 ADMIN을 그대로 통과시킨다. Phase 7에서 필요해지면 감사 기록과 테스트를 갖춰 다시 설계한다.
 
@@ -65,12 +65,9 @@ Phase 0에서 사용자(제품 소유자)가 승인했다(2026-09-30). 이후 �
 
 ```powershell
 backend\.venv\Scripts\python.exe -m pytest backend -q
-npm.cmd test
-npm.cmd run typecheck
-npm.cmd run build
+cd frontend; npm.cmd test; npm.cmd run typecheck; npm.cmd run build; npm.cmd audit; cd ..
 backend\.venv\Scripts\python.exe backend\scripts\smoke_api.py   # 실행 중인 서버(SEED_DEMO_DATA=true, COOKIE_SECURE=false) 대상
 git diff --check
-npm.cmd audit
 ```
 
 이 명령들은 logic, API, 정적 렌더만 검증한다. 시각 품질, 실제 마이크, 실제 LLM, 임상 타당성은 별도로 수동 검증하고, 그 결과를 사용자가 승인해야 한다.
@@ -112,10 +109,10 @@ npm.cmd audit
 - schema는 바꾸지 않았다. 계획의 게임 목록에 새 게임을 넣지 않았다(데모는 계획이 게임을 구동하지 않는다. Phase 7 미착수).
 - 빛의 마법은 활동 제안 선택지에서만 숨겼다. 게임 id·과거 기록·치료사 기록 보기는 유지한다.
 
-**`src/speech/**`(HIGH_RISK_TO_TOUCH, 사용자 요청: '스' 감지 개선·두두 목소리 교체)**
+**`frontend/src/speech/**`(HIGH_RISK_TO_TOUCH, 사용자 요청: '스' 감지 개선·두두 목소리 교체)**
 - `SustainTracker`에 선택 인자 `OnsetTolerance`를 추가했다. 기본값 0이면 기존 동작이고, 대구대 건너기만 쓴다.
 - `KoreanTts`가 두두 음성 파일(VOLI '하람')을 재생한다. 말의 모든 문장이 파일로 있을 때만 재생하고, 재생에 실패하면 같은 말을 브라우저 음성으로 한다. 입력 차단·종료 유예 규칙은 같다.
-- 새 파일 `duduClips.ts`를 추가했다. 음성 파일은 오디오 하나를 다시 쓰고, 로그인·시작 버튼을 누를 때 무음으로 한 번 깨운다(`unlockDuduAudio`, iOS Safari의 자동 재생 제한 대응). 재생 위치의 소리 크기(`speakingLevel`, 미리 계산한 값)로 두두의 입을 연다. `src/tiger`의 `faceState`에 선택 인자 `speech`를 더했고 `<Hoya3D action className>` 인터페이스는 그대로다.
+- 새 파일 `duduClips.ts`를 추가했다. 음성 파일은 오디오 하나를 다시 쓰고, 로그인·시작 버튼을 누를 때 무음으로 한 번 깨운다(`unlockDuduAudio`, iOS Safari의 자동 재생 제한 대응). 재생 위치의 소리 크기(`speakingLevel`, 미리 계산한 값)로 두두의 입을 연다. `frontend/src/tiger`의 `faceState`에 선택 인자 `speech`를 더했고 `<Hoya3D action className>` 인터페이스는 그대로다.
 - 캡처→파이프라인→인식기→제출 순서와 `CALIBRATION_MS`는 바꾸지 않았다.
 - 테스트: `onsetPipeline.test.ts`(기본값과 봐주기 비교), `koreanTts.test.ts`, `duduClips.test.ts`, `backend/tests/test_dudu_voice_lines.py`.
 
@@ -133,7 +130,7 @@ npm.cmd audit
 - 대화를 끝내는 답 뒤에는 부르지 않는다. 신호 중에 끝내기·정리되면 열지 않는다.
 - 넘기지 않으면 기존과 같다. 기존 테스트 25개는 그대로 통과했고 4개를 추가했다.
 
-**`src/child/**`(음성 로직, HIGH_RISK_TO_TOUCH)**
+**`frontend/src/child/**`(음성 로직, HIGH_RISK_TO_TOUCH)**
 - `DaeguCrossing.tsx`: 듣기(`listening`)를 차임이 다 들린 뒤에 켠다.
 - `ActivitySession.tsx`:
   - 캡처 시작 때 대기 플래그 `modelPending`의 처음 값을 항상 `true`로 했다(전에는 따라 말하기의 첫 시범 때만 `true`).
@@ -144,7 +141,7 @@ npm.cmd audit
 - DEMO 누르고 말하기는 '네 차례!' 뒤에만 받는다.
 - 측정 기준이 하나 바뀌었다. 게임 4종의 `onsetLatencyMs`는 듣기가 열린 때부터 잰다([결정 기록](../04_history/DECISIONS.md), 2026-10-05).
 
-**`src/tiger/**`(SAFE_WITH_INTERFACE_CONSTRAINTS)**
+**`frontend/src/tiger/**`(SAFE_WITH_INTERFACE_CONSTRAINTS)**
 - 귀 쫑긋(`duduPerk.ts`)을 더했다. GLB는 머리 뼈 크기, 절차형은 귀 크기를 바꾼다.
 - `Hoya3D`가 움직임 줄이기 설정이면 `DuduCharacter`에 `animate={false}`를 넘긴다.
 - 그대로인 것: `<Hoya3D action className>`, 17개 동작, 대체 화면·`data-hoya-fallback`, `ACTION_TEXT`, 정지 규칙.
@@ -179,7 +176,7 @@ npm.cmd audit
 
 **치료사 화면 시각**
 - 서버의 기존 회기·대화 응답은 시간대 없는 UTC 시각 형식을 유지한다. 응답 필드와 `therapist_planning` 계약은 바꾸지 않았다.
-- `src/therapist/formatTime.ts`가 시간대 없는 시각을 UTC로 읽고, 기기 시간대와 관계없이 `Asia/Seoul` 시각으로 표시한다. 박자 설정의 '최근 저장'도 같은 함수를 쓴다.
+- `frontend/src/therapist/formatTime.ts`가 시간대 없는 시각을 UTC로 읽고, 기기 시간대와 관계없이 `Asia/Seoul` 시각으로 표시한다. 박자 설정의 '최근 저장'도 같은 함수를 쓴다.
 - 박자 설정 API의 `updatedAt`은 기존부터 UTC 시간대(`+00:00`)를 포함한다. 이 형식도 유지하며 화면에서 서울 시각으로 표시한다.
 - `backend/app/therapist_insights/service.py`의 회기 메모 날짜는 시작 시각을 서울 시각으로 바꾼 뒤 계산한다.
 
@@ -233,7 +230,7 @@ npm.cmd audit
 **승인:** 사용자가 시연 흐름(두두 대화 → 대구대 건너기 → 마무리, 치료사 화면)만 남기고 예전 모험 4종(빛의 마법·하늘 오르기·몬스터 모험·두두와 소풍)과 그 부속 기능을 지우기로 했다(2026-11-19). 4종은 동작했지만 시연 흐름에서 들어가는 버튼이 없었다.
 
 **지운 것**
-- 아동 화면: 두두의 집, 탐험 지도, 활동·보상 화면, 매직빔 공격 선택, 빛의 마법 장면과 검토 화면(`magic-beam-review.html`), `src/control/HoyaActionController.ts`·`mapSignalToHoya`.
+- 아동 화면: 두두의 집, 탐험 지도, 활동·보상 화면, 매직빔 공격 선택, 빛의 마법 장면과 검토 화면(`magic-beam-review.html`), `frontend/src/control/HoyaActionController.ts`·`mapSignalToHoya`.
 - 치료사 화면: 매직빔 스킬 승인, 활동 제안, 기존 목표 추천(R1–R5)과 대시보드의 대기 추천 수.
 - 서버: 4종 라운드 정의·판정 규칙, 라운드 보상·배지·재료·제작, 스킬 API, 기존 추천·인사이트·활동 제안, `/api/me/home`·`/character/tap`·`/adventure`·`/activities/active`.
 

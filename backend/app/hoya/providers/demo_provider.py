@@ -70,7 +70,7 @@ S_HINTS = {"시소도 탔어?": "시소", "같이 무슨 놀이 했어?": "시�
 HELP_SKIP = {"소리"}
 # 첫 3턴에는 고르기·빈칸 질문을 하지 않는다. 그 전에는 서버가 허용한 먼저 들려주기(ALLOWED_CUE)를 한 번만 쓴다.
 HELP_FROM_TURN = 4
-# 화면 src/speech/duduClips.ts의 splitSentences와 같은 규칙.
+# 화면 frontend/src/speech/duduClips.ts의 splitSentences와 같은 규칙.
 _SENTENCE = re.compile(r"[^.!?]+[.!?]+|[^.!?]+$")
 
 

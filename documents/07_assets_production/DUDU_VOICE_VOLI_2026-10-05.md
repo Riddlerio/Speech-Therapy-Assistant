@@ -14,7 +14,7 @@
 
 - 상업적으로 쓰지 않는 범위에서만 제한적으로 쓸 수 있다.
 - **출처 표기 의무:** "이 콘텐츠는 VOLI의 AI보이스를 활용하여 제작되었습니다. https://voli.ai"
-  - 이 문구는 `src/speech/duduClips.ts`의 `VOICE_CREDIT`에 있다.
+  - 이 문구는 `frontend/src/speech/duduClips.ts`의 `VOICE_CREDIT`에 있다.
   - 대화·대구대 건너기·마무리 화면 아래에 보인다(`VoiceCredit`).
 - 내려받은 파일은 표준 음질 16kHz다(웹 미리듣기는 24kHz).
 - 상업적으로 쓰거나 출처 표기 없이 쓰려면 유료 플랜으로 다시 만들어야 한다.
@@ -25,7 +25,7 @@
 
 ## 3. 파일과 앱 연결
 
-- **파일:** `public/assets/voice/dudu/*.wav` 92개(10/6에 7개 추가), 16kHz 모노, 앞뒤 무음을 다듬었고 합계 약 5.1MB다. 대사 목록과 파일 이름은 `shared/dudu_voice_lines.json`에 있고, 화면(`src/speech/duduClips.ts`)과 백엔드 테스트가 같이 읽는다.
+- **파일:** `frontend/public/assets/voice/dudu/*.wav` 92개(10/6에 7개 추가), 16kHz 모노, 앞뒤 무음을 다듬었고 합계 약 5.1MB다. 대사 목록과 파일 이름은 `shared/dudu_voice_lines.json`에 있고, 화면(`frontend/src/speech/duduClips.ts`)과 백엔드 테스트가 같이 읽는다.
 - **재생 규칙(`KoreanTts`):**
   - 말할 내용을 마침표·느낌표·물음표 단위 문장으로 나눈다.
   - **모든 문장에 파일이 있으면** 파일을 120ms 간격으로 이어 재생한다.
@@ -33,7 +33,7 @@
   - 파일 재생에 실패하면 같은 말을 브라우저 음성으로 한다.
   - 마이크 차단·종료 유예·입 움직임 신호는 브라우저 음성과 같다.
   - 오디오 요소 하나를 다시 쓴다. 로그인·대화 시작·건너기 시작·게임으로 가기 버튼을 누를 때 무음을 한 번 재생해 깨운다. iOS Safari는 사용자가 누를 때 재생한 적 있는 요소만 이후 재생을 허락하기 때문이다(실제 아이폰 확인은 미실행).
-- **파일로 다 덮이는 말(테스트 `src/speech/duduClips.test.ts`로 고정):**
+- **파일로 다 덮이는 말(테스트 `frontend/src/speech/duduClips.test.ts`로 고정):**
   - 대구대 건너기의 시범·다시 듣기·다시(바람 소리) 단서·칭찬·'딱 맞았어!'·지나감·도착.
   - 마무리 인사.
   - 대화 첫 인사(바람용사·두두친구)와 권유 "우리 게임 해 볼까? 아래 '대구대 건너기'를 눌러 볼래?".
@@ -46,7 +46,7 @@
 
 ## 3-1. 입 모양 맞추기 (2026-10-05)
 
-- `scripts/build-voice-envelopes.mjs`가 파일마다 40ms 간격 소리 크기를 0~9 한 글자로 적어 `shared/dudu_voice_envelopes.json`(약 4.5KB)에 쓴다. 파일에서 가장 큰 소리보다 30dB 이상 작으면 0이다.
+- `frontend/scripts/build-voice-envelopes.mjs`가 파일마다 40ms 간격 소리 크기를 0~9 한 글자로 적어 `shared/dudu_voice_envelopes.json`(약 4.5KB)에 쓴다. 파일에서 가장 큰 소리보다 30dB 이상 작으면 0이다.
 - 재생 중에는 `speakingLevel()`이 재생 위치의 값을 알려 준다. 3D 얼굴(`duduFace.faceState`)과 절차형 대체 모델의 입이 그 값만큼 열린다.
   - 문장 사이 쉼(120ms)에는 0이라 입이 닫힌다.
   - 환호(CHEER)의 웃는 입은 그대로다.
@@ -91,5 +91,5 @@
 1. VOLI에 로그인한다. 사용자가 직접 하고, Claude는 로그인 정보를 다루지 않는다.
 2. 텍스트로 음성생성(TTS) 프로젝트(New Project)에서 목소리 '하람', VOLI 3, 속도 90%로 문단을 추가해 만든다. 따옴표는 빼고 넣는다(예: "사 소리를 정말 많이 말했어."). 새 문단의 '음성 생성'만 누르고 '전체 음성 생성'은 누르지 않는다. 남은 글자는 13자다(2026-10-06).
 3. **내려받기는 '작업 내역'에서 줄마다** 다운로드 → '변환본'으로 한다. '개별 파일로 다운로드'로 한꺼번에 받으면 브라우저가 연속 다운로드를 일부 막아 파일이 빠졌다(35개 중 28개).
-4. 모노 16kHz로 바꾸고 앞뒤 무음을 다듬어(3-2절 기준) `public/assets/voice/dudu/`에 넣는다. 그다음 `shared/dudu_voice_lines.json`에 `[앱 문장, 파일 이름]`을 추가하고, `node scripts/build-voice-envelopes.mjs`로 입 모양 값을 다시 만든다(빠지면 테스트가 깨진다).
+4. 모노 16kHz로 바꾸고 앞뒤 무음을 다듬어(3-2절 기준) `frontend/public/assets/voice/dudu/`에 넣는다. 그다음 `shared/dudu_voice_lines.json`에 `[앱 문장, 파일 이름]`을 추가하고, `node frontend/scripts/build-voice-envelopes.mjs`로 입 모양 값을 다시 만든다(빠지면 테스트가 깨진다).
 5. 새 모범 낱말이면 위 4절처럼 시작 마찰을 재서 게임 기준을 넘는지 확인한다.

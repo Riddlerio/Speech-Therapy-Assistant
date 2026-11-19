@@ -1,6 +1,6 @@
 # 두두 3D 제작 자료
 
-이 폴더에는 두두 3D 모델의 입력 이미지, 참고 그림과 재생성 도구를 둡니다. 웹 앱이 실제로 불러오는 파일은 [`public/assets/dudu/dudu.glb`](../../public/assets/dudu/dudu.glb)입니다. 2026-10-04에 Meshy Pro의 비공개(Private) 설정으로 모델을 생성하고 Blender·스크립트로 보정해 앱에 연결했습니다. 무료 체험에서 만든 일반 호랑이 모델은 앱에 쓰지 않습니다.
+이 폴더에는 두두 3D 모델의 입력 이미지, 참고 그림과 재생성 도구를 둡니다. 웹 앱이 실제로 불러오는 파일은 [`frontend/public/assets/dudu/dudu.glb`](../../frontend/public/assets/dudu/dudu.glb)입니다. 2026-10-04에 Meshy Pro의 비공개(Private) 설정으로 모델을 생성하고 Blender·스크립트로 보정해 앱에 연결했습니다. 무료 체험에서 만든 일반 호랑이 모델은 앱에 쓰지 않습니다.
 
 ## 현재 자산
 
@@ -10,9 +10,9 @@
 | `reference/`, `references/` | 공식 흉장과 두두 원화·제작 참고 그림 |
 | `tools/` | 텍스처 보정·GLB 변환·화면 검토 스크립트 |
 | `meshy_output/` | 제작 원본 보관 위치. Git 추적 대상에서 제외 |
-| `public/assets/dudu/dudu.glb` | 앱에 배포하는 모델. 2,637,828바이트, 삼각형 20,012개, 뼈 28개, 동작 11개 |
+| `frontend/public/assets/dudu/dudu.glb` | 앱에 배포하는 모델. 2,637,828바이트, 삼각형 20,012개, 뼈 28개, 동작 11개 |
 
-`src/tiger/DuduCharacter.tsx`가 GLB를 읽고 `src/tiger/duduAnimations.ts`가 동작을 연결합니다. 모델을 불러오지 못하면 절차형 두두를 표시합니다. 아래의 날짜별 기록에는 실제 생성 설정, 텍스처·흉장 보정, 재생성 명령과 검토 결과를 보존했습니다.
+`frontend/src/tiger/DuduCharacter.tsx`가 GLB를 읽고 `frontend/src/tiger/duduMotion.ts`가 동작을 연결합니다. 모델을 불러오지 못하면 절차형 두두를 표시합니다. 아래의 날짜별 기록에는 실제 생성 설정, 텍스처·흉장 보정, 재생성 명령과 검토 결과를 보존했습니다.
 
 ## 제작·사용 범위
 
@@ -44,9 +44,9 @@
 5. Rigging: 이족 동물, 키 1.3m, 관절 마커는 자동 위치에서 무릎만 조금 내림.
 6. 동작(프리셋 추가는 크레딧 변화 없음): 걷기, 객체 수집, 행복한 흔들림 서 있기, 듣기 제스처, 동기 응원, 양주먹 펀치, 정규 점프, 왼손을 힙에 얹고 이야기하기, 한 손 흔들기, 행복한 점프, Mage Spell Cast 3. `Idle_14`는 카메라 반대쪽으로 돌아서서 뺐다.
 7. 다운로드: GLB, Mixamo 뼈대, 모든 동작 단일 파일(13.5MB) → `meshy_output/v2/`(Git 제외).
-8. 웹용 변환: `tools/build_dudu.mjs`(텍스처 1024 WebP, 키프레임 정리, 정리, 양자화) → **`public/assets/dudu/dudu.glb` 2.62MB**, 20,012삼각형, 뼈 28개, 동작 11개. 다시 만들 때는 임시 폴더에서 `npm install @gltf-transform/cli@4` 후 `node build_dudu.mjs <입력> <출력> Running`처럼 실행한다.
+8. 웹용 변환: `tools/build_dudu.mjs`(텍스처 1024 WebP, 키프레임 정리, 정리, 양자화) → **`frontend/public/assets/dudu/dudu.glb` 2.62MB**, 20,012삼각형, 뼈 28개, 동작 11개. 다시 만들 때는 임시 폴더에서 `npm install @gltf-transform/cli@4` 후 `node build_dudu.mjs <입력> <출력> Running`처럼 실행한다.
 
-앱 연결: `src/tiger/DuduCharacter.tsx`가 GLB를 읽고, 동작 이름 대응은 `src/tiger/duduAnimations.ts`에 있다. 불러오는 중이거나 실패하면 절차형 모델을 보여 준다. 사람의 최종 원화 충실도 승인과 저사양 휴대폰 성능 측정은 아직 하지 않았다.
+앱 연결: `frontend/src/tiger/DuduCharacter.tsx`가 GLB를 읽고, 동작 이름 대응은 `frontend/src/tiger/duduMotion.ts`에 있다. 불러오는 중이거나 실패하면 절차형 모델을 보여 준다. 사람의 최종 원화 충실도 승인과 저사양 휴대폰 성능 측정은 아직 하지 않았다.
 
 ## 2026-10-04 Blender 텍스처 보정 (Claude)
 
@@ -66,7 +66,7 @@ Blender 4.5.14 LTS 휴대용판을 `C:\Users\kor02\Tools\blender-4.5.14-windows-
 - 원인: 앞 매듭이 가슴 흉장 제외 구역 안에 있고, 스카프 텍셀은 채도가 낮아 기존 망토 판정(채도 0.12 초과)에 걸리지 않았다. 자동 리그가 스카프 앞쪽에 머리 뼈 가중치(0.66~0.81)를 주어 머리 가중치로 거를 수도 없었다.
 - `tools/repaint_texture.py`에 스카프 단계를 더했다. 느슨한 초록 기준(채도 0.035 초과) + 높이 0.54 이상(흉장 초록은 0.52 이하) + 목 축에서 0.222 이내(앞 매듭 95백분위 + 0.015) + 이미 망토로 칠하지 않은 텍셀. 망토 겉 색 `(50,117,100)`에 자기 밝기 비율(0.55~1.3)을 곱해 매듭·주름·외곽선 명암을 남긴다. 2048 텍스처에서 31,924텍셀.
 - 다시 만들기: 위 Blender 보정과 같은 세 단계(`repaint_texture.py` → `inject_basecolor.mjs` → `build_dudu.mjs ... Running`). 입력은 `meshy_output/v2/Meshy_AI_Emerald_Tiger_Mascot_All_Animations.glb`(13,453,200바이트, SHA-256 `cea385768bb37837…`).
-- 결과 `public/assets/dudu/dudu.glb` 2,636,740바이트(SHA-256 `c728af5bca84c45c…`). 이전 웹 GLB와 기본색 텍스처를 비교하면 크게 바뀐 텍셀(차이 30 초과)은 1.31%이고 스카프 자리에만 있다. 망토·뒷머리 보정은 그대로다. 나머지 5.6%의 작은 차이는 WebP 재압축 오차다.
+- 결과 `frontend/public/assets/dudu/dudu.glb` 2,636,740바이트(SHA-256 `c728af5bca84c45c…`). 이전 웹 GLB와 기본색 텍스처를 비교하면 크게 바뀐 텍셀(차이 30 초과)은 1.31%이고 스카프 자리에만 있다. 망토·뒷머리 보정은 그대로다. 나머지 5.6%의 작은 차이는 WebP 재압축 오차다.
 
 ## 2026-10-04 공식 흉장으로 교체 (Claude)
 
@@ -76,16 +76,16 @@ Blender 4.5.14 LTS 휴대용판을 `C:\Users\kor02\Tools\blender-4.5.14-windows-
 - 옛 자리 위쪽은 스카프 매듭에 가려 '대구대학교' 글자가 덮여서, 새 흉장은 92% 크기(반지름 0.083 m)로 0.020 m 아래에 그린다. 옛 흉장 자리의 나머지는 털색으로 덮고 맨 바깥에서 원래 텍스처와 섞는다.
 - 2048 텍스처에서 흉장 안 텍셀 12,253개(지름 약 125텍셀). 원본은 텍셀 밀도에 맞춰 2배 상자 평균으로 줄인 뒤 표본을 뽑는다. 웹 GLB(1024)에서도 가까이 보면 글자가 읽힌다.
 - 다시 만들기: `blender -b --factory-startup --python tools/repaint_texture.py -- <원본.glb> work/repaint reference/daegu_university_emblem.jpg` → `inject_basecolor.mjs` → `build_dudu.mjs … Running`.
-- 결과 `public/assets/dudu/dudu.glb` 2,637,828바이트(SHA-256 `b4807fd15bd6e193…`). 이전 웹 GLB와 비교하면 크게 바뀐 텍셀은 0.40%이고 흉장 UV 섬에만 있다.
-- 절차형 대체 모델(`src/tiger/duduEmblem.ts`)의 흉장은 아직 캔버스 근사다(모델 파일을 못 불러올 때만 보임).
+- 결과 `frontend/public/assets/dudu/dudu.glb` 2,637,828바이트(SHA-256 `b4807fd15bd6e193…`). 이전 웹 GLB와 비교하면 크게 바뀐 텍셀은 0.40%이고 흉장 UV 섬에만 있다.
+- 절차형 대체 모델(`frontend/src/tiger/duduEmblem.ts`)의 흉장은 아직 캔버스 근사다(모델 파일을 못 불러올 때만 보임).
 
 ## 2026-10-04 코드로 더한 꼬리·표정·동작 보정 (Claude)
 
-모델 파일의 형태·뼈대·동작 파일은 바꾸지 않고 `src/tiger`에서 더했다. 자세한 내용과 전후 화면은 [인계 기록(원문)](https://github.com/Riddlerio/s_project/blob/22eef9b993475537ec55859e1cca17dc15d02e73/docs/handoff/CLAUDE_DUDU_3D_POLISH_2026-10-04.md).
+모델 파일의 형태·뼈대·동작 파일은 바꾸지 않고 `frontend/src/tiger`에서 더했다. 자세한 내용과 전후 화면은 [인계 기록(원문)](https://github.com/Riddlerio/s_project/blob/22eef9b993475537ec55859e1cca17dc15d02e73/docs/handoff/CLAUDE_DUDU_3D_POLISH_2026-10-04.md).
 
-- 꼬리(`src/tiger/duduTail.ts`): 모델에 꼬리가 없다. 줄무늬 관을 엉덩이 뼈에 붙였다. 망토 아래쪽이 허벅지 뼈를 따라 몸에 붙어 있어 등 가운데가 아니라 왼쪽 엉덩이 옆에서 망토 앞 가장자리 밖으로 나와 위로 말린다.
-- 표정(`src/tiger/duduFace.ts`): 눈·입은 텍스처에 그려져 있고 셰이프 키가 없다. 얼굴 곡면을 따르는 덧그림(감은 눈 ‿, 웃는 눈 ∩, 벌린 입·혀)을 머리 뼈에 붙였다. 위치는 원본 GLB 얼굴 텍셀을 Blender에서 3D로 펼쳐 잰 값(눈 중심 Blender `(-0.112,-0.300,0.977)`·`(0.110,-0.300,0.978)` m, 크기 0.045×0.072 m, 입선 가운데 아래 끝 `(-0.002,-0.313,0.831)` m)을 앱 좌표로 옮겼다.
-- 동작(`src/tiger/duduMotion.ts`): 사람 비율 프리셋이 두두 몸에 맞지 않는 부분을 불러온 뒤 보정한다. 엉덩이 수평 이동 0.3 이하(펀치 0.88→0.3 등), 물건 줍기를 대기 자세와 45%로 섞기, 발이 쉬는 자세보다 내려가면 모델을 올리기.
+- 꼬리(`frontend/src/tiger/duduTail.ts`): 모델에 꼬리가 없다. 줄무늬 관을 엉덩이 뼈에 붙였다. 망토 아래쪽이 허벅지 뼈를 따라 몸에 붙어 있어 등 가운데가 아니라 왼쪽 엉덩이 옆에서 망토 앞 가장자리 밖으로 나와 위로 말린다.
+- 표정(`frontend/src/tiger/duduFace.ts`): 눈·입은 텍스처에 그려져 있고 셰이프 키가 없다. 얼굴 곡면을 따르는 덧그림(감은 눈 ‿, 웃는 눈 ∩, 벌린 입·혀)을 머리 뼈에 붙였다. 위치는 원본 GLB 얼굴 텍셀을 Blender에서 3D로 펼쳐 잰 값(눈 중심 Blender `(-0.112,-0.300,0.977)`·`(0.110,-0.300,0.978)` m, 크기 0.045×0.072 m, 입선 가운데 아래 끝 `(-0.002,-0.313,0.831)` m)을 앱 좌표로 옮겼다.
+- 동작(`frontend/src/tiger/duduMotion.ts`): 사람 비율 프리셋이 두두 몸에 맞지 않는 부분을 불러온 뒤 보정한다. 엉덩이 수평 이동 0.3 이하(펀치 0.88→0.3 등), 물건 줍기를 대기 자세와 45%로 섞기, 발이 쉬는 자세보다 내려가면 모델을 올리기.
 
 ## 화면 검토 도구 (`tools/review/`)
 
@@ -108,7 +108,7 @@ Blender 4.5.14 LTS 휴대용판을 `C:\Users\kor02\Tools\blender-4.5.14-windows-
 
 ## 2026-10-05 휴대폰 성능 점검 (Phase 3, Claude)
 
-**모델(`public/assets/dudu/dudu.glb`, 2.6MB)**
+**모델(`frontend/public/assets/dudu/dudu.glb`, 2.6MB)**
 - 메시 1개, 삼각형 20,012개, 정점 40,025개, 뼈 28개
 - 동작 11개(Walking, Happy_Sway_Standing, Talk_with_Left_Hand_on_Hip 등)
 - 텍스처는 1024×1024 WebP 3장(합계 약 265KB). 파일 대부분은 동작 데이터다.

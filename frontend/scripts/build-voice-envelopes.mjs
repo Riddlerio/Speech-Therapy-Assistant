@@ -34,6 +34,6 @@ export function envelope(path) {
 if (process.argv[1]?.endsWith('build-voice-envelopes.mjs')) {
   const out = {}
   for (const file of readdirSync(DIR).filter(name => name.endsWith('.wav')).sort()) out[file.replace(/\.wav$/, '')] = envelope(`${DIR}/${file}`)
-  writeFileSync('shared/dudu_voice_envelopes.json', JSON.stringify({ stepMs: ENVELOPE_STEP_MS, clips: out }, null, 1) + '\n')
+  writeFileSync('../shared/dudu_voice_envelopes.json', JSON.stringify({ stepMs: ENVELOPE_STEP_MS, clips: out }, null, 1) + '\n')
   console.log(`${Object.keys(out).length}개 파일의 입 모양 값을 썼습니다.`)
 }

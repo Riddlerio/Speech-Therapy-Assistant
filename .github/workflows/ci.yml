@@ -20,16 +20,20 @@ jobs:
     name: 프런트엔드(타입·테스트·빌드)
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
+          cache-dependency-path: frontend/package-lock.json
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
-      # 빌드에는 dist 비밀 값 검사(scripts/check-dist.mjs)가 들어 있다.
+      # 빌드에는 dist 비밀 값 검사(frontend/scripts/check-dist.mjs)가 들어 있다.
       - run: npm run build
       - run: npm audit --audit-level=high
 
@@ -59,10 +63,11 @@ jobs:
         with:
           node-version: 22
           cache: npm
+          cache-dependency-path: frontend/package-lock.json
       - run: npm ci
-        working-directory: .
+        working-directory: frontend
       - run: npm run build
-        working-directory: .
+        working-directory: frontend
       # test-temp는 무시 목록에 있어 새로 받은 저장소에는 없다. pytest 임시 폴더와 smoke DB가 쓴다.
       - run: New-Item -ItemType Directory -Force test-temp | Out-Null
       - run: python -m pytest -q -p no:cacheprovider --basetemp test-temp/ci

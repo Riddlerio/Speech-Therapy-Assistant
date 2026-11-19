@@ -82,7 +82,7 @@ package.json
 
 vite.config.ts
 
-src/\*\*
+frontend/src/\*\*
 
 backend/\*\*
 

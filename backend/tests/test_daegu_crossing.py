@@ -65,7 +65,7 @@ def test_quality_gate_and_missing_measurements_are_neutral(acoustic, result):
     assert analyzed.result == result
 
 
-# 화면 src/game/crossing/crossingFlow.test.ts의 MEASURED 표와 같은 실측값·같은 결과(2026-10-05, 2026-10-06 60ms로 조정).
+# 화면 frontend/src/game/crossing/crossingFlow.test.ts의 MEASURED 표와 같은 실측값·같은 결과(2026-10-05, 2026-10-06 60ms로 조정).
 # (이름, 길이, 시작 마찰, 마찰 뒤 유성, 평균 크기, 잡음, 결과). 2-#39·40은 표시 '아'였지만 실제로 '사'.
 MEASURED = [
     ("#2 사", 880, 80, 357, -41.8, -67.2, "success"), ("#8 사", 840, 78.8, 534, -43.3, -67.2, "success"),

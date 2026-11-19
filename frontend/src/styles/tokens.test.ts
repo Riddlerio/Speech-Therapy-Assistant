@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import TOKENS from '../../shared/design-tokens.json'
+import TOKENS from '../../../shared/design-tokens.json'
 
 /*
  * 디자인 토큰(Phase 3, 2026-10-05): shared/design-tokens.json이 원본이고 src/styles/tokens.css는 생성 파일이다.

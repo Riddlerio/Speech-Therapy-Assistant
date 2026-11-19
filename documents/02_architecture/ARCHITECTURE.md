@@ -36,7 +36,7 @@ flowchart LR
 
 ### 대구대 건너기·대화 전환 API 약속 (2026-10-05 확정)
 
-화면 구현은 `src/api/hoyaChat.ts`와 `src/api/activities.ts`의 타입을 기준으로 연결한다. 아래 표는 2026-10-05부터 확장한 API 계약의 기록이다.
+화면 구현은 `frontend/src/api/hoyaChat.ts`와 `frontend/src/api/activities.ts`의 타입을 기준으로 연결한다. 아래 표는 2026-10-05부터 확장한 API 계약의 기록이다.
 
 | 대상 | 확정 필드·의미 |
 |---|---|

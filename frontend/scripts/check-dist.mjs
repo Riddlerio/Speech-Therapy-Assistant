@@ -5,7 +5,7 @@ import { basename, join } from 'node:path'
 const FORBIDDEN = ['speechhero', 'HERO01', 'OPENAI_API_KEY', 'HOYA_CHAT_', 'VITE_OPENAI']
 // 로컬 backend/.env에 실제 key가 있으면 그 값도 dist에 없어야 한다. 값은 출력하지 않는다.
 const SECRET_NAMES = ['OPENAI_API_KEY', 'SECRET_KEY']
-const secrets = existsSync('backend/.env') ? readFileSync('backend/.env', 'utf8').split(/\r?\n/)
+const secrets = existsSync('../backend/.env') ? readFileSync('../backend/.env', 'utf8').split(/\r?\n/)
   .map(line => line.match(/^\s*([A-Z_]+)\s*=\s*(.*)\s*$/)).filter(match => match && SECRET_NAMES.includes(match[1]))
   .map(match => match[2].replace(/^["']|["']$/g, '')).filter(value => value.length >= 8) : []
 const root = process.argv[2] || 'dist'

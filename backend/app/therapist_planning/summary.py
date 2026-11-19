@@ -26,12 +26,12 @@ CLINICAL_CONTEXT = (
 
 LEVEL_LABELS = {"phoneme": "음소", "syllable": "음절", "word": "단어", "short_sentence": "짧은 문장",
                 "spontaneous": "자발 발화", "unknown": "단계 미상"}
-# 아래 이름표는 src/therapist/planning.ts의 화면 표기와 같다. 요약 AI에는 코드 대신 이 한국어 값을 보낸다.
+# 아래 이름표는 frontend/src/therapist/planning.ts의 화면 표기와 같다. 요약 AI에는 코드 대신 이 한국어 값을 보낸다.
 POSITION_LABELS = {"initial": "어두", "medial": "어중", "final": "어말"}
 CUE_LABELS = {"none": "단서 없음", "visual_mouth": "입 모양 보기", "auditory_model": "소리 들려주기",
               "tactile_description": "촉각 설명"}
 ACTIVITY_LABELS = {"hoya_conversation": "두두와 대화", "daegu_crossing": "대구대 건너기"}
-# 관찰 기록의 단서 종류(src/therapist/insights.ts CUE_NAMES와 같음).
+# 관찰 기록의 단서 종류(frontend/src/therapist/insights.ts CUE_NAMES와 같음).
 CUE_TYPE_LABELS = {"NONE": "단서 없음", "AUDITORY_MODEL": "소리 시범", "PICTURE": "그림 단서", "PICTURE_PROMPT": "그림 단서",
                    "VISUAL": "시각 단서", "AUDITORY": "청각 단서", "MODEL": "모델 제시", "COMBINED": "복합 단서",
                    "UNKNOWN": "단서 미기록"}

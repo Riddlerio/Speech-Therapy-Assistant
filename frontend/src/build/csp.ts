@@ -4,7 +4,7 @@
  * 정의는 shared/frontend_csp.json 하나이며, FastAPI 정적 서비스(app/static_site.py)가 같은 정책에
  * frame-ancestors 'none'을 더해 HTTP 헤더로 보낸다. frame-ancestors는 meta 태그로는 적용되지 않는다.
  */
-import cspConfig from '../../shared/frontend_csp.json'
+import cspConfig from '../../../shared/frontend_csp.json'
 
 export const PRODUCTION_CSP = cspConfig.directives.join('; ')
 

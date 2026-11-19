@@ -27,11 +27,11 @@ function walk(node, path, out) {
 
 export function renderTokensCss(tokens) {
   const lines = walk(tokens, [], []).map(([name, value]) => `  ${name}: ${value};`)
-  return `/* 자동 생성 파일: shared/design-tokens.json → node scripts/build-design-tokens.mjs. 직접 고치지 않는다. */\n:root {\n${lines.join('\n')}\n}\n`
+  return `/* 자동 생성 파일: shared/design-tokens.json → frontend에서 node scripts/build-design-tokens.mjs. 직접 고치지 않는다. */\n:root {\n${lines.join('\n')}\n}\n`
 }
 
 if (process.argv[1]?.endsWith('build-design-tokens.mjs')) {
-  const tokens = JSON.parse(readFileSync('shared/design-tokens.json', 'utf8'))
+  const tokens = JSON.parse(readFileSync('../shared/design-tokens.json', 'utf8'))
   const css = renderTokensCss(tokens)
   writeFileSync('src/styles/tokens.css', css)
   console.log(`src/styles/tokens.css: 변수 ${css.split('\n').filter(line => line.startsWith('  --')).length}개`)

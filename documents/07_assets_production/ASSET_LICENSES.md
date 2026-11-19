@@ -10,23 +10,23 @@
 |---|---|---|---|---|
 | 두두 캐릭터(원화 기반 입력 이미지 4장) | `assets/dudu3d/meshy_input/*.png` | 대구대학교 공식 캐릭터 두두 원화로 만든 3D 생성용 입력(정면·옆·뒤·인형풍 정면) | 캐릭터 권리는 대구대학교에 있다. 사용 허락은 사용자가 확인했다(2026-10-04, 서면 문서 없음) | 서면 허락, 공개 게시 범위 |
 | 두두 공식 참고 그림 3장 | `assets/dudu3d/references/original_dudu_2d.jpg`, `dudu_turnaround_front_side_back.jpg`, `dudu_official_sheet_poses.jpg` | 사용자가 제공한 두두 기본형 원화·정측후 도면·포즈 시트. 기본형은 기존보다 해상도가 높은 680×821판으로 교체했다 | 캐릭터 권리는 대구대학교에 있다. 사용 허락은 사용자가 확인했다(2026-10-04, 서면 문서 없음). 원화를 그대로 공개 저장소에 올린 파일이다 | 서면 허락, 공개 게시 범위 |
-| 두두 3D 모델 | `public/assets/dudu/dudu.glb`(2.6MB) | Meshy Pro에서 **비공개(Private) 라이선스**로 생성하고, Blender·스크립트로 망토·스카프·흉장을 보정했다(`assets/dudu3d/README.md`) | 캐릭터 권리는 대학에 있다. Meshy 생성물 조건은 Private 플랜 약관을 따른다. Meshy FAQ는 비 Enterprise 데이터의 익명화 학습 사용 가능성을 안내한다 | 같음 |
-| 대구대학교 공식 흉장 | `assets/dudu3d/reference/daegu_university_emblem.jpg`, `public/assets/crossing/daegu_emblem.jpg` | 사용자가 준 공식 흉장 이미지. 두두 가슴(텍스처 투영)과 정문 기둥 장식에 쓴다 | 대학 상징이다. 허락 범위 안에서만 쓴다 | 같음 |
-| 대구대 정문 3D | `src/game/crossing/DaeguGate.tsx`(코드) | 사용자가 준 정문 사진 두 장을 **보고 코드로 만든 단순화 모형**이다. 사진 파일은 저장소에 넣지 않았다. 사진에는 언론사(매일신문, campusN) 표시가 있다 | 모형은 직접 만든 것이다. 교훈 "사랑 빛 자유 LOVE LIGHT FREEDOM"과 교명은 대학 표기를 옮겼다 | 교훈·교명 표기도 허락 범위에 넣어 확인 |
+| 두두 3D 모델 | `frontend/public/assets/dudu/dudu.glb`(2.6MB) | Meshy Pro에서 **비공개(Private) 라이선스**로 생성하고, Blender·스크립트로 망토·스카프·흉장을 보정했다(`assets/dudu3d/README.md`) | 캐릭터 권리는 대학에 있다. Meshy 생성물 조건은 Private 플랜 약관을 따른다. Meshy FAQ는 비 Enterprise 데이터의 익명화 학습 사용 가능성을 안내한다 | 같음 |
+| 대구대학교 공식 흉장 | `assets/dudu3d/reference/daegu_university_emblem.jpg`, `frontend/public/assets/crossing/daegu_emblem.jpg` | 사용자가 준 공식 흉장 이미지. 두두 가슴(텍스처 투영)과 정문 기둥 장식에 쓴다 | 대학 상징이다. 허락 범위 안에서만 쓴다 | 같음 |
+| 대구대 정문 3D | `frontend/src/game/crossing/DaeguGate.tsx`(코드) | 사용자가 준 정문 사진 두 장을 **보고 코드로 만든 단순화 모형**이다. 사진 파일은 저장소에 넣지 않았다. 사진에는 언론사(매일신문, campusN) 표시가 있다 | 모형은 직접 만든 것이다. 교훈 "사랑 빛 자유 LOVE LIGHT FREEDOM"과 교명은 대학 표기를 옮겼다 | 교훈·교명 표기도 허락 범위에 넣어 확인 |
 
 ## 2. 두두 목소리
 
 | 에셋 | 위치 | 출처 | 조건 | 남은 확인 |
 |---|---|---|---|---|
-| 두두 음성 파일 92개 | `public/assets/voice/dudu/*.wav`, `shared/dudu_voice_lines.json` | VOLI 베이직 보이스 '하람'(VOLI 3, 속도 90%), 2026-10-05 생성(10/6에 대화 질문 7개 추가) | **무료 플랜:** 비상업적 범위에서만 제한적으로 쓸 수 있고, 출처 표기가 필수다. 표기는 화면(`VoiceCredit`)과 `CREDITS.txt`에 있다. 베이직 보이스는 VOLI 자체 개발이다('저작권 Free'). 오픈 보이스는 쓰지 않았다 | 상업적으로 쓰려면 유료 플랜으로 다시 만든다 |
-| 입 모양 값 | `shared/dudu_voice_envelopes.json` | 위 음성 파일에서 계산한 소리 크기(`scripts/build-voice-envelopes.mjs`) | 음성 파일과 같은 조건이다 | — |
+| 두두 음성 파일 92개 | `frontend/public/assets/voice/dudu/*.wav`, `shared/dudu_voice_lines.json` | VOLI 베이직 보이스 '하람'(VOLI 3, 속도 90%), 2026-10-05 생성(10/6에 대화 질문 7개 추가) | **무료 플랜:** 비상업적 범위에서만 제한적으로 쓸 수 있고, 출처 표기가 필수다. 표기는 화면(`VoiceCredit`)과 `CREDITS.txt`에 있다. 베이직 보이스는 VOLI 자체 개발이다('저작권 Free'). 오픈 보이스는 쓰지 않았다 | 상업적으로 쓰려면 유료 플랜으로 다시 만든다 |
+| 입 모양 값 | `shared/dudu_voice_envelopes.json` | 위 음성 파일에서 계산한 소리 크기(`frontend/scripts/build-voice-envelopes.mjs`) | 음성 파일과 같은 조건이다 | — |
 
 ## 2-1. 생성 그림(2026-10-05)
 
 | 에셋 | 위치 | 만든 방법 | 조건 | 남은 확인 |
 |---|---|---|---|---|
-| '대구대 건너기' 카드 그림 | `public/assets/art/crossing_card.webp`(1024×1024) | Meshy 이미지 생성(Nano Banana Pro). 사용자 Meshy 유료 계정의 크레딧으로 만들었고, 사용자가 직접 로그인했다. 프롬프트: 횡단보도가 대학 정문(긴 보·줄무늬 원통 탑·어두운 판이 있는 기둥·붉은 벽돌 광장)으로 이어지고 음표가 떠 있는 3D 만화풍. 사람·동물·캐릭터·글자는 넣지 않았다 | Meshy 약관(유료 플랜 생성물)과 기반 모델 약관을 따른다. 구글 이미지 모델 출력에는 보이지 않는 워터마크(SynthID)가 들어갈 수 있다. 대구대 정문 사진은 넣지 않고 글로만 묘사했다 | 상업적으로 쓰기 전에 Meshy·모델 약관 확인 |
-| 하늘·언덕 배경 | `public/assets/art/sky_hills.webp`(1376×768) | 같은 방법. 하늘·구름·초록 언덕·나무·꽃, 오른쪽 위에 유리 돔 대학 건물이 있는 떠 있는 섬 | 같음 | 같음 |
+| '대구대 건너기' 카드 그림 | `frontend/public/assets/art/crossing_card.webp`(1024×1024) | Meshy 이미지 생성(Nano Banana Pro). 사용자 Meshy 유료 계정의 크레딧으로 만들었고, 사용자가 직접 로그인했다. 프롬프트: 횡단보도가 대학 정문(긴 보·줄무늬 원통 탑·어두운 판이 있는 기둥·붉은 벽돌 광장)으로 이어지고 음표가 떠 있는 3D 만화풍. 사람·동물·캐릭터·글자는 넣지 않았다 | Meshy 약관(유료 플랜 생성물)과 기반 모델 약관을 따른다. 구글 이미지 모델 출력에는 보이지 않는 워터마크(SynthID)가 들어갈 수 있다. 대구대 정문 사진은 넣지 않고 글로만 묘사했다 | 상업적으로 쓰기 전에 Meshy·모델 약관 확인 |
+| 하늘·언덕 배경 | `frontend/public/assets/art/sky_hills.webp`(1376×768) | 같은 방법. 하늘·구름·초록 언덕·나무·꽃, 오른쪽 위에 유리 돔 대학 건물이 있는 떠 있는 섬 | 같음 | 같음 |
 
 - **크레딧:** 그림 10장을 만들어 72크레딧을 썼다(1,225 → 1,153).
   - 카드 4장 36크레딧
@@ -38,12 +38,12 @@
 
 | 에셋 | 설명 |
 |---|---|
-| 효과음('펑', '딱 맞았어', 휘익) | Web Audio로 실시간 합성한다(`src/child/demoFx.tsx`). 파일이 없다 |
+| 효과음('펑', '딱 맞았어', 휘익) | Web Audio로 실시간 합성한다(`frontend/src/child/demoFx.tsx`). 파일이 없다 |
 | 3D 장면 소품(횡단보도·동글동글한 나무·덤불·신호등·먼 건물) | 코드 도형이다(`CrossingScene.tsx`, `DaeguGate.tsx`). 나무는 생성 그림의 둥근 나무 모양에 맞췄다(Meshy 3D는 쓰지 않음) |
-| 목표 낱말 그림 6개(사과·수박·사자·시소·소리·소풍) | 코드로 그린 SVG다(`src/child/WordPicture.tsx`) |
-| 게임 카드 대체 그림 | 코드로 그린 SVG다(`src/child/GameCard.tsx`). 생성 그림을 불러오지 못할 때 쓴다 |
+| 목표 낱말 그림 6개(사과·수박·사자·시소·소리·소풍) | 코드로 그린 SVG다(`frontend/src/child/WordPicture.tsx`) |
+| 게임 카드 대체 그림 | 코드로 그린 SVG다(`frontend/src/child/GameCard.tsx`). 생성 그림을 불러오지 못할 때 쓴다 |
 | 글꼴(기본) | 이름만 지정한다(Pretendard, Noto Sans KR, Apple SD Gothic Neo, Malgun Gothic). 글꼴 파일은 넣지 않았고, 기기에 설치된 것을 쓴다 |
-| 글꼴(아동 화면 제목·버튼·말풍선) | **나눔스퀘어라운드** B·EB 웹폰트(`public/assets/fonts/nanumsquareround/`, 합계 약 520KB, 한글 2,350자). NAVER 나눔글꼴, SIL Open Font License 1.1. 라이선스 전문을 같은 폴더 `OFL.txt`에 두었다. 웹폰트 변환본은 github.com/gshn/fonts에서 받았다. 글꼴 자체를 팔지 않는 한 상업적 사용도 된다. 앱 보안 설정(CSP `font-src 'self'`) 때문에 외부 글꼴 서버 대신 파일을 함께 둔다 |
+| 글꼴(아동 화면 제목·버튼·말풍선) | **나눔스퀘어라운드** B·EB 웹폰트(`frontend/public/assets/fonts/nanumsquareround/`, 합계 약 520KB, 한글 2,350자). NAVER 나눔글꼴, SIL Open Font License 1.1. 라이선스 전문을 같은 폴더 `OFL.txt`에 두었다. 웹폰트 변환본은 github.com/gshn/fonts에서 받았다. 글꼴 자체를 팔지 않는 한 상업적 사용도 된다. 앱 보안 설정(CSP `font-src 'self'`) 때문에 외부 글꼴 서버 대신 파일을 함께 둔다 |
 | 이모지(🚸 🐾 🚦 등) | 기기의 기본 이모지 글꼴로 보인다 |
 | 디자인 토큰 | `shared/design-tokens.json`. 직접 정한 값이다 |
 

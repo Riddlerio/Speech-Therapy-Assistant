@@ -1,5 +1,5 @@
-import DUDU_VOICE_LINES from '../../../shared/dudu_voice_lines.json'
-import DUDU_VOICE_ENVELOPES from '../../../shared/dudu_voice_envelopes.json'
+import DUDU_VOICE_LINES from '../../../../shared/dudu_voice_lines.json'
+import DUDU_VOICE_ENVELOPES from '../../../../shared/dudu_voice_envelopes.json'
 import type { PaceEvent } from './crossingFlow'
 
 /*

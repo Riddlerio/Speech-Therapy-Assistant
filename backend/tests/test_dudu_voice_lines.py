@@ -19,7 +19,7 @@ from app.training.content import conversation_candidates
 ROOT = Path(__file__).resolve().parents[2]
 LINES = json.loads((ROOT / "shared" / "dudu_voice_lines.json").read_text(encoding="utf-8"))
 TEXTS = {text for text, _ in LINES}
-# 화면 src/speech/duduClips.ts의 splitSentences와 같은 규칙.
+# 화면 frontend/src/speech/duduClips.ts의 splitSentences와 같은 규칙.
 SENTENCE = re.compile(r"[^.!?]+[.!?]+|[^.!?]+$")
 LEXICON = conversation_candidates("ㅅ", "initial")
 SAID = [None, "몰라", *[keys[0] for keys, _, _ in TOPICS], "공놀이", "야구", "농구", "딸기", *LEXICON]
@@ -83,5 +83,5 @@ def test_every_demo_dialogue_sentence_has_a_voice_file():
 def test_voice_list_has_unique_ids_and_existing_wav_files():
     ids = [clip_id for _, clip_id in LINES]
     assert len(ids) == len(set(ids)) and len(TEXTS) == len(LINES)
-    folder = ROOT / "public" / "assets" / "voice" / "dudu"
+    folder = ROOT / "frontend" / "public" / "assets" / "voice" / "dudu"
     assert sorted(path.stem for path in folder.glob("*.wav")) == sorted(ids)
