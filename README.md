@@ -23,7 +23,9 @@
 2. **대구대 건너기** — ‘똑·똑·똑’ 다음 넷째 박에 카드 낱말을 말합니다. 한 판 5라운드 × 2줄, 같은 회기에서 최대 3판.
 3. **새 낱말 확인** — 연습하지 않은 낱말 최대 3개를 칭찬·정오 없이 확인합니다. 연습 집계와 섞지 않습니다.
 4. **치료사 검토** — 자동 추정의 근거와 음질을 보고 확인·교정하고, 연습과 새 낱말 확인을 따로 봅니다.
-5. **다음 회기 계획** — 확인된 근거로 서버가 제안 → 치료사가 수정·승인합니다. (승인 계획을 게임에 자동 적용하는 기능은 아직 없습니다.)
+5. **다음 회기 계획** — 확인된 근거로 서버가 제안 → 치료사가 수정·승인합니다. 게임 단계는 대구대 건너기 하나이고, 목표가 어두 /ㅅ/(음절·낱말)일 때만 들어갑니다. (승인 계획을 게임에 자동 적용하는 기능은 아직 없습니다.)
+
+예전 모험 게임 4종(빛의 마법·하늘 오르기·몬스터 모험·두두와 소풍)과 두두의 집·지도·보상·매직빔 승인은 2026-11-19에 삭제했습니다. 변경 내용은 [동결 계약 15절](documents/02_architecture/FROZEN_CORE_CONTRACT.md)에 있습니다.
 
 ### 소리 한 번이 기록이 되기까지
 
@@ -47,25 +49,32 @@
 ├─ voice-mic-check.html       (개발용) 실기기 마이크·목소리 점검 화면
 ├─ src/                       프런트엔드 (React + TypeScript)
 │  ├─ main.tsx, App.tsx       시작점과 화면 경로
+│  ├─ pages/                  첫 화면(Landing)
 │  ├─ api/                    서버 호출 (client, auth=CSRF 토큰, 활동·대화·치료사 API)
-│  ├─ child/                  아동 화면: 대화(HoyaChat), 건너기(DaeguCrossing), 마무리
+│  ├─ child/                  아동 화면: 로그인(PlayEntry), 대화(HoyaChat), 건너기(DaeguCrossing), 마무리(DuduGoodbye)
 │  ├─ game/crossing/          건너기 규칙: 박자, 판정 연결, 다시 시도 도움말
 │  ├─ speech/                 마이크·음향 측정·음성 인식·두두 목소리
-│  ├─ control/                소리 신호 → 캐릭터 동작 연결
+│  ├─ control/                게임 종류(GameKind)·두두 동작(HoyaAction) 이름 타입
 │  ├─ tiger/                  두두 3D 캐릭터
 │  ├─ therapist/              치료사 화면: 목록, 아동 상세, 분석, 계획
-│  ├─ shared/                 공용 타입·훅
+│  ├─ shared/                 공용 타입·훅(데모 모드, 움직임 줄이기)
+│  ├─ dev/                    개발용 마이크 점검 화면(voice-mic-check.html)
+│  ├─ build/                  빌드 시 보안 정책(CSP) 생성
 │  └─ styles/                 CSS (tokens.css는 생성 파일)
 ├─ backend/                   백엔드 (FastAPI + SQLAlchemy + SQLite)
 │  ├─ app/main.py             앱 생성·보안 미들웨어·로그인·아동 놀이 API
 │  ├─ app/therapist_api.py    치료사용 API (아동·목표·회기·관찰)
 │  ├─ app/serializers.py      DB 행 → API 응답 변환 공용 함수
-│  ├─ app/games/              게임 라운드 정의·판정·건너기 진행
-│  ├─ app/speech/pipeline.py  인식 문장 정규화 → 음소 변환 → 정렬 → 점수 (한 파일)
+│  ├─ app/games/              건너기 라운드 정의·판정·진행
+│  ├─ app/clinical/           발화 결과 → 임상 관찰 기록
+│  ├─ app/pronunciation/      음향 요약 입력 형식·음질 등급
+│  ├─ app/adventure/          활동 이어받기(lease)·활동 응답 형식 (이름은 예전 모험 기능에서 유래)
 │  ├─ app/game_settings/      아동별 박자 설정 (api + service)
 │  ├─ app/hoya/               두두 대화 (정책·LLM 제공자·검증)
 │  ├─ app/therapist_insights/ 치료사 읽기 전용 분석
 │  ├─ app/therapist_planning/ 다음 회기 계획 (LangGraph)
+│  ├─ app/training/           목표 소리별 연습 낱말 은행
+│  ├─ app/speech/pipeline.py  인식 문장 음소 분석 (지금은 앱에서 쓰지 않음, 동결 인터페이스라 유지)
 │  ├─ app/...                 그 밖의 모듈은 파일 맨 위 설명 참고
 │  ├─ scripts/                smoke 검사·시연 DB·계정 생성 도구
 │  └─ tests/                  pytest
@@ -135,7 +144,7 @@ npm.cmd run dev -- --port 5173 --strictPort
 ```
 
 - 화면: http://127.0.0.1:5173 · API 문서: http://127.0.0.1:8000/docs
-- 로그인 화면의 ‘DEMO 아동으로 시작’·‘DEMO 치료사로 시작’을 누릅니다.
+- 로그인 화면의 ‘DEMO 아동으로 시작’·‘DEMO 치료사로 시작’을 누릅니다. 샘플 회기 기록은 바람용사(C-0001, /ㅅ/)에만 있습니다.
 - 마이크 없이 건너기를 보려면 ‘DEMO로 시작(누르고 말하기)’ 후 `Space`를 누릅니다.
 - AI 대화·요약을 켜려면 [backend/.env.example](backend/.env.example)을 `backend/.env`로 복사해 `HOYA_CHAT_ENABLED=true`, `THERAPIST_SUMMARY_ENABLED=true`, 모델 이름, `OPENAI_API_KEY`를 넣습니다. 키는 서버 환경에만 둡니다.
 - 운영 계정 만들기: `backend`에서 `.venv\Scripts\python.exe -m scripts.provision_account`
