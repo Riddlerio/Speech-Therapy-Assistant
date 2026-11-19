@@ -1,12 +1,12 @@
 {
-  "description": "프로덕션 프런트엔드 CSP. Vite 빌드가 index.html meta로 넣고, FastAPI 정적 서비스가 HTTP 헤더로 보낸다. 헤더에는 meta로 적용되지 않는 frame-ancestors 'none'을 더한다. style-src 'unsafe-inline'은 React style 속성과 three.js/R3F가 요소에 직접 넣는 style 때문에 필요하다. 번들에는 eval·new Function·inline script가 없다.",
+  "description": "프로덕션 프런트엔드 CSP. Vite 빌드가 index.html meta로 넣고, FastAPI 정적 서비스가 HTTP 헤더로 보낸다. 헤더에는 meta로 적용되지 않는 frame-ancestors 'none'을 더한다. style-src 'unsafe-inline'은 React style 속성과 three.js/R3F가 요소에 직접 넣는 style 때문에 필요하다. 번들에는 eval·new Function·inline script가 없다. connect-src의 blob:은 두두 GLB에 들어 있는 텍스처를 three.js GLTFLoader가 blob URL로 fetch해서 필요하다(없으면 두두가 회색·얼굴 없이 보임).",
   "directives": [
     "default-src 'self'",
     "script-src 'self'",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob:",
     "font-src 'self'",
-    "connect-src 'self'",
+    "connect-src 'self' blob:",
     "media-src 'self' blob:",
     "worker-src 'self' blob:",
     "object-src 'none'",
