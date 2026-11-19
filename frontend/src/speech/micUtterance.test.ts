@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import fixture from '../../../shared/re_onset_mic_cases.json'
 import type { Acoustic } from '../shared/types'
-import { assessAudioQuality } from './audioQuality'
 import { MicUtterancePipeline } from './micUtterance'
 import type { VadFrame } from './vad'
 
@@ -20,7 +19,6 @@ function run(testCase: Case): Acoustic[] {
 }
 
 const byName = (name: string) => fixture.cases.find(testCase => testCase.name === name)!
-const quality = (acoustic: Acoustic) => assessAudioQuality(acoustic.noiseFloorDb ?? null, acoustic.meanRmsDb, acoustic.durationMs, acoustic.clippingRatio ?? 0)
 
 describe('실제 마이크 경로: 쉼 후 재개 frame 시나리오', () => {
   it.each(fixture.cases.map(testCase => [testCase.name, testCase] as const))('%s: 브라우저 요약이 서버 fixture와 같다', (_name, testCase) => {
@@ -33,11 +31,6 @@ describe('실제 마이크 경로: 쉼 후 재개 frame 시나리오', () => {
     const testCase = byName('natural_pause_restart')
     const [acoustic] = run(testCase)
     expect(acoustic.meanRmsDb).toBe(-40)
-    expect(quality(acoustic).level).toBe('GOOD')
-    // 이전 방식(발화 창 전체 frame 평균)이라면 약 2.2초 발성과 약 3.7초 무음이 섞여 LOW_SNR이 된다.
-    const windowFrames = framesOf(testCase.segments).filter(frame => frame.tMs >= 1000 && frame.tMs < 1000 + 1100 + 1200 + 1100 + fixture.endHoldMs)
-    const windowMean = windowFrames.reduce((sum, frame) => sum + frame.rmsDb, 0) / windowFrames.length
-    expect(assessAudioQuality(-60, windowMean, 3400, 0).reasons).toContain('LOW_SNR')
   })
 
   it('발화 길이는 후행 종료 유예를 포함하지 않는다', () => {
@@ -60,7 +53,7 @@ describe('실제 마이크 경로: 쉼 후 재개 frame 시나리오', () => {
 
   it('아주 짧은 소리는 음질 불량(평가 보류)이고, 무음만 있으면 발화를 보내지 않는다', () => {
     const [blip] = run(byName('short_blip_uncertain'))
-    expect(quality(blip).reasons).toContain('TOO_SHORT')
+    expect(blip.durationMs).toBeLessThan(300) // 서버 음질 규칙의 TOO_SHORT 기준
     expect(run(byName('silence_no_utterance'))).toEqual([])
   })
 })

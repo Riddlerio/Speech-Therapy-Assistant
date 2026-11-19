@@ -1,18 +1,19 @@
 # 두두 3D 제작 자료
 
-이 폴더에는 두두 3D 모델의 입력 이미지, 참고 그림과 재생성 도구를 둡니다. 웹 앱이 실제로 불러오는 파일은 [`frontend/public/assets/dudu/dudu.glb`](../../frontend/public/assets/dudu/dudu.glb)입니다. 2026-10-04에 Meshy Pro의 비공개(Private) 설정으로 모델을 생성하고 Blender·스크립트로 보정해 앱에 연결했습니다. 무료 체험에서 만든 일반 호랑이 모델은 앱에 쓰지 않습니다.
+이 폴더에는 두두 3D 모델의 입력 이미지와 참고 그림을 둡니다. 웹 앱이 실제로 불러오는 파일은 [`frontend/public/assets/dudu/dudu.glb`](../../frontend/public/assets/dudu/dudu.glb)입니다. 2026-10-04에 Meshy Pro의 비공개(Private) 설정으로 모델을 생성하고 Blender·스크립트로 보정해 앱에 연결했습니다. 무료 체험에서 만든 일반 호랑이 모델은 앱에 쓰지 않습니다.
+
+> **재생성 도구 삭제(2026-11-19):** 텍스처 보정·GLB 변환·화면 검토 스크립트(`tools/`의 `repaint_texture.py`, `inject_basecolor.mjs`, `build_dudu.mjs`, `analyze_texture.py`, `review/capture_review.mjs`)와 개발용 검토 화면(`frontend/dudu-review.html`)은 현재 흐름에서 쓰지 않아 지웠습니다. 모델을 다시 만들어야 하면 git 이력의 정리 직전 커밋(`b796fdd`)에서 꺼내 씁니다. 아래 기록은 GLB가 어떻게 만들어졌는지 남기는 제작 기록입니다.
 
 ## 현재 자산
 
 | 위치 | 역할 |
 |---|---|
-| `meshy_input/` | 두두 원화 기반 정면·측면·후면 입력과 질감 참고 그림 |
+| `meshy_input/` | 두두 원화 기반 정면·측면·후면 입력 |
 | `reference/`, `references/` | 공식 흉장과 두두 원화·제작 참고 그림 |
-| `tools/` | 텍스처 보정·GLB 변환·화면 검토 스크립트 |
 | `meshy_output/` | 제작 원본 보관 위치. Git 추적 대상에서 제외 |
 | `frontend/public/assets/dudu/dudu.glb` | 앱에 배포하는 모델. 2,637,828바이트, 삼각형 20,012개, 뼈 28개, 동작 11개 |
 
-`frontend/src/tiger/DuduCharacter.tsx`가 GLB를 읽고 `frontend/src/tiger/duduMotion.ts`가 동작을 연결합니다. 모델을 불러오지 못하면 절차형 두두를 표시합니다. 아래의 날짜별 기록에는 실제 생성 설정, 텍스처·흉장 보정, 재생성 명령과 검토 결과를 보존했습니다.
+`frontend/src/tiger/DuduCharacter.tsx`가 GLB를 읽고 `frontend/src/tiger/duduMotion.ts`가 동작을 연결합니다. 모델을 불러오지 못하면 절차형 두두를 표시합니다. 아래의 날짜별 기록에는 실제 생성 설정, 텍스처·흉장 보정과 검토 결과를 보존했습니다.
 
 ## 제작·사용 범위
 
@@ -22,16 +23,15 @@
 
 ## 제작 입력 이미지 (`meshy_input/`)
 
-아래의 정면·측면·후면 이미지를 비공개 제작에 사용했습니다. 대체 정면은 질감 참고용입니다.
+아래의 정면·측면·후면 이미지를 비공개 제작에 사용했습니다.
 
 | 파일 | 내용 | 쓰는 곳 |
 |---|---|---|
 | `view_front.png` | 조형 도면 정면(팔 내림 자세), 1024px 흰 배경 | 메인 이미지 |
 | `view_side.png` | 같은 도면의 측면. 두두가 **이미지 왼쪽을 바라봄** | 추가 이미지(측면) |
 | `view_back.png` | 같은 도면의 후면 | 추가 이미지(후면) |
-| `alt_front_plush_target.png` | 털·천 질감 목표 이미지(손을 허리에 얹은 자세) | 별도 질감 참고·비교용 |
 
-도면 원본은 444×450px를 확대했으므로 세부 선이 흐릴 수 있다. 자세가 다른 대체 정면을 기존 측면·후면과 무조건 섞지 않는다.
+도면 원본은 444×450px를 확대했으므로 세부 선이 흐릴 수 있다. 질감 참고용 대체 정면(`alt_front_plush_target.png`)은 `references/dudu_3d_target_front.png`와 같은 파일이라 2026-11-19에 지웠다.
 
 ## 2026-10-04 실제 제작 기록 (Claude)
 
@@ -44,7 +44,7 @@
 5. Rigging: 이족 동물, 키 1.3m, 관절 마커는 자동 위치에서 무릎만 조금 내림.
 6. 동작(프리셋 추가는 크레딧 변화 없음): 걷기, 객체 수집, 행복한 흔들림 서 있기, 듣기 제스처, 동기 응원, 양주먹 펀치, 정규 점프, 왼손을 힙에 얹고 이야기하기, 한 손 흔들기, 행복한 점프, Mage Spell Cast 3. `Idle_14`는 카메라 반대쪽으로 돌아서서 뺐다.
 7. 다운로드: GLB, Mixamo 뼈대, 모든 동작 단일 파일(13.5MB) → `meshy_output/v2/`(Git 제외).
-8. 웹용 변환: `tools/build_dudu.mjs`(텍스처 1024 WebP, 키프레임 정리, 정리, 양자화) → **`frontend/public/assets/dudu/dudu.glb` 2.62MB**, 20,012삼각형, 뼈 28개, 동작 11개. 다시 만들 때는 임시 폴더에서 `npm install @gltf-transform/cli@4` 후 `node build_dudu.mjs <입력> <출력> Running`처럼 실행한다.
+8. 웹용 변환: `build_dudu.mjs`(`@gltf-transform/cli@4`; 텍스처 1024 WebP, 키프레임 정리, 정리, 양자화) → **`frontend/public/assets/dudu/dudu.glb` 2.62MB**, 20,012삼각형, 뼈 28개, 동작 11개.
 
 앱 연결: `frontend/src/tiger/DuduCharacter.tsx`가 GLB를 읽고, 동작 이름 대응은 `frontend/src/tiger/duduMotion.ts`에 있다. 불러오는 중이거나 실패하면 절차형 모델을 보여 준다. 사람의 최종 원화 충실도 승인과 저사양 휴대폰 성능 측정은 아직 하지 않았다.
 
@@ -52,10 +52,9 @@
 
 Blender 4.5.14 LTS 휴대용판을 `C:\Users\kor02\Tools\blender-4.5.14-windows-x64`에 설치했다(체크섬 확인, 관리자 권한 없음). 형태·뼈대·동작은 바꾸지 않고 기본색 텍스처만 고쳤다.
 
-- `tools/repaint_texture.py`(Blender에서 실행): UV 삼각형을 래스터화해 텍셀마다 3D 위치·법선·머리 뼈 가중치를 구한다. 몸통 축에서 바깥을 향하면 망토 겉, 안을 향하면 안감으로 나눈다. 겉은 청록 `(50,117,100)`, 안은 연두 `(121,181,72)`로 칠하고 원래 밝기 비율로 주름 명암을 남긴다(원화에서 잰 색). 가슴 흉장의 초록은 제외한다.
+- `repaint_texture.py`(Blender에서 실행): UV 삼각형을 래스터화해 텍셀마다 3D 위치·법선·머리 뼈 가중치를 구한다. 몸통 축에서 바깥을 향하면 망토 겉, 안을 향하면 안감으로 나눈다. 겉은 청록 `(50,117,100)`, 안은 연두 `(121,181,72)`로 칠하고 원래 밝기 비율로 주름 명암을 남긴다(원화에서 잰 색). 가슴 흉장의 초록은 제외한다.
 - 뒷머리는 원화 후면처럼 가운데가 빈 좌우 짝 가로줄 네 쌍으로 다시 그리고, 옆머리 쪽으로 갈수록 기존 텍스처와 섞는다. 귀 뒷면은 어두운 회색 `(54,54,54)`.
-- `tools/inject_basecolor.mjs`로 원본 GLB의 기본색 이미지만 바꾼 뒤 `tools/build_dudu.mjs`로 웹용 GLB를 만든다(2.63MB).
-- 다시 실행: `blender -b --factory-startup --python tools/repaint_texture.py -- <원본.glb> work/repaint` → `node inject_basecolor.mjs <원본.glb> work/repaint/basecolor.png <중간.glb>` → `node build_dudu.mjs <중간.glb> <출력.glb> Running`. 확인용 영역 그림은 `work/repaint/mask.png`, 구조 요약은 `tools/analyze_texture.py`.
+- `inject_basecolor.mjs`로 원본 GLB의 기본색 이미지만 바꾼 뒤 `build_dudu.mjs`로 웹용 GLB를 만들었다(2.63MB). 순서는 Blender 보정 → 기본색 주입 → 웹용 변환이고, 텍스처 구조 요약은 `analyze_texture.py`로 봤다.
 
 텍스처의 22%(망토·뒷머리·귀)만 바뀌고 나머지 텍셀은 원본과 같음을 비교로 확인했다. 결과: [4방향(원문)](https://github.com/Riddlerio/s_project/blob/22eef9b993475537ec55859e1cca17dc15d02e73/docs/handoff/dudu_2026-10-03/screenshots/claude_meshy_dudu_repainted_4views.png).
 
@@ -64,18 +63,18 @@ Blender 4.5.14 LTS 휴대용판을 `C:\Users\kor02\Tools\blender-4.5.14-windows-
 원화(공식 2D·조형 도면)에서 스카프는 망토 겉과 같은 청록이다(2D 원화에서 잰 값: 스카프 `5,127,106`, 망토 겉 `0,133,105`). Meshy 텍스처의 스카프는 짙은 초록으로 남아 있었다.
 
 - 원인: 앞 매듭이 가슴 흉장 제외 구역 안에 있고, 스카프 텍셀은 채도가 낮아 기존 망토 판정(채도 0.12 초과)에 걸리지 않았다. 자동 리그가 스카프 앞쪽에 머리 뼈 가중치(0.66~0.81)를 주어 머리 가중치로 거를 수도 없었다.
-- `tools/repaint_texture.py`에 스카프 단계를 더했다. 느슨한 초록 기준(채도 0.035 초과) + 높이 0.54 이상(흉장 초록은 0.52 이하) + 목 축에서 0.222 이내(앞 매듭 95백분위 + 0.015) + 이미 망토로 칠하지 않은 텍셀. 망토 겉 색 `(50,117,100)`에 자기 밝기 비율(0.55~1.3)을 곱해 매듭·주름·외곽선 명암을 남긴다. 2048 텍스처에서 31,924텍셀.
-- 다시 만들기: 위 Blender 보정과 같은 세 단계(`repaint_texture.py` → `inject_basecolor.mjs` → `build_dudu.mjs ... Running`). 입력은 `meshy_output/v2/Meshy_AI_Emerald_Tiger_Mascot_All_Animations.glb`(13,453,200바이트, SHA-256 `cea385768bb37837…`).
+- `repaint_texture.py`에 스카프 단계를 더했다. 느슨한 초록 기준(채도 0.035 초과) + 높이 0.54 이상(흉장 초록은 0.52 이하) + 목 축에서 0.222 이내(앞 매듭 95백분위 + 0.015) + 이미 망토로 칠하지 않은 텍셀. 망토 겉 색 `(50,117,100)`에 자기 밝기 비율(0.55~1.3)을 곱해 매듭·주름·외곽선 명암을 남긴다. 2048 텍스처에서 31,924텍셀.
+- 위 Blender 보정과 같은 세 단계로 만들었다. 입력은 `meshy_output/v2/Meshy_AI_Emerald_Tiger_Mascot_All_Animations.glb`(13,453,200바이트, SHA-256 `cea385768bb37837…`).
 - 결과 `frontend/public/assets/dudu/dudu.glb` 2,636,740바이트(SHA-256 `c728af5bca84c45c…`). 이전 웹 GLB와 기본색 텍스처를 비교하면 크게 바뀐 텍셀(차이 30 초과)은 1.31%이고 스카프 자리에만 있다. 망토·뒷머리 보정은 그대로다. 나머지 5.6%의 작은 차이는 WebP 재압축 오차다.
 
 ## 2026-10-04 공식 흉장으로 교체 (Claude)
 
 사용자가 준 공식 흉장 이미지(`reference/daegu_university_emblem.jpg`, 660×660, 바깥 고리 지름 499px)를 기준으로 Meshy가 그린 근사 흉장을 바꿨다. 대학 사용 허락은 사용자가 확인한 범위다.
 
-- `tools/repaint_texture.py`에 흉장 단계를 더했다(흉장 이미지 경로를 인자로 주면 실행). 가슴 초록 심벌의 평균 법선(Blender `(-0.032,-0.994,0.103)`)에 수직인 평면으로 투영한다. 옛 흉장 반지름은 스카프 매듭이 가까운 위쪽을 빼고 아래쪽 절반의 어두운 텍셀로 쟀다(0.090 m).
+- `repaint_texture.py`에 흉장 단계를 더했다(흉장 이미지 경로를 인자로 주면 실행). 가슴 초록 심벌의 평균 법선(Blender `(-0.032,-0.994,0.103)`)에 수직인 평면으로 투영한다. 옛 흉장 반지름은 스카프 매듭이 가까운 위쪽을 빼고 아래쪽 절반의 어두운 텍셀로 쟀다(0.090 m).
 - 옛 자리 위쪽은 스카프 매듭에 가려 '대구대학교' 글자가 덮여서, 새 흉장은 92% 크기(반지름 0.083 m)로 0.020 m 아래에 그린다. 옛 흉장 자리의 나머지는 털색으로 덮고 맨 바깥에서 원래 텍스처와 섞는다.
 - 2048 텍스처에서 흉장 안 텍셀 12,253개(지름 약 125텍셀). 원본은 텍셀 밀도에 맞춰 2배 상자 평균으로 줄인 뒤 표본을 뽑는다. 웹 GLB(1024)에서도 가까이 보면 글자가 읽힌다.
-- 다시 만들기: `blender -b --factory-startup --python tools/repaint_texture.py -- <원본.glb> work/repaint reference/daegu_university_emblem.jpg` → `inject_basecolor.mjs` → `build_dudu.mjs … Running`.
+- 같은 세 단계에 흉장 이미지(`reference/daegu_university_emblem.jpg`)를 입력으로 더해 만들었다.
 - 결과 `frontend/public/assets/dudu/dudu.glb` 2,637,828바이트(SHA-256 `b4807fd15bd6e193…`). 이전 웹 GLB와 비교하면 크게 바뀐 텍셀은 0.40%이고 흉장 UV 섬에만 있다.
 - 절차형 대체 모델(`frontend/src/tiger/duduEmblem.ts`)의 흉장은 아직 캔버스 근사다(모델 파일을 못 불러올 때만 보임).
 
@@ -86,16 +85,6 @@ Blender 4.5.14 LTS 휴대용판을 `C:\Users\kor02\Tools\blender-4.5.14-windows-
 - 꼬리(`frontend/src/tiger/duduTail.ts`): 모델에 꼬리가 없다. 줄무늬 관을 엉덩이 뼈에 붙였다. 망토 아래쪽이 허벅지 뼈를 따라 몸에 붙어 있어 등 가운데가 아니라 왼쪽 엉덩이 옆에서 망토 앞 가장자리 밖으로 나와 위로 말린다.
 - 표정(`frontend/src/tiger/duduFace.ts`): 눈·입은 텍스처에 그려져 있고 셰이프 키가 없다. 얼굴 곡면을 따르는 덧그림(감은 눈 ‿, 웃는 눈 ∩, 벌린 입·혀)을 머리 뼈에 붙였다. 위치는 원본 GLB 얼굴 텍셀을 Blender에서 3D로 펼쳐 잰 값(눈 중심 Blender `(-0.112,-0.300,0.977)`·`(0.110,-0.300,0.978)` m, 크기 0.045×0.072 m, 입선 가운데 아래 끝 `(-0.002,-0.313,0.831)` m)을 앱 좌표로 옮겼다.
 - 동작(`frontend/src/tiger/duduMotion.ts`): 사람 비율 프리셋이 두두 몸에 맞지 않는 부분을 불러온 뒤 보정한다. 엉덩이 수평 이동 0.3 이하(펀치 0.88→0.3 등), 물건 줍기를 대기 자세와 45%로 섞기, 발이 쉬는 자세보다 내려가면 모델을 올리기.
-
-## 화면 검토 도구 (`tools/review/`)
-
-앱 의존성이 아니다. `build_dudu.mjs`처럼 임시 폴더에서 `npm install playwright-core sharp` 후 스크립트를 그 폴더로 복사해 실행한다. Edge가 설치되어 있어야 한다. 서버 주소는 `BASE`(기본 `http://127.0.0.1:5173`).
-
-| 스크립트 | 하는 일 |
-|---|---|
-| `capture_review.mjs` | `/dudu-review.html`을 동작별로 촬영. `&close`·`&face`·`&lower`·`&still`·`&expr=closed\|happy\|talk` |
-
-다른 포트의 개발 서버를 쓸 때는 백엔드의 `CORS_ORIGINS`에 그 주소를 넣어야 DEMO 로그인이 된다(설정 파일은 바꾸지 않고 환경 변수로).
 
 ## 남은 다듬기 (Blender 또는 재텍스처)
 
@@ -134,8 +123,6 @@ Blender 4.5.14 LTS 휴대용판을 `C:\Users\kor02\Tools\blender-4.5.14-windows-
 |---|---|---|
 | [원래 두두 2D 정면](references/original_dudu_2d.jpg) | 백호라는 정체성, 얼굴/줄무늬 배치, 흰 몸, 청록 스카프, 청록 겉·연두 안 망토, 원형 가슴 흉장 | 정면 기준 도안이다. 측·후면 형상은 같은 폴더의 정측후 도면(`dudu_turnaround_front_side_back.jpg`)을 따른다 |
 | [3D 전신 목표](references/dudu_3d_target_front.png) | 큰 둥근 머리·짧고 폭신한 몸·발·꼬리, 털/천/눈 재질, 정면 비례와 중립 포즈 | 생성 이미지의 흉장 문자는 왜곡될 수 있음. 대학 공식 도안과 사용 권한을 별도 확인 |
-| [3D 표정·동작 목표](references/dudu_3d_target_poses.png) | 가까이서 보이는 눈·코·귀·입, 손바닥 젤리, 손 흔들기/한 발 들기, 망토와 꼬리의 움직임 | 두 개체가 나와도 제품 캐릭터가 둘이라는 뜻이 아님 |
-| [홈 분위기 시안](references/dudu_home_concept.png) | 큰 두두를 중심에 두는 홈 구성, 밝은 하늘/섬, 인사 포즈, 대화 진입의 환영감 | 이미지의 작은 글자·수치·버튼·개인정보·임상 지표는 요구사항이 아님. 아동 앱과 치료사 화면의 기존 정보 구조를 검토하며 적용 |
 
 **충돌 시 원래 2D 도안의 캐릭터 정체성을 먼저 지킨다.** 새 생성 이미지의 봉제 인형 같은 조형·재질·표정은 그 정체성을 3D로 높이는 시각 목표다. 정면에서 보이지 않는 면은 사용자가 준 정측후 도면으로 확정한다. 현재 시제품의 평면형 얼굴이나 흉장 근사 표현을 최종 디자인 기준으로 삼지 않는다.
 

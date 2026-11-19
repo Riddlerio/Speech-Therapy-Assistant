@@ -7,7 +7,6 @@
 .turn-badge.on { opacity: 1; transform: none; }
 .turn-mic { width: 1.15em; height: 1.15em; flex: none; }
 /* 배지 자리: 무대를 감싸는 위치 기준(게임 4종 화면) */
-.turn-anchor { position: relative; min-width: 0; }
 
 @media (prefers-reduced-motion: reduce) {
   .turn-glow, .turn-badge { transition: none; }

@@ -1,11 +1,11 @@
 import type { HoyaAction } from '../control/speechGameSignal'
-import { Box3, Matrix3, Quaternion, Vector3, type AnimationClip, type Object3D } from 'three'
+import { Box3, Matrix3, Vector3, type AnimationClip, type Object3D } from 'three'
 
 /** 모델 파일 경로. 파일이 없거나 불러오지 못하면 절차형 두두(DuduModel)를 그대로 쓴다. */
 export const DUDU_GLB_URL = '/assets/dudu/dudu.glb'
 
 /**
- * 17개 동작별로 찾을 애니메이션 이름 후보(앞쪽 우선, 소문자 부분 일치).
+ * 7개 동작별로 찾을 애니메이션 이름 후보(앞쪽 우선, 소문자 부분 일치).
  * Meshy·Blender에서 붙인 클립 이름이 바뀌어도 여기만 고치면 된다.
  */
 const CLIP_HINTS: Record<HoyaAction, string[]> = {
@@ -15,16 +15,6 @@ const CLIP_HINTS: Record<HoyaAction, string[]> = {
   IDLE: ['happy_sway', 'sway', 'idle'],
   LISTENING: ['listen'],
   TALKING: ['talk'],
-  CHARGE: ['mage', 'spell', 'cast'],
-  BEAM: ['mage', 'spell', 'cast'],
-  RELEASE: ['happy_sway', 'idle'],
-  FLY: ['regular_jump', 'jump'],
-  LAND: ['happy_sway', 'idle'],
-  CAST: ['mage', 'spell', 'cast'],
-  ATTACK: ['punch', 'attack'],
-  WALK_TO: ['walk'],
-  PICK_UP: ['collect', 'pick'],
-  PUT_IN_BAG: ['collect', 'pick'],
   WAVE: ['wave'],
   CHEER: ['happy_jump', 'cheer', 'jump'],
   ENCOURAGE: ['motivational', 'cheer'],
@@ -40,9 +30,6 @@ export function pickClip(action: HoyaAction, names: string[]): string | null {
   }
   return names[0] ?? null
 }
-
-/** 한 번만 재생하고 멈추는 동작. 나머지는 반복한다. */
-export const ONE_SHOT: ReadonlySet<HoyaAction> = new Set<HoyaAction>(['RELEASE', 'LAND', 'ATTACK', 'PICK_UP', 'PUT_IN_BAG'])
 
 /*
  * Meshy 프리셋 동작은 사람 비율 뼈대에서 옮겨 와 두두(다리가 짧고 머리가 큰 몸)에 그대로 쓰면
@@ -88,32 +75,6 @@ export function limitRootDrift(model: Object3D, clips: AnimationClip[], height: 
     changed.push(`${clip.name} ${max.toFixed(2)}→${limit}`)
   }
   return changed
-}
-
-/**
- * 동작을 기준 동작의 첫 자세와 섞어 약하게 만든다(같은 이름의 클립을 고쳐 쓴다).
- * 물건 줍기(Collect_Object)는 큰 머리가 바닥에 닿을 만큼 웅크려 공처럼 보여서, 대기 자세와 45%로 섞어 허리를 굽혀 손을 뻗는 정도로 줄인다.
- */
-export function softenClip(clips: AnimationClip[], targetHint: string, baseHint: string, weight: number) {
-  const find = (hint: string) => clips.find(clip => clip.name.toLowerCase().includes(hint))
-  const target = find(targetHint), base = find(baseHint)
-  if (!target || !base) return false
-  const a = new Quaternion(), b = new Quaternion()
-  for (const track of target.tracks) {
-    const from = base.tracks.find(candidate => candidate.name === track.name)
-    if (!from) continue
-    const size = track.getValueSize()
-    const v = track.values, start = from.values
-    for (let i = 0; i < v.length; i += size) {
-      if (size === 4) {
-        a.fromArray(start, 0); b.fromArray(v, i)
-        a.slerp(b, weight).toArray(v, i)
-      } else {
-        for (let k = 0; k < size; k++) v[i + k] = start[k] + (v[i + k] - start[k]) * weight
-      }
-    }
-  }
-  return true
 }
 
 export type Grounding = { apply(): void }

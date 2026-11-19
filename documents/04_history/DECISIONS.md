@@ -19,9 +19,9 @@
 | 2026-10-04 | 사용자 결정 | 텍스처는 한 번 더 비교한 뒤 선택 | 정면만·멀티뷰 중 바로 선택 | Meshy 계정 | — |
 | 2026-10-04 | 임시 결정 | 텍스처 B(정면 이미지만)를 채택. 망토 색·뒷머리 줄무늬는 나중에 Blender로 고침 | A(멀티뷰), C(정면+후면) | `assets/dudu3d/README.md` | 다른 후보로 다시 리깅·내보내기 |
 | 2026-10-04 | 임시 결정 | 대기 동작을 `Idle_14` 대신 `Happy_Sway_Standing`, 말하기는 `Talk_with_Left_Hand_on_Hip`(원화의 허리 손 자세) | Meshy의 다른 프리셋 | `frontend/src/tiger/duduMotion.ts` | 대응표 수정 |
-| 2026-10-04 | 임시 결정 | 웹용 GLB는 `KHR_mesh_quantization`·`EXT_texture_webp`(three가 디코더 없이 읽음)로 13.5MB→2.62MB | 원본 그대로 13.5MB, meshopt 압축(디코더 필요) | `assets/dudu3d/tools/build_dudu.mjs` | 원본 GLB로 교체 |
-| 2026-10-04 | 사용자 결정 | Blender를 설치해 망토 색과 뒷머리 줄무늬를 먼저 고친다 | seed 재작성·legacy 제거 먼저 | `assets/dudu3d/tools/repaint_texture.py` | — |
-| 2026-10-04 | 임시 결정 | 망토·뒷머리 보정은 텍스처만 다시 칠한다(형태·뼈대·동작 유지). 스카프는 앞쪽이 흉장과 겹쳐 이번에 바꾸지 않음 | Blender로 다시 내보내기, Meshy 재텍스처 | `assets/dudu3d/tools/repaint_texture.py` | 원본 텍스처로 다시 변환 |
+| 2026-10-04 | 임시 결정 | 웹용 GLB는 `KHR_mesh_quantization`·`EXT_texture_webp`(three가 디코더 없이 읽음)로 13.5MB→2.62MB | 원본 그대로 13.5MB, meshopt 압축(디코더 필요) | `assets/dudu3d/tools/build_dudu.mjs`(2026-11-19 삭제, git 이력) | 원본 GLB로 교체 |
+| 2026-10-04 | 사용자 결정 | Blender를 설치해 망토 색과 뒷머리 줄무늬를 먼저 고친다 | seed 재작성·legacy 제거 먼저 | `assets/dudu3d/tools/repaint_texture.py`(2026-11-19 삭제, git 이력) | — |
+| 2026-10-04 | 임시 결정 | 망토·뒷머리 보정은 텍스처만 다시 칠한다(형태·뼈대·동작 유지). 스카프는 앞쪽이 흉장과 겹쳐 이번에 바꾸지 않음 | Blender로 다시 내보내기, Meshy 재텍스처 | `assets/dudu3d/tools/repaint_texture.py`(2026-11-19 삭제, git 이력) | 원본 텍스처로 다시 변환 |
 | 2026-10-04 | 임시 결정 | legacy 모험을 지우면서 사용처가 그것뿐이던 `magicBeam/machine.ts`·`BeamCanvas.tsx`도 함께 지웠다. 빛의 마법 3D 장면·`sceneState`·검토 화면은 그대로 | `frontend/src/game/magicBeam` 전체 유지 | 로드맵 5절 3번, 동결 계약 §4 | 커밋 되돌림 |
 | 2026-10-04 | 임시 결정 | 샘플 회기는 실제 5라운드 처리 함수를 서버 안에서 호출해 만든다(HTTP·쿠키 없이). 일부 회기는 첫 시도를 일부러 짧은 발성으로 넣어 다시 시도 흐름을 보여 준다 | 결과 행을 직접 써 넣기 | `backend/app/seed.py` | seed 파일 되돌림 |
 | 2026-10-05 | 사용자 결정 | 5일 데모 흐름: 로그인 → 두두 점프 인사 → /ㅅ/ 유도 대화(약 10번·약 5분) → '대구대 건너기' → "역시 ○○야" → 마무리 인사 → 치료사 화면. 아이템·보상 없음. 목표 소리 /ㅅ/. 놓침은 글자 없이 웃긴 반응 | 기존 모험·지도 중심 흐름 | [흐름 설계안(원문)](https://github.com/Riddlerio/s_project/blob/22eef9b993475537ec55859e1cca17dc15d02e73/docs/handoff/DEMO_FLOW_PLAN_2026-10-05.md) | 흐름 설계안 수정 |

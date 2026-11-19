@@ -1,13 +1,13 @@
 import { useFrame } from '@react-three/fiber'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { AnimationMixer, Box3, LoopOnce, LoopRepeat, Vector3, type AnimationAction, type AnimationClip, type Object3D } from 'three'
+import { AnimationMixer, Box3, LoopRepeat, Vector3, type AnimationAction, type AnimationClip, type Object3D } from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js'
 import type { HoyaAction } from '../control/speechGameSignal'
 import { DuduModel } from './DuduModel'
 import { attachDuduFace, faceState, type FaceState } from './duduFace'
 import { speakingLevel } from '../speech/duduClips'
-import { createGrounding, DUDU_GLB_URL, limitRootDrift, ONE_SHOT, pickClip, softenClip } from './duduMotion'
+import { createGrounding, DUDU_GLB_URL, limitRootDrift, pickClip } from './duduMotion'
 import { attachDuduTail, swayDuduTail } from './duduTail'
 import { applyHeadPerk, createPerkClock, findHeadBone } from './duduPerk'
 import { prefersReducedMotion } from '../shared/useReducedMotion'
@@ -22,9 +22,8 @@ let shared: Promise<Loaded | null> | null = null
 function loadDudu(): Promise<Loaded | null> {
   shared ??= new GLTFLoader().loadAsync(DUDU_GLB_URL)
     .then(gltf => {
-      // 사람 비율 동작을 두두 몸에 맞춘다: 엉덩이의 수평 이동 제한, 물건 줍기 약하게(duduMotion.ts).
+      // 사람 비율 동작을 두두 몸에 맞춘다: 엉덩이의 수평 이동 제한(duduMotion.ts).
       limitRootDrift(gltf.scene, gltf.animations, HEIGHT)
-      softenClip(gltf.animations, 'collect', 'happy_sway', 0.45)
       return { scene: gltf.scene, clips: gltf.animations }
     })
     .catch(error => { console.warn('두두 모델 파일을 불러오지 못해 절차형 모델을 씁니다', error); return null })
@@ -51,7 +50,7 @@ function optional<T>(label: string, make: () => T | null): T | null {
 }
 
 // 꼬리를 크게 흔드는 신나는 동작. 듣기 중에는 꼬리도 멈춘다.
-const LIVELY: ReadonlySet<HoyaAction> = new Set<HoyaAction>(['CHEER', 'WAVE', 'ENCOURAGE', 'FLY'])
+const LIVELY: ReadonlySet<HoyaAction> = new Set<HoyaAction>(['CHEER', 'WAVE', 'ENCOURAGE'])
 
 type Props = { action: HoyaAction; animate?: boolean; /** 검토 화면 전용: 표정을 고정한다. */ expression?: FaceState }
 
@@ -82,8 +81,7 @@ function GlbDudu({ data, action, animate, expression }: Props & { data: Loaded; 
     const next = mixer.clipAction(clip)
     if (current.current === next) return
     next.reset()
-    next.setLoop(ONE_SHOT.has(action) ? LoopOnce : LoopRepeat, Infinity)
-    next.clampWhenFinished = ONE_SHOT.has(action)
+    next.setLoop(LoopRepeat, Infinity)
     next.play()
     if (moving.current) current.current?.crossFadeTo(next, 0.25, false)
     else current.current?.stop()

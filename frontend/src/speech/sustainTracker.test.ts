@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { isFrication } from './fricativeDetector'
 import { SustainTracker } from './sustainTracker'
-import { assessAudioQuality } from './audioQuality'
 
 describe('마찰음 발성 근거', () => {
   it('고주파 비율 또는 스펙트럼 중심으로 마찰음을 찾는다', () => {
@@ -33,11 +32,6 @@ describe('마찰음 발성 근거', () => {
     tracker.process({ tMs: 40, rmsDb: -70, hfRatio: 0 })
     tracker.process({ tMs: 100, rmsDb: -20, hfRatio: 0.5 })
     expect(tracker.bestRunMs).toBe(60)
-  })
-
-  it('짧거나 신호 대 잡음비가 낮은 발화는 음질 불량으로 표시한다', () => {
-    expect(assessAudioQuality(-60, -50, 200, 0).level).toBe('POOR')
-    expect(assessAudioQuality(-60, -40, 900, 0).level).toBe('GOOD')
   })
 })
 

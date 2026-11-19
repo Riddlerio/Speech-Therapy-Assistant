@@ -191,25 +191,12 @@ interface Pose {
 const REST: Pose = { x: 0, y: 0, z: 0, yaw: 0, pitch: 0, roll: 0, squash: 0, headYaw: 0, headPitch: 0, headRoll: 0,
   rA: 0.82, rF: 0.15, rE: 1.85, lA: 0.14, lF: 0.05, lE: 0.25, legL: 0, legR: 0, cape: 0, tail: 0.2, mouth: 0 }
 
-/** 기존 17개 동작 값을 관절 목표로 바꾼다. 오른쪽(+x)은 원래 도안처럼 허리에 손을 얹는다. */
+/** 7개 동작 값을 관절 목표로 바꾼다. 오른쪽(+x)은 원래 도안처럼 허리에 손을 얹는다. */
 function poseFor(action: HoyaAction, t: number): Pose {
   const p: Pose = { ...REST, y: Math.sin(t * 1.8) * 0.012, headRoll: Math.sin(t * 0.7) * 0.03, tail: 0.25 + Math.sin(t * 1.4) * 0.15 }
   switch (action) {
     case 'LISTENING': return { ...p, headRoll: -0.16, headYaw: 0.12, headPitch: 0.04, lA: 0.2, lF: 0.2 }
     case 'TALKING': return { ...p, headPitch: Math.sin(t * 5) * 0.04, mouth: 0.35 + Math.abs(Math.sin(t * 7.5)) * 0.65, lA: 0.45, lF: 0.45 + Math.sin(t * 3.5) * 0.15, lE: 0.9 }
-    case 'CHARGE': return { ...p, squash: 0.05, pitch: -0.05, rA: 0.35, rF: 0.95, rE: 0.8, lA: 0.35, lF: 0.95, lE: 0.8, cape: 0.3 }
-    case 'BEAM': return { ...p, pitch: -0.1, z: 0.08, rA: 0.45, rF: 1.45, rE: 0.05, lA: 0.3, lF: -0.35, lE: 0.3, cape: 0.65, mouth: 0.4 }
-    case 'RELEASE': return { ...p, y: 0.04, rA: 0.4, rF: 0.5, rE: 0.4, lA: 0.4, lF: 0.3, lE: 0.4, cape: 0.25 }
-    case 'FLY': return { ...p, y: 0.3 + Math.sin(t * 4) * 0.07, pitch: -0.16, rA: 1.25, rF: 0.2, rE: 0.1, lA: 1.25, lF: 0.2, lE: 0.1, legL: -0.35, legR: -0.25, cape: 1 }
-    case 'LAND': return { ...p, y: -0.06, squash: 0.12, rA: 0.6, rE: 0.3, lA: 0.6, lE: 0.3, cape: 0.2 }
-    case 'CAST': return { ...p, rA: 2.3 + Math.sin(t * 5) * 0.12, rF: 0.25, rE: 0.25, lA: REST.rA, lF: REST.rF, lE: REST.rE, cape: 0.35, headPitch: -0.08 }
-    case 'ATTACK': return { ...p, z: 0.16, pitch: -0.13, yaw: -0.12, rA: 0.35, rF: 1.55, rE: 0, lA: 0.35, lF: -0.45, lE: 0.5, legL: 0.25, legR: -0.2, cape: 0.75, mouth: 0.5 }
-    case 'WALK_TO': {
-      const step = Math.sin(t * 5.5)
-      return { ...p, x: Math.sin(t * 1.2) * 0.12, y: Math.abs(Math.cos(t * 5.5)) * 0.05, yaw: 0.55, rA: 0.18, rF: -step * 0.4, rE: 0.25, lA: 0.18, lF: step * 0.4, lE: 0.25, legL: step * 0.45, legR: -step * 0.45, cape: 0.25 }
-    }
-    case 'PICK_UP': return { ...p, pitch: 0.28, y: -0.08, headPitch: 0.15, rA: 0.25, rF: 0.85, rE: 0.2, lA: 0.25, lF: 0.85, lE: 0.2 }
-    case 'PUT_IN_BAG': return { ...p, headRoll: 0.1, headYaw: 0.25, rA: 0.2, rF: 0.75, rE: 1.25 }
     case 'WAVE': return { ...p, headRoll: -0.08, rA: 2.55, rF: 0.15, rE: 0.35 + Math.sin(t * 8) * 0.35 }
     case 'CHEER': {
       const hop = Math.abs(Math.sin(t * 6.5))

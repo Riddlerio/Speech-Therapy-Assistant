@@ -4,7 +4,7 @@ name: CI
 
 on:
   push:
-    branches: [main, "claude/**", "codex/**"]
+    branches: [main, "claude/**"]
   pull_request:
   workflow_dispatch:
 

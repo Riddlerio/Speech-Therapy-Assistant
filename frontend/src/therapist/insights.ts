@@ -37,7 +37,7 @@ export interface GoalTrends {
   limitations: string[]; baselineRule: string
 }
 export const SOURCE_LABELS: Record<EvidenceSource, string> = { REAL: '실제', DEMO: 'DEMO', SAMPLE: '샘플' }
-// 'AI' 출처는 학습 모델이 아니라 규칙·기준값으로 자동 추정한 결과다(감사: PRODUCT_REALITY_MATRIX 3절). 화면에는 '자동 추정'으로 보인다.
+// 'AI' 출처는 학습 모델이 아니라 규칙·기준값으로 자동 추정한 결과다(2026-09-30 감사 기록 3절, git 이력 참조). 화면에는 '자동 추정'으로 보인다.
 export const PROVENANCE_LABELS: Record<Provenance, string> = { SYSTEM: '시스템 측정', AI: '자동 추정', THERAPIST: '치료사 확인·교정' }
 /** 활동별 자동 추정 방식. 관찰 카드에 한 줄로 보여 무엇으로 판단했는지 알린다(games/rounds.py의 규칙). */
 export const JUDGMENT_METHODS: Record<string, string> = {
